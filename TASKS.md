@@ -83,6 +83,30 @@ Tüm 6 bug otomatik testlerle VE tarayıcıda (Playwright/chromium ile gerçek k
 
 **Faz 1.5 KAPANDI.** Bilinen açık bug yok, Faz 2'ye geçişe testerdan onay.
 
+## Faz 2 — Gerçek AI Game Master (Google Gemini API)
+
+Kullanıcı kararı: Claude API yerine **Gemini API** (ücretsiz katman) — maliyet/darboğaz endişesi nedeniyle. Kullanıcı biraz sonra bir Gemini API key sağlayacak (aistudio.google.com/apikey, ücretsiz alınabiliyor).
+
+Tasarım ilkeleri (PM):
+- AI, oyunun bel kemiği DEĞİL — bir "üst katman". Key yoksa / hata verirse / rate limit aşılırsa **otomatik ve sessizce** mevcut mock GM'e (Faz 1 flavor text) düşülür. Oyun asla AI'a bağımlı çökmemeli.
+- Faz 2'de AI sadece **anlatım/narration** üretir (chat mesajı). Oyun durumunu (HP, envanter, token pozisyonu) AI değil, mevcut kural tabanlı backend yönetmeye devam eder — AI'ın state mutasyonu yapması riskli/kapsam dışı, ileride değerlendirilir.
+- Rate limit: oturum başına/saatlik makul bir üst sınır (örn. saatte 30 AI çağrısı) — ücretsiz katman kotasını da korur.
+- `GEMINI_API_KEY` ortam değişkeninden okunur, **asla commit edilmez** (`.env`, `.gitignore`'da olmalı). Key gelene kadar sistem otomatik mock'a düşerek çalışmaya devam eder.
+
+### Coder
+- [ ] `backend`: `.env.example` ekle (`GEMINI_API_KEY=`), `.gitignore`'a `.env` olduğunu doğrula, `dotenv` ile yükle
+- [ ] `backend`: `@google/generative-ai` (veya güncel resmi Gemini SDK) bağımlılığını ekle, Flash ailesinden ücretsiz katmana uygun hızlı/ucuz bir model seç
+- [ ] `backend`: `services/aiGm.js` — karakter + sahne durumu + son birkaç sohbet mesajından bir GM anlatım promptu kurup Gemini'den tek bir narration metni döndüren fonksiyon
+- [ ] `backend`: basit in-memory rate limiter (saatlik sayaç) — limit aşılınca veya `GEMINI_API_KEY` yoksa/istek hata verirse mevcut `gmFlavor.js` mock yoluna sessizce düş
+- [ ] `backend`: chat POST route'unu bu yeni AI-GM katmanını kullanacak şekilde bağla (try AI → catch/limit → fallback mock), hangi kaynaktan geldiğini (ai/mock) mesaj objesine ekle (debug/QA için)
+- [ ] Key olmadan da (mock fallback ile) sistemin sorunsuz çalıştığını doğrula, key eklenince gerçek AI cevabını da test et
+
+### Tester
+- [ ] Gemini çağrısını mock'layarak: (a) başarılı AI cevabı senaryosu, (b) hata/timeout → mock fallback senaryosu, (c) rate limit aşımı → mock fallback senaryosu için testler yaz — gerçek API key gerektirmemeli
+- [ ] Rate limiter'ın sayaç mantığını test et
+- [ ] Key eklendikten sonra gerçek bir manuel QA turu: birkaç sohbet mesajı gönderip AI cevabının tutarlı/oyun bağlamına uygun geldiğini doğrula
+- [ ] QA_CHECKLIST.md'ye Faz 2 maddelerini ekle
+
 ## Notlar
 - FRP (`C:\Users\erdem\OneDrive\Masaüstü\FRP`) yalnızca konsept referansıdır, kod kopyalanmayacak.
 - Değişiklik/karar gerektiren konularda PM'e (bu session) danışın, kullanıcıya sormadan büyük mimari karar almayın.

@@ -12,7 +12,7 @@ Tek oyunculu, sohbet tabanlı, taktik ızgaralı bir D&D RPG simülatörü.
 - Sadece **D&D evreni** (Star Wars / Naruto YOK — ileride eklenebilir ama şimdi değil).
 - **Referans**: `C:\Users\erdem\OneDrive\Masaüstü\FRP` klasöründeki prototip konsept ilhamı olarak incelendi.
   **BİREBİR KOPYALANMAYACAK** — kod sıfırdan, temiz yazılacak. Sadece fikir/veri modeli referansı.
-- AI GM: şimdilik **sahte/kural tabanlı** (rastgele/şablon metinler). Gerçek LLM (Claude API) sonraki faz.
+- AI GM: Faz 1/1.5'te **sahte/kural tabanlı** (rastgele/şablon metinler). Faz 2'de **Google Gemini API** (ücretsiz katman) ile gerçek AI GM eklendi — maliyet/darboğaz riski nedeniyle Claude API yerine tercih edildi. Rate limit aşılırsa veya key yoksa/hata olursa otomatik olarak mock GM'e (Faz 1'deki flavor text) düşülür — AI bir "üst katman", oyunun temel akışı asla ona bağımlı değil.
 
 ## Stack
 - Frontend: React + Vite (TypeScript)
