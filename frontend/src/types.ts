@@ -18,6 +18,7 @@ export interface Character {
   name: string;
   race: string;
   class: string;
+  appearance: string | null;
   level: number;
   hp: { current: number; max: number };
   mana: { current: number; max: number };
@@ -38,6 +39,12 @@ export interface ClassOption {
   baseMana: number;
   primaryAttribute: keyof Attributes;
   startingInventory: string[];
+}
+
+export interface AppearanceOption {
+  id: string;
+  name: string;
+  description: string;
 }
 
 export interface ChatMessage {

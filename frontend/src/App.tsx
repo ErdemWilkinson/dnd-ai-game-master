@@ -4,11 +4,13 @@ import { CharacterCreation } from './components/CharacterCreation';
 import { CharacterCard } from './components/CharacterCard';
 import { ChatPanel } from './components/ChatPanel';
 import { TacticalGrid } from './components/TacticalGrid';
+import { IntroScreen } from './components/IntroScreen';
 import { getCurrentCharacter } from './api';
 import type { Character } from './types';
 
 function App() {
   const [character, setCharacter] = useState<Character | null>(null);
+  const [pendingIntro, setPendingIntro] = useState<{ text: string; source: 'ai' | 'mock' } | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -19,6 +21,11 @@ function App() {
       })
       .finally(() => setLoading(false));
   }, []);
+
+  function handleCreated(newCharacter: Character, intro: { text: string; source: 'ai' | 'mock' }) {
+    setCharacter(newCharacter);
+    setPendingIntro(intro);
+  }
 
   if (loading) {
     return (
@@ -31,7 +38,19 @@ function App() {
   if (!character) {
     return (
       <div className="app app-centered">
-        <CharacterCreation onCreated={setCharacter} />
+        <CharacterCreation onCreated={handleCreated} />
+      </div>
+    );
+  }
+
+  if (pendingIntro) {
+    return (
+      <div className="app app-centered">
+        <IntroScreen
+          text={pendingIntro.text}
+          source={pendingIntro.source}
+          onContinue={() => setPendingIntro(null)}
+        />
       </div>
     );
   }

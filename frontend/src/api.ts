@@ -1,4 +1,4 @@
-import type { Character, ChatMessage, ClassOption, RaceOption, Scene } from './types';
+import type { AppearanceOption, Attributes, Character, ChatMessage, ClassOption, RaceOption, Scene } from './types';
 
 const BASE = '/api';
 
@@ -15,13 +15,35 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
 }
 
 export function getCharacterOptions() {
-  return request<{ races: RaceOption[]; classes: ClassOption[] }>('/character/options');
+  return request<{ races: RaceOption[]; classes: ClassOption[]; appearances: AppearanceOption[] }>(
+    '/character/options',
+  );
 }
 
-export function createCharacter(name: string, raceId: string, classId: string) {
+export function rollStats(raceId: string) {
+  return request<{ rolls: Attributes; attributes: Attributes }>('/character/roll-stats', {
+    method: 'POST',
+    body: JSON.stringify({ raceId }),
+  });
+}
+
+export function createCharacter(
+  name: string,
+  raceId: string,
+  classId: string,
+  appearanceId: string,
+  attributes: Attributes,
+) {
   return request<Character>('/character/create', {
     method: 'POST',
-    body: JSON.stringify({ name, raceId, classId }),
+    body: JSON.stringify({ name, raceId, classId, appearanceId, attributes }),
+  });
+}
+
+export function getCharacterIntro(characterId: string) {
+  return request<{ text: string; source: 'ai' | 'mock' }>('/character/intro', {
+    method: 'POST',
+    body: JSON.stringify({ characterId }),
   });
 }
 
