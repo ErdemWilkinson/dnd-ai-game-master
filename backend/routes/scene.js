@@ -30,12 +30,12 @@ router.post("/move", (req, res) => {
   const { tokenId, x, y } = req.body || {};
   const scene = getScene();
 
-  if (scene.activeTokenId !== tokenId) {
-    return res.status(400).json({ error: "Sıra bu token'da değil." });
-  }
   const token = scene.tokens.find((t) => t.id === tokenId);
   if (!token) {
     return res.status(404).json({ error: "Token bulunamadı." });
+  }
+  if (scene.activeTokenId !== tokenId) {
+    return res.status(400).json({ error: "Sıra bu token'da değil." });
   }
   if (typeof x !== "number" || typeof y !== "number") {
     return res.status(400).json({ error: "Geçersiz koordinat." });
@@ -81,7 +81,7 @@ router.post("/item/use", (req, res) => {
   if (!item) return res.status(404).json({ error: "Eşya bulunamadı." });
 
   character.inventory = character.inventory.filter((i) => i.id !== itemId);
-  if (/iksir/i.test(item.name)) {
+  if (item.name.toLocaleLowerCase("tr").includes("iksir")) {
     character.hp.current = Math.min(character.hp.max, character.hp.current + 5);
   }
 
