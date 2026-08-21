@@ -1,0 +1,313 @@
+.app {
+  min-height: 100vh;
+  color: #e8e4d8;
+  background: #14110f;
+}
+
+.app-centered {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.app-header {
+  padding: 1rem 1.5rem;
+  border-bottom: 1px solid #3a332a;
+}
+
+.app-header h1 {
+  margin: 0;
+  font-size: 1.25rem;
+  letter-spacing: 0.02em;
+}
+
+.app-main {
+  display: grid;
+  grid-template-columns: 280px 1fr 320px;
+  gap: 1rem;
+  padding: 1rem;
+  align-items: start;
+}
+
+/* Character creation */
+.character-creation {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  width: 320px;
+  padding: 1.5rem;
+  background: #1e1a15;
+  border: 1px solid #3a332a;
+  border-radius: 8px;
+}
+
+.character-creation label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  font-size: 0.85rem;
+  color: #b8ae9c;
+}
+
+.character-creation input,
+.character-creation select {
+  padding: 0.5rem;
+  background: #14110f;
+  border: 1px solid #3a332a;
+  border-radius: 4px;
+  color: #e8e4d8;
+}
+
+.character-creation button {
+  margin-top: 0.5rem;
+  padding: 0.6rem;
+  background: #7a3b2e;
+  border: none;
+  border-radius: 4px;
+  color: white;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.character-creation button:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.error {
+  color: #e07a5f;
+  font-size: 0.85rem;
+}
+
+/* Character card */
+.character-card {
+  background: #1e1a15;
+  border: 1px solid #3a332a;
+  border-radius: 8px;
+  padding: 1rem;
+}
+
+.character-subtitle {
+  color: #b8ae9c;
+  font-size: 0.85rem;
+  margin-top: -0.5rem;
+  text-transform: capitalize;
+}
+
+.bar-row {
+  display: grid;
+  grid-template-columns: 40px 1fr 60px;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.8rem;
+  margin: 0.4rem 0;
+}
+
+.bar {
+  height: 8px;
+  background: #14110f;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.bar-fill {
+  height: 100%;
+}
+
+.bar-fill.hp {
+  background: #c0433a;
+}
+
+.bar-fill.mana {
+  background: #3a6ea5;
+}
+
+.attributes-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.5rem;
+  margin: 0.75rem 0;
+}
+
+.attribute {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background: #14110f;
+  border-radius: 4px;
+  padding: 0.4rem;
+}
+
+.attribute-label {
+  font-size: 0.65rem;
+  color: #b8ae9c;
+}
+
+.attribute-value {
+  font-size: 1.1rem;
+  font-weight: 700;
+}
+
+.inventory-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  font-size: 0.85rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.inventory-list li {
+  padding: 0.3rem 0.4rem;
+  background: #14110f;
+  border-radius: 4px;
+}
+
+.inventory-list .tag {
+  font-size: 0.65rem;
+  color: #7fb069;
+}
+
+/* Tactical grid */
+.tactical-grid {
+  background: #1e1a15;
+  border: 1px solid #3a332a;
+  border-radius: 8px;
+  padding: 1rem;
+}
+
+.scene-header {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 0.75rem;
+  font-size: 0.85rem;
+}
+
+.scene-header h3 {
+  margin: 0;
+}
+
+.scene-header button {
+  margin-left: auto;
+  padding: 0.4rem 0.8rem;
+  background: #3a332a;
+  border: none;
+  border-radius: 4px;
+  color: #e8e4d8;
+  cursor: pointer;
+}
+
+.grid {
+  display: grid;
+  gap: 2px;
+}
+
+.cell {
+  aspect-ratio: 1;
+  min-width: 32px;
+  background: #14110f;
+  border: 1px solid #2a241d;
+  border-radius: 2px;
+  cursor: pointer;
+  color: #e8e4d8;
+  font-size: 0.75rem;
+  padding: 0;
+}
+
+.cell:hover {
+  background: #2a241d;
+}
+
+.cell.obstacle {
+  background: #3a332a;
+  cursor: not-allowed;
+}
+
+.cell.player-token {
+  background: #3a6ea5;
+  font-weight: 700;
+}
+
+.cell.enemy-token {
+  background: #7a3b2e;
+  font-weight: 700;
+}
+
+.cell.loot {
+  color: #f2c14e;
+}
+
+/* Chat panel */
+.chat-panel {
+  background: #1e1a15;
+  border: 1px solid #3a332a;
+  border-radius: 8px;
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  height: 520px;
+}
+
+.chat-panel h3 {
+  margin-top: 0;
+}
+
+.chat-messages {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding-right: 0.25rem;
+}
+
+.chat-message {
+  padding: 0.5rem;
+  border-radius: 6px;
+  background: #14110f;
+  font-size: 0.85rem;
+}
+
+.chat-message.gm {
+  border-left: 3px solid #3a6ea5;
+}
+
+.chat-message.player {
+  border-left: 3px solid #7a3b2e;
+}
+
+.chat-message p {
+  margin: 0.25rem 0 0;
+}
+
+.chat-role {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  color: #b8ae9c;
+}
+
+.chat-input-row {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+
+.chat-input-row input {
+  flex: 1;
+  padding: 0.5rem;
+  background: #14110f;
+  border: 1px solid #3a332a;
+  border-radius: 4px;
+  color: #e8e4d8;
+}
+
+.chat-input-row button {
+  padding: 0.5rem 1rem;
+  background: #7a3b2e;
+  border: none;
+  border-radius: 4px;
+  color: white;
+  cursor: pointer;
+}

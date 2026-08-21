@@ -10,11 +10,11 @@ Durum: `[ ]` yapılmadı, `[~]` devam ediyor, `[x]` tamamlandı
 - [x] `backend`: karakter state endpoint'leri (`GET/POST /api/character`)
 - [x] `backend`: sohbet endpoint'leri (`GET/POST /api/chat`) — GM cevabı kural tabanlı/şablon metin üretsin (rastgele flavor text havuzu yeterli)
 - [x] `backend`: sahne/taktik map endpoint'leri (`GET /api/scene`, `move`, `end-turn`, item use/equip/drop/throw)
-- [ ] `frontend/`: Vite + React + TS scaffold
-- [ ] `frontend`: karakter oluşturma formu (ırk + sınıf seçimi, isim) — tek evren, wizard yok
-- [ ] `frontend`: karakter kartı bileşeni (HP/mana/attributes/envanter)
-- [ ] `frontend`: sohbet akışı bileşeni
-- [ ] `frontend`: taktik grid harita bileşeni
+- [x] `frontend/`: Vite + React + TS scaffold
+- [x] `frontend`: karakter oluşturma formu (ırk + sınıf seçimi, isim) — tek evren, wizard yok
+- [x] `frontend`: karakter kartı bileşeni (HP/mana/attributes/envanter)
+- [x] `frontend`: sohbet akışı bileşeni
+- [x] `frontend`: taktik grid harita bileşeni
 
 ### Tester
 - [ ] Backend test altyapısı kur (örn. Vitest + supertest)
