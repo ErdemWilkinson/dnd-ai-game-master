@@ -124,6 +124,35 @@ Test durumu: backend **57/57**, frontend **12/12** yeşil.
 
 **Ortam notu (tester, bu oturumda keşfedildi):** Bu Windows/Git-Bash ortamında `lsof` komutu YOK — `lsof -ti:PORT | xargs kill` deseni sessizce no-op oluyor ve arkada eski (stale) bir node process çalışmaya devam edebiliyor, bu da "restart ettim ama state hâlâ eski" gibi kafa karıştırıcı sonuçlara yol açtı. Doğru yöntem: `netstat -ano | grep ":PORT" | grep LISTENING` ile PID bulup `taskkill //PID <pid> //F` kullanmak.
 
+## Faz 3 — Karakter Yaratımı, BG3-Esinli Savaş Sistemi, Zengin AI Anlatımı
+
+Kullanıcının kendi elle test edip verdiği geri bildirim (2026-08-22). Kapsam büyük, kullanıcı kararı: tek Faz 3 olarak veriliyor, ekip mantıklı bir sırayla uygulasın (önerilen sıra aşağıda A→E, ama sıkı bir kural değil). Mevcut ekran düzeni (macera günlüğü/sohbet merkezde, taktik kare kenarda, envanter) kullanıcı tarafından ONAYLANDI, DEĞİŞTİRİLMEYECEK.
+
+### A) Karakter oluşturma akışı — yeniden tasarım
+- [ ] Stat ataması artık **manuel seçim değil, D20 zar atarak rastgele** belirlensin (UI'da zar atma animasyonu/gösterimi olsun, kullanıcı sonucu görsün)
+- [ ] Yeni adım: **dış görünüş** seçimi (karakter tipi/görünüş — basit bir seçenek listesi yeterli, portre/görsel üretimi kapsam dışı)
+- [ ] İsim girişinden sonra, oyun ekranına geçmeden önce **AI'ın ürettiği bir açılış hikayesi** gösterilsin ("gözlerini X'te açtın, yanında şunlar vardı/yoktu..." tarzı) — `services/aiGm.js` altyapısı zaten var, açılış için ayrı bir prompt şablonu kullanılabilir. Key yoksa/hata olursa yine mock bir açılış şablonuna düşülmeli (Faz 2 fallback ilkesiyle tutarlı).
+
+### B) Ekran düzeni — DEĞİŞİKLİK YOK
+- Macera günlüğü (sohbet) merkezde, taktik kare kenarda, envanter mevcut haliyle kalıyor — kullanıcı onayladı.
+
+### C) Taktik/savaş sistemi — Baldur's Gate 3'ten esinlenerek
+- [ ] Hareket hakkı: kare başına maksimum **4 → 5** kareye çıkarılsın
+- [ ] **Aksiyon ekonomisi**: tur başına 1 Aksiyon + 1 Bonus Aksiyon sistemi eklensin (BG3 modeline bakarak — coder önce kısaca araştırıp uygulanabilir bir özet çıkarsın)
+- [ ] **Büyü/mana sistemi**: sınırlı büyü atma hakkı (spell slot benzeri) — mevcut mana alanına dayanarak tasarlanabilir
+- Not: bu madde en çok tasarım kararı gerektiren kısım, coder mimariyi netleştirip PM'e kısa bir özet geçsin, kullanıcıya sorulacak bir şey çıkarsa PM üzerinden sorulsun.
+
+### D) AI anlatım kalitesi
+- [ ] Prompt'a **5 duyu betimlemesi** (görme/koku/ses/dokunma/tat) talimatı eklensin — sürekli atmosferik, yüksek detaylı anlatım
+- [ ] **Eylem çözümlemesi zar ile**: oyuncu "kapıyı kır" gibi bir eylem yazdığında, ilgili stat (örn. güç) + D20 zar atışı ile sonuç belirlensin (AI sadece anlatmasın, zar sonucuna göre başarı/başarısızlık anlatılsın) — bu, Faz 2'deki "AI sadece anlatır, state'i değiştirmez" ilkesiyle nasıl bir arada olacağı netleştirilmeli: öneri, zarı backend kural motoru atsın (rastgele sayı), sonucu AI'a bağlam olarak versin, AI sadece o sonucu anlatsın — state mutasyonu yine backend'de kalır.
+
+### E) Fırlatma UX'i iyileştirme
+- [ ] Şu anki x/y sayı girme formu yerine, "Fırlat" tıklanınca **grid üzerinde hedef kareye tıklayarak seçme** (BG3 tarzı) — TacticalGrid zaten tıklanabilir kareler render ediyor, throwing mode için bir seçim moduna alınabilir
+
+### Tester
+- [ ] A, C, D, E maddeleri implemente edildikçe testler yaz/güncelle (özellikle zar mekaniği rastgele olduğu için deterministik test etmek üzere RNG mock'lama gerekebilir — Bug #7'deki CJS mock deseni burada da geçerli olabilir)
+- [ ] Faz 3 sonunda tam regresyon QA'sı + kullanıcıya elle deneyebileceği bir özet checklist
+
 ## Notlar
 - FRP (`C:\Users\erdem\OneDrive\Masaüstü\FRP`) yalnızca konsept referansıdır, kod kopyalanmayacak.
 - Değişiklik/karar gerektiren konularda PM'e (bu session) danışın, kullanıcıya sormadan büyük mimari karar almayın.
