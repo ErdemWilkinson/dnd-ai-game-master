@@ -128,10 +128,14 @@ Test durumu: backend **57/57**, frontend **12/12** yeşil.
 
 Kullanıcının kendi elle test edip verdiği geri bildirim (2026-08-22). Kapsam büyük, kullanıcı kararı: tek Faz 3 olarak veriliyor, ekip mantıklı bir sırayla uygulasın (önerilen sıra aşağıda A→E, ama sıkı bir kural değil). Mevcut ekran düzeni (macera günlüğü/sohbet merkezde, taktik kare kenarda, envanter) kullanıcı tarafından ONAYLANDI, DEĞİŞTİRİLMEYECEK.
 
-### A) Karakter oluşturma akışı — yeniden tasarım
-- [ ] Stat ataması artık **manuel seçim değil, D20 zar atarak rastgele** belirlensin (UI'da zar atma animasyonu/gösterimi olsun, kullanıcı sonucu görsün)
-- [ ] Yeni adım: **dış görünüş** seçimi (karakter tipi/görünüş — basit bir seçenek listesi yeterli, portre/görsel üretimi kapsam dışı)
-- [ ] İsim girişinden sonra, oyun ekranına geçmeden önce **AI'ın ürettiği bir açılış hikayesi** gösterilsin ("gözlerini X'te açtın, yanında şunlar vardı/yoktu..." tarzı) — `services/aiGm.js` altyapısı zaten var, açılış için ayrı bir prompt şablonu kullanılabilir. Key yoksa/hata olursa yine mock bir açılış şablonuna düşülmeli (Faz 2 fallback ilkesiyle tutarlı).
+### A) Karakter oluşturma akışı — yeniden tasarım [x] TAMAMLANDI (commit ba79a89)
+- [x] Stat ataması artık **manuel seçim değil, D20 zar atarak rastgele** belirleniyor — `POST /api/character/roll-stats` (ırk bonusu uygulanmış), frontend'de kısa bir "zarlar yuvarlanıyor" animasyonu (rastgele değerler ~700ms) gerçek sonuca oturuyor
+- [x] Yeni adım: **dış görünüş** seçimi — `data/appearances.js`'te 5 seçenek, form'a dropdown eklendi
+- [x] İsim girişinden sonra, oyun ekranına geçmeden önce **AI'ın ürettiği açılış hikayesi** gösteriliyor — `POST /api/character/intro`, ayrı prompt (`generateOpeningStory`), key yoksa/hata olursa `data/openingFlavor.js` mock şablonuna düşüyor (Faz 2 ilkesiyle tutarlı), yeni `IntroScreen.tsx` "Devam Et" ile oyuna geçiyor. Açılış mesajı ayrıca sohbet geçmişine ilk GM mesajı olarak da ekleniyor.
+
+**Bilinen test kırılmaları (kasıtlı tasarım değişikliği, tester güncellemeli):**
+- `backend/tests/character.test.js`: "insan ırkı tüm attribute'lara +1 bonus uygular" testi deterministik 11/11/... bekliyordu, artık zar rastgele — RNG mock'lanmalı (Bug #7'deki require-cache deseni `services/dice.js` için de kullanılabilir).
+- Frontend: `CharacterCreation.test.tsx`, `App.test.tsx`, `CharacterCard.test.tsx` eski tek-adımlı akışı / eski `Character` tipini (appearance alanı yok) varsayıyor — `tsc -b` (yani `npm run build`) bu dosyalarda tip hatası veriyor. Uygulama kodu (test hariç) hem `tsc --noEmit` hem `vite build` ile temiz.
 
 ### B) Ekran düzeni — DEĞİŞİKLİK YOK
 - Macera günlüğü (sohbet) merkezde, taktik kare kenarda, envanter mevcut haliyle kalıyor — kullanıcı onayladı.
