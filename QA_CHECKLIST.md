@@ -1,8 +1,8 @@
-# Manuel QA Checklist — Faz 1 / Faz 1.5
+# Manuel QA Checklist — Faz 1 / Faz 1.5 / Faz 2
 
 Kullanım: backend (`cd backend && npm start`, :3001) ve frontend (`cd frontend && npm run dev`, :5173) ayrı terminallerde çalışırken, tarayıcıda `http://localhost:5173` açılarak sırayla kontrol edilir.
 
-Durum: Faz 1.5 bug-fix turu tamamlandı (2026-08-21), tüm maddeler tester tarafından hem otomatik testle hem tarayıcıda doğrulandı. Geçmiş bug numaraları (TASKS.md > "Bulunan Buglar") referans olarak bırakıldı.
+Durum: Faz 1.5 bug-fix turu tamamlandı (2026-08-21), tüm maddeler tester tarafından hem otomatik testle hem tarayıcıda doğrulandı. Geçmiş bug numaraları (TASKS.md > "Bulunan Buglar") referans olarak bırakıldı. Faz 2 (Gemini AI GM) iskeleti otomatik testlerle (mock) doğrulandı (2026-08-22); gerçek key ile manuel tur henüz yapılmadı, kullanıcı key sağlayınca bu dosyaya işlenecek.
 
 ## Karakter oluşturma
 - [x] Sayfa ilk açıldığında, aktif karakter yoksa karakter oluşturma formu görünüyor (isim, ırk, sınıf)
@@ -38,6 +38,24 @@ Durum: Faz 1.5 bug-fix turu tamamlandı (2026-08-21), tüm maddeler tester taraf
 - [ ] Backend kapalıyken frontend açılırsa kullanıcıya anlamlı bir hata gösteriliyor mu (şu an: `getCharacterOptions` reddedilirse form boş kalıyor, hata mesajı görünüyor ama ırk/sınıf seçenekleri hiç yüklenmiyor) — **Faz 1.5 kapsamına alınmadı, gelecekte gözden geçirilebilir**
 - [x] Tarayıcı konsolunda beklenmedik hata/uyarı yok (DevTools > Console) — regresyon QA'sında doğrulandı
 - [x] Sayfa yenileme (F5 / yeni sekme) sonrası karakter ve envanter durumu korunuyor (Bug #4 düzeltildi)
+
+## Faz 2 — AI Game Master (Gemini)
+
+Otomatik testlerle doğrulanan davranış (`backend/tests/aiGmFallback.test.js`, `rateLimiter.test.js`), gerçek key gerektirmedi:
+- [x] `GEMINI_API_KEY` tanımsızken sohbet endpoint'i hatasız çalışıyor, `gmMessage.source` `"mock"` dönüyor
+- [x] Gemini çağrısı hata/timeout verirse istek yine de 201 ile başarılı dönüyor, kullanıcı hata görmüyor, `source: "mock"`
+- [x] Rate limit (saatlik sayaç) aşılınca Gemini'ye hiç istek gitmiyor, `source: "mock"`
+- [x] Gemini başarılı cevap verdiğinde `source: "ai"` ve gerçek anlatım metni kullanıcıya dönüyor
+- [x] Rate limiter: limit dahilinde kabul/sayaç artışı, limit aşımında red, pencere dolunca sıfırlanma, varsayılan limit (30) — hepsi birim testle doğrulandı
+
+**Gerçek key ile manuel QA (kullanıcı key sağlayınca yapılacak — henüz YAPILMADI):**
+- [ ] `backend/.env` içine gerçek `GEMINI_API_KEY` girilip backend yeniden başlatılınca ilk sohbet mesajında `source: "ai"` dönüyor mu
+- [ ] AI'ın anlatımı Türkçe, atmosferik ve 2-4 cümle civarında mı (prompt'un istediği gibi)
+- [ ] AI, karakter adı/ırk/sınıf/HP gibi bağlama uygun referanslar veriyor mu (birkaç farklı mesajla dene)
+- [ ] AI, oyun durumunu (HP, envanter, konum) DEĞİŞTİRMİYOR — sadece anlatım üretiyor mu (state hâlâ backend'in kontrolünde olmalı, AI cevabı bunu etkilemiyor olmalı)
+- [ ] Arka arkaya çok sayıda mesaj gönderilip saatlik limit (varsayılan 30) aşıldığında otomatik olarak `source: "mock"`'a düşüyor mu (frontend'de "(mock)" etiketi görünüyor mu)
+- [ ] Geçersiz/hatalı bir key ile backend'in çökmediği, sessizce mock'a düştüğü teyit edilsin
+- [ ] Frontend'de mock mesajlarda "(mock)" etiketi görünüyor, AI mesajlarında görünmüyor
 
 ## Bilinen kısıtlar (bug değil, kayıt altında)
 - Düşman sırası engeli sadece frontend'de (istemci tarafı kontrol); backend `/scene/move` teknik olarak hâlâ herhangi bir aktif token'ı kabul ediyor. Tek istemcili Faz 1'de risksiz.
