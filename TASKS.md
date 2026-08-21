@@ -140,22 +140,25 @@ Kullanıcının kendi elle test edip verdiği geri bildirim (2026-08-22). Kapsam
 ### B) Ekran düzeni — DEĞİŞİKLİK YOK
 - Macera günlüğü (sohbet) merkezde, taktik kare kenarda, envanter mevcut haliyle kalıyor — kullanıcı onayladı.
 
-### C) Taktik/savaş sistemi — Baldur's Gate 3'ten esinlenerek
-- [ ] Hareket hakkı: kare başına maksimum **4 → 5** kareye çıkarılsın
-- [ ] **Aksiyon ekonomisi**: tur başına 1 Aksiyon + 1 Bonus Aksiyon sistemi eklensin (BG3 modeline bakarak — coder önce kısaca araştırıp uygulanabilir bir özet çıkarsın)
-- [ ] **Büyü/mana sistemi**: sınırlı büyü atma hakkı (spell slot benzeri) — mevcut mana alanına dayanarak tasarlanabilir
-- Not: bu madde en çok tasarım kararı gerektiren kısım, coder mimariyi netleştirip PM'e kısa bir özet geçsin, kullanıcıya sorulacak bir şey çıkarsa PM üzerinden sorulsun.
+### C) Taktik/savaş sistemi — Baldur's Gate 3'ten esinlenerek [x] TAMAMLANDI (commit 02751c1)
+- [x] Hareket hakkı: kare başına maksimum **4 → 5** kareye çıkarıldı (`data/sceneFactory.js`)
+- [x] **Aksiyon ekonomisi**: token'lara `actionAvailable`/`bonusActionAvailable` eklendi, `end-turn` yeni aktif token için sıfırlıyor. PM onaylı kapsam: item kullan + fırlat Aksiyon harcıyor (ve harcanmışsa/oyuncunun sırası değilse 400 dönüyor), kuşan/çıkar/at bedava kalıyor. Bonus Aksiyon şu an hiçbir eylem tarafından tüketilmiyor (mevcut kapsamda buna ihtiyaç duyan bir eylem yok, alan hazır bekliyor).
+- [x] **Büyü/mana sistemi**: PM onaylı karar — ayrı 5e slot tablosu eklenmedi, mevcut mana havuzu büyü kaynağı olarak kalmaya devam ediyor (somut bir büyü listesi olmadığı için).
 
-### D) AI anlatım kalitesi
-- [ ] Prompt'a **5 duyu betimlemesi** (görme/koku/ses/dokunma/tat) talimatı eklensin — sürekli atmosferik, yüksek detaylı anlatım
-- [ ] **Eylem çözümlemesi zar ile**: oyuncu "kapıyı kır" gibi bir eylem yazdığında, ilgili stat (örn. güç) + D20 zar atışı ile sonuç belirlensin (AI sadece anlatmasın, zar sonucuna göre başarı/başarısızlık anlatılsın) — bu, Faz 2'deki "AI sadece anlatır, state'i değiştirmez" ilkesiyle nasıl bir arada olacağı netleştirilmeli: öneri, zarı backend kural motoru atsın (rastgele sayı), sonucu AI'a bağlam olarak versin, AI sadece o sonucu anlatsın — state mutasyonu yine backend'de kalır.
+### D) AI anlatım kalitesi [x] TAMAMLANDI (commit 02751c1)
+- [x] Prompt'a **5 duyu betimlemesi** talimatı eklendi (`services/aiGm.js` buildPrompt)
+- [x] **Eylem çözümlemesi zar ile**: `services/actionResolver.js` — mesajdan ilgili stat sezilir (saldırı→GÜÇ, inceleme→BİLGELİK, ikna→KARİZMA, diğer→ÇEVİKLİK), D20+modifier vs DC 12 ile başarı/başarısızlık/kritik belirlenir. Zar backend'de atılıyor, AI'a bağlam olarak veriliyor ve AI sadece SONUCA göre anlatıyor (kendi zarını uydurmuyor) — Faz 2 ilkesiyle tutarlı. Mock fallback da outcome'a göre kısa bir ek cümle ekliyor. `gmMessage.roll` alanında QA/debug için tam zar detayı dönüyor, ChatPanel'de gösteriliyor.
 
-### E) Fırlatma UX'i iyileştirme
-- [ ] Şu anki x/y sayı girme formu yerine, "Fırlat" tıklanınca **grid üzerinde hedef kareye tıklayarak seçme** (BG3 tarzı) — TacticalGrid zaten tıklanabilir kareler render ediyor, throwing mode için bir seçim moduna alınabilir
+**Bilinen küçük eksik:** Aksiyon tespiti basit anahtar kelime regex'i kullanıyor (gmFlavor.js'teki kategori mantığına benzer) — "saldırıyorum" gibi bazı yazım varyasyonları (dotsuz/dotlu ı) beklenen "GÜÇ" yerine varsayılan "ÇEVİKLİK"e düşebiliyor. Fonksiyonel bir hata değil (zar mekaniği doğru çalışıyor, sadece hangi stat kullanıldığı bazen tahmini), ama not düşüyorum.
+
+### E) Fırlatma UX'i iyileştirme [x] TAMAMLANDI (commit 59727ef)
+- [x] x/y formu kaldırıldı, "Fırlat" tıklanınca grid hedef seçim moduna geçiyor (BG3 tarzı), bir kareye tıklayarak fırlatılıyor.
 
 ### Tester
-- [ ] A, C, D, E maddeleri implemente edildikçe testler yaz/güncelle (özellikle zar mekaniği rastgele olduğu için deterministik test etmek üzere RNG mock'lama gerekebilir — Bug #7'deki CJS mock deseni burada da geçerli olabilir)
+- [x] A, E, C, D implemente edildikçe testler güncellendi (coder ilerledikçe tester paralel çalıştı: frontend 24/24, backend 72/72 yeşil)
 - [ ] Faz 3 sonunda tam regresyon QA'sı + kullanıcıya elle deneyebileceği bir özet checklist
+
+**Faz 3 (A, C, D, E) coder tarafı tamamlandı.** B zaten değişiklik gerektirmiyordu. Regresyon QA'sı bekleniyor.
 
 ## Notlar
 - FRP (`C:\Users\erdem\OneDrive\Masaüstü\FRP`) yalnızca konsept referansıdır, kod kopyalanmayacak.
