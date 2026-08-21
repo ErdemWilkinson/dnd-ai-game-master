@@ -34,7 +34,7 @@ Durum: Faz 1.5, Faz 2 ve Faz 3 (A, C, D, E) tamamlandı ve regresyonla doğrulan
 - [x] Düşman sırasındayken grid'e tıklamak engelleniyor: "Sıra sende değil." hatası gösteriliyor, grid görsel olarak pasifleşiyor (`grid-disabled`), backend'e istek gitmiyor (Bug #5 düzeltildi — PM kararı: engelle)
 - [x] Sıra tekrar oyuncuya geçince engel kalkıyor, hareket normal çalışıyor
 - [x] **(Faz 3-C)** Sahne başlığında "Aksiyon: ✓/✗ · Bonus: ✓/✗" göstergesi var
-- [ ] **(Faz 3-C, bilinen bug — bkz. TASKS.md)** Kullan/Fırlat ile Aksiyon harcandıktan hemen sonra gösterge anında ✗'e dönmüyor (bir sonraki hareket/Turu Bitir/grid-fırlatmaya kadar eski görünüyor) — backend doğru davranıyor, sadece UI göstergesi gecikiyor. Coder düzeltene kadar bu maddeyi "bilinen kusur" olarak işaretleyin.
+- [x] **(Faz 3.5 Bug A, düzeltildi — commit eb04d66)** Kullan/Fırlat ile Aksiyon harcandığında gösterge artık ANINDA ✗'e dönüyor (App.tsx'teki `sceneRefreshTick` sayesinde TacticalGrid yeniden sahne çekiyor) — canlı tarayıcıda tekrar doğrulandı.
 - [x] End-turn ile sıra tekrar oyuncuya gelince Aksiyon/Bonus Aksiyon ✓'a sıfırlanıyor
 
 ## Envanter
@@ -82,13 +82,15 @@ Otomatik testlerle doğrulanan davranış (`backend/tests/dice.test.js`, `action
 - [x] Aksiyon ekonomisi: Kullan/Fırlat Aksiyon tüketiyor ve tükenmişken 400 dönüyor; Kuşan/Çıkar/At bedava kalıyor (PM onaylı kapsam); end-turn ile yeni aktif token'ın Aksiyon/Bonus Aksiyon hakları sıfırlanıyor
 - [x] `gmMessage.roll` alanı her sohbet cevabında dolduruluyor, ChatPanel'de gösteriliyor
 
-**Tarayıcıda uçtan uca regresyon (Playwright, 2026-08-22) — TAMAMLANDI:** Karakter oluştur (isim → zar animasyonu → D20 sonucu → dış görünüş) → AI/mock açılış hikayesi ekranı → "Devam Et" ile oyun ekranı → saldırı mesajı gönder (zar sonucu chat'te göründü) → eşya kullan (Aksiyon tüketti, backend doğru reddetti ikinci kullanımda) → iki kez "Turu Bitir" (Aksiyon sıfırlandı) → grid'de tıklayarak fırlat (çalıştı, Aksiyon tekrar tüketildi ve gösterge bu sefer doğru güncellendi). Konsol/sayfa hatası yok. **2 bulgu tespit edildi, detaylar TASKS.md > Faz 3 tester notlarında:**
-1. Aksiyon göstergesi CharacterCard-tetiklemeli eylemlerden sonra anında güncellenmiyor (UI staleness, backend doğru — bilinen bug, blocker değil)
-2. `actionResolver`'daki `ara` anahtar kelimesi çapasız regex yüzünden "duvara", "kaçarak" gibi kelimelerde yanlış stat'a düşüyor (coder'ın zaten bildiği ı/i sorununun daha geniş bir versiyonu)
+**Tarayıcıda uçtan uca regresyon (Playwright, 2026-08-22) — TAMAMLANDI:** Karakter oluştur (isim → zar animasyonu → D20 sonucu → dış görünüş) → AI/mock açılış hikayesi ekranı → "Devam Et" ile oyun ekranı → saldırı mesajı gönder (zar sonucu chat'te göründü) → eşya kullan (Aksiyon tüketti, backend doğru reddetti ikinci kullanımda) → iki kez "Turu Bitir" (Aksiyon sıfırlandı) → grid'de tıklayarak fırlat (çalıştı, Aksiyon tekrar tüketildi ve gösterge bu sefer doğru güncellendi). Konsol/sayfa hatası yok.
+
+2 bulgu tespit edildi ve **Faz 3.5'te ikisi de düzeltilip doğrulandı** (commit eb04d66, detaylar TASKS.md'de):
+1. ~~Aksiyon göstergesi CharacterCard-tetiklemeli eylemlerden sonra anında güncellenmiyordu~~ → düzeltildi, canlı doğrulandı (bkz. yukarıdaki "Taktik grid" bölümü)
+2. ~~`actionResolver`'daki `ara` anahtar kelimesi çapasız regex yüzünden "duvara", "kaçarak" gibi kelimelerde yanlış stat'a düşüyordu~~ → düzeltildi, `WORD_START` kelime sınırıyla + testle doğrulandı
 
 Gerçek Gemini AI içeriği bu turda yeniden doğrulanamadı (kota tükenmişti, 429) — fallback yolu sorunsuz çalıştı ama Faz 3'ün "5 duyu" + zar-bağlamlı anlatım kalitesi henüz gerçek bir AI cevabıyla görsel olarak teyit edilmedi; dolu kotalı bir key ile tekrar denenmeli.
 
-**Faz 3 (A, C, D, E) kapandı — yukarıdaki 2 küçük bulgu dışında açık madde yok.**
+**Faz 3 + Faz 3.5 kapandı — bilinen açık bug yok** (mock+outcome ton notu kayıtlı, düşük öncelikli, blocker değil).
 
 ## Bilinen kısıtlar (bug değil, kayıt altında)
 - Düşman sırası engeli sadece frontend'de (istemci tarafı kontrol); backend `/scene/move` teknik olarak hâlâ herhangi bir aktif token'ı kabul ediyor. Tek istemcili Faz 1'de risksiz.

@@ -175,7 +175,12 @@ Kullanıcının kendi elle test edip verdiği geri bildirim (2026-08-22). Kapsam
 - [x] Bug B (commit eb04d66): Kategori regex'leri Türkçe harfleri tanıyan bir kelime-başı sınırıyla (`WORD_START`) sarmalandı — "duvara"/"kaçarak" artık yanlışlıkla BİLGELİK'e düşmüyor (node ile doğrulandı). Ayrıca aşırı genel "it" kökü STR listesinden çıkarıldı (aynı sınıf false-positive riski taşıyordu: "itiraz", "itibar"), "saldır" için dotsuz/dotlu ı toleransı eklendi.
 - [ ] (opsiyonel, düşük öncelik, dokunulmadı) Mock GM + outcome eki ton çelişkisi — "Rakibin geri sekiyor" + "işler kötü gitti" gibi kombinasyonlar; sadece okunabilirlik notu, isterse ele alınır
 
-**Not:** `backend/tests/actionResolver.test.js`'teki Bug B regresyon testi bilinçli olarak eski (buggy) `"wis"` değerini bekliyordu — düzeltme sonrası bu assertion artık kırmızı (doğru sonuç `"dex"` dönüyor), tester assertion'ı `"dex"`e çevirince yeşile dönecek. backend 103/104 (1 bilinçli kırmızı), frontend 31/31 yeşil, tsc+build temiz.
+### Tester
+- [x] Bug A doğrulandı — canlı tarayıcıda (Playwright): karakter oluştur → eşya "Kullan" → Aksiyon göstergesi ARADA HİÇBİR hareket/end-turn olmadan anında "✓"→"✗" değişti. Regresyon yok.
+- [x] Bug B doğrulandı — `actionResolver.test.js`'teki eski (buggy) `"wis"` beklentisi doğru sonuca (`"dex"`) çevrildi + `araştır` kökünün hâlâ doğru çalıştığını, `saldır`'ın ı/i toleransını ve `it` kökünün kaldırıldığını doğrulayan 3 yeni test eklendi. `node -e` ile de canlı doğrulandı (duvara/kaçarak/karanlığa artık dex, saldırıyorum/saldiriyorum ikisi de str, itiraz/itiyorum artık str değil).
+- [x] Test durumu: backend **107/107**, frontend **31/31**, tsc+vite build temiz.
+
+**Faz 3.5 KAPANDI.** Bilinen açık bug yok (mock+outcome ton notu kayıtlı ama düşük öncelikli, blocker değil).
 
 ### Not
 Gerçek Gemini key kotası bu turda yine tükendi (429) — Faz 3'ün "5 duyu betimlemesi" gerçek bir AI cevabıyla henüz görsel doğrulanmadı, fallback sorunsuz çalıştı. Yeni/dolu kotalı bir key gelirse tekrar denenmeli.

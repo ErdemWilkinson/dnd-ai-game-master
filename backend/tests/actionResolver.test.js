@@ -23,25 +23,31 @@ describe("detectActionAttribute", () => {
     expect(detectActionAttribute(text)).toBe(expected);
   });
 
-  it("BUG: wis regex'indeki `ara` anahtar kelimesi çapasız (unanchored) olduğu için Türkçe'de çok yaygın olan '-ara-' hecesini içeren HERHANGİ bir kelimeyi yanlışlıkla yakalıyor", () => {
-    // /(bak|incele|gözlemle|look|ara|search|dinle)/ regex'i "ara"yı fiil
-    // ("ara" = "search for") olarak yakalamayı hedefliyor, ama bir alt-dize
-    // (substring) araması olduğu için "-ara-" hecesini barındıran sıradan
-    // Türkçe çekim/hal ekli kelimelerde de (duvarA, kaçARAk, karanlığA...)
-    // yanlışlıkla tetikleniyor — çünkü wis kontrolü str'den sonra, dex'ten
-    // ÖNCE çalışıyor. Sonuç: bariz bir "çevik/dex" eylemi olan "duvara
-    // tırmanmak" ya da "kaçarak sıvışmak" yanlışlıkla BİLGELİK kontrolüne
-    // düşüyor. Zar mekaniğinin kendisi bozuk değil — hangi stat'ın
-    // kullanılacağı yanlış seçiliyor, bu da yanlış modifier ile zar
-    // atılmasına yol açabiliyor (örn. dex'i yüksek ama wis'i düşük bir
-    // karakter, aslında başarması gereken bir tırmanma eylemini gereksiz
-    // yere kaybedebilir). Bu test MEVCUT (hatalı) davranışı belgeliyor —
-    // coder'ın TASKS.md'ye düştüğü "ı/i varyasyonu" notundan daha geniş
-    // kapsamlı bir kök neden: öneri, "ara" yerine `\bara\b` gibi kelime
-    // sınırlı bir regex kullanmak.
-    expect(detectActionAttribute("duvara tırman")).toBe("wis"); // beklenen: dex
-    expect(detectActionAttribute("kaçarak sıvışıyorum")).toBe("wis"); // beklenen: dex ("sıvış" var ama "ara" önce eşleşiyor)
-    expect(detectActionAttribute("karanlığa doğru atlıyorum")).toBe("wis"); // beklenen: dex
+  it("REGRESYON (Faz 3.5 Bug B düzeltmesi, commit eb04d66): 'ara' hecesini içeren ama alakasız kelimeler artık yanlışlıkla BİLGELİK'e düşmüyor", () => {
+    // Önceki hal: wis regex'indeki çapasız (unanchored) "ara" anahtar kelimesi
+    // Türkçe'de çok yaygın olan "-ara-" hecesini barındıran HERHANGİ bir
+    // kelimeyi (duvarA, kaçARAk, karanlığA...) yanlışlıkla yakalıyordu —
+    // bu test o zaman "wis" bekleyip mevcut bug'ı belgeliyordu. Coder artık
+    // WORD_START ile kelime-başı sınırı ekledi ve "ara" kökünü "araştır"
+    // ile değiştirdi, bu yüzden bu üç örnek artık doğru şekilde dex'e
+    // (varsayılan) düşüyor.
+    expect(detectActionAttribute("duvara tırman")).toBe("dex");
+    expect(detectActionAttribute("kaçarak sıvışıyorum")).toBe("dex");
+    expect(detectActionAttribute("karanlığa doğru atlıyorum")).toBe("dex");
+  });
+
+  it("'araştır' kökü hâlâ gerçek bir inceleme eylemini BİLGELİK olarak doğru tespit ediyor", () => {
+    expect(detectActionAttribute("odayı araştırıyorum")).toBe("wis");
+  });
+
+  it("dotsuz/dotlu ı toleransı: 'saldır' hem 'saldırıyorum' hem 'saldiriyorum' yazımında GÜÇ'e düşer", () => {
+    expect(detectActionAttribute("goblin'e saldırıyorum")).toBe("str");
+    expect(detectActionAttribute("goblin'e saldiriyorum")).toBe("str");
+  });
+
+  it("kelime ortasında geçen 'it' kökü artık STR'e yanlışlıkla düşmüyor (aşırı genel kök kaldırıldı)", () => {
+    expect(detectActionAttribute("itiraz ediyorum")).not.toBe("str");
+    expect(detectActionAttribute("onu itiyorum")).not.toBe("str");
   });
 });
 
