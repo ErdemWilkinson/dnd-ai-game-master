@@ -99,7 +99,8 @@ Tasarım ilkeleri (PM):
 - [x] `backend`: `services/aiGm.js` — karakter + sahne + son 6 mesajdan prompt kurup Gemini'den narration metni döndürüyor
 - [x] `backend`: `services/rateLimiter.js` — saatlik sabit pencere sayacı, varsayılan limit 30 (`AI_HOURLY_LIMIT` ile override edilebilir)
 - [x] `backend`: `routes/chat.js` AI katmanına bağlandı — key yok/rate limit aşıldı/Gemini hata verdi → sessizce `gmFlavor.js` mock'a düşer, `gmMessage.source` alanı (`"ai"`/`"mock"`) eklendi
-- [x] Key olmadan (curl ile: `source: "mock"` dönüyor) ve geçersiz key ile (Gemini 400 hatası loglanıp sessizce mock'a düşüyor) doğrulandı. **Gerçek geçerli key ile henüz test edilmedi** — kullanıcının key'i geldiğinde bu adım tekrar doğrulanmalı.
+- [x] Key olmadan (curl ile: `source: "mock"` dönüyor) ve geçersiz key ile (Gemini 400 hatası loglanıp sessizce mock'a düşüyor) doğrulandı.
+- [~] **Gerçek geçerli key ile test edildi, BLOCKER bulundu (kullanıcı tarafında):** Kullanıcının sağladığı Gemini key ile denenen tüm modeller (`gemini-2.5-flash`, `gemini-3.1-flash-lite`, `gemini-2.5-flash-lite`, `gemini-3.7-flash`, `gemini-flash-lite-latest`) `429 "Your prepayment credits are depleted"` hatası veriyor — key/proje seviyesinde bir faturalandırma/kota sorunu, kod tarafında düzeltilebilecek bir şey yok. Varsayılan model adı da güncellendi (`gemini-2.5-flash` artık yeni kullanıcılara kapalı → `gemini-3.6-flash`, commit 07e977e). **Doğrulanan iyi haber: fallback mekanizması tam beklendiği gibi çalıştı** — 429 hatası sessizce mock'a düştü, oyuncuya hiçbir hata sızmadı. Kullanıcının Google AI Studio / Cloud proje faturalandırma ayarlarını kontrol etmesi gerekiyor (bkz. ai.google.dev/gemini-api/docs/billing#prepay).
 
 Not: `services/sceneState.js` eklendi — `scene.js`'in özel `getScene()`'i, AI prompt'unun sahne bağlamına da ihtiyacı olduğu için `routes/scene.js` ve `routes/chat.js` arasında paylaşılan ortak modüle taşındı (küçük bir refactor, davranış değişmedi).
 
