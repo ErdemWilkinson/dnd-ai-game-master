@@ -13,6 +13,7 @@ function App() {
   const [pendingIntro, setPendingIntro] = useState<{ text: string; source: 'ai' | 'mock' } | null>(null);
   const [loading, setLoading] = useState(true);
   const [throwingItemId, setThrowingItemId] = useState<string | null>(null);
+  const [sceneRefreshTick, setSceneRefreshTick] = useState(0);
 
   useEffect(() => {
     getCurrentCharacter()
@@ -26,6 +27,13 @@ function App() {
   function handleCreated(newCharacter: Character, intro: { text: string; source: 'ai' | 'mock' }) {
     setCharacter(newCharacter);
     setPendingIntro(intro);
+  }
+
+  function handleCharacterChange(updated: Character) {
+    setCharacter(updated);
+    // CharacterCard'daki eylemler (kullan/kuşan/at) sahnedeki Aksiyon/Bonus
+    // göstergesini de etkileyebilir - TacticalGrid'i tazelemesi için tetikle.
+    setSceneRefreshTick((tick) => tick + 1);
   }
 
   if (loading) {
@@ -64,7 +72,7 @@ function App() {
       <main className="app-main">
         <CharacterCard
           character={character}
-          onCharacterChange={setCharacter}
+          onCharacterChange={handleCharacterChange}
           throwingItemId={throwingItemId}
           onStartThrow={setThrowingItemId}
           onCancelThrow={() => setThrowingItemId(null)}
@@ -72,6 +80,7 @@ function App() {
         <TacticalGrid
           characterId={character.id}
           throwingItemId={throwingItemId}
+          refreshKey={sceneRefreshTick}
           onThrowComplete={(updated) => {
             setCharacter(updated);
             setThrowingItemId(null);

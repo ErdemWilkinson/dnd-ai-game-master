@@ -2,16 +2,31 @@ const { rollD20 } = require("./dice");
 
 const DIFFICULTY_CLASS = 12;
 
+// \b Türkçe harflerde (ı, ş, ç, ğ, ö, ü) çalışmaz (\w sadece ASCII kapsar),
+// bu yüzden kelime başlangıcını Türkçe harfleri de tanıyan bir sınıfla elle kontrol ediyoruz.
+// Kökün kelime SONUNDA sınırlanmaması bilinçli: Türkçe eklemeli bir dil olduğu için
+// ekler kökle bitişik yazılır (örn. "saldır" + "ıyorum").
+const WORD_START = "(?:^|[^a-zçğıiöşü])";
+
+function buildCategoryPattern(roots) {
+  return new RegExp(`${WORD_START}(?:${roots.join("|")})`);
+}
+
+const STR_PATTERN = buildCategoryPattern(["vur", "sald[ıi]r", "attack", "dövüş", "kır", "zorla"]);
+const WIS_PATTERN = buildCategoryPattern(["bak", "incele", "gözlemle", "look", "araştır", "search", "dinle"]);
+const CHA_PATTERN = buildCategoryPattern(["konuş", "sor", "talk", "ikna", "soru", "pazarlık"]);
+const DEX_PATTERN = buildCategoryPattern(["gizlen", "sıvış", "hızlı", "çevik", "atla", "tırman"]);
+
 function abilityModifier(score) {
   return Math.floor(((score ?? 10) - 10) / 2);
 }
 
 function detectActionAttribute(text) {
   const t = (text || "").toLocaleLowerCase("tr");
-  if (/(vur|saldır|attack|dövüş|kır|it|zorla)/.test(t)) return "str";
-  if (/(bak|incele|gözlemle|look|ara|search|dinle)/.test(t)) return "wis";
-  if (/(konuş|sor|talk|ikna|soru|pazarlık)/.test(t)) return "cha";
-  if (/(gizlen|sıvış|hızlı|çevik|atla|tırman)/.test(t)) return "dex";
+  if (STR_PATTERN.test(t)) return "str";
+  if (WIS_PATTERN.test(t)) return "wis";
+  if (CHA_PATTERN.test(t)) return "cha";
+  if (DEX_PATTERN.test(t)) return "dex";
   return "dex";
 }
 

@@ -6,15 +6,16 @@ interface Props {
   characterId: string;
   throwingItemId?: string | null;
   onThrowComplete?: (character: Character) => void;
+  refreshKey?: number;
 }
 
-export function TacticalGrid({ characterId, throwingItemId = null, onThrowComplete }: Props) {
+export function TacticalGrid({ characterId, throwingItemId = null, onThrowComplete, refreshKey = 0 }: Props) {
   const [scene, setScene] = useState<Scene | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     getScene().then(setScene);
-  }, []);
+  }, [refreshKey]);
 
   async function handleThrowTarget(x: number, y: number) {
     if (!throwingItemId) return;
