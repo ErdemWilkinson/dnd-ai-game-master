@@ -5,11 +5,19 @@ const { generateGmResponse } = require("../data/gmFlavor");
 const { generateAiNarration, isConfigured } = require("../services/aiGm");
 const { allowRequest } = require("../services/rateLimiter");
 const { getScene } = require("../services/sceneState");
+const { resolveAction } = require("../services/actionResolver");
 
 const router = express.Router();
 
 const SESSION_KEY = "default";
 const HISTORY_CONTEXT_SIZE = 6;
+
+const MOCK_OUTCOME_SUFFIX = {
+  "critical-success": " Üstelik beklediğinden çok daha iyi gitti!",
+  success: "",
+  failure: " Ama bu seferki girişimin başarısız oldu.",
+  "critical-failure": " Ve işler olabileceğin en kötü şekilde ters gitti.",
+};
 
 function getHistory() {
   if (!chatHistories.has(SESSION_KEY)) {
@@ -24,7 +32,7 @@ function getActiveCharacter() {
   return all[all.length - 1] ?? null;
 }
 
-async function generateGmText(playerText, history) {
+async function generateGmText(playerText, history, actionResult) {
   if (isConfigured() && allowRequest()) {
     try {
       const text = await generateAiNarration({
@@ -32,13 +40,15 @@ async function generateGmText(playerText, history) {
         scene: getScene(),
         recentMessages: history.slice(-HISTORY_CONTEXT_SIZE),
         playerMessage: playerText,
+        actionResult,
       });
       return { text, source: "ai" };
     } catch (err) {
       console.error("AI GM çağrısı başarısız, mock'a düşülüyor:", err.message);
     }
   }
-  return { text: generateGmResponse(playerText), source: "mock" };
+  const mockText = generateGmResponse(playerText) + MOCK_OUTCOME_SUFFIX[actionResult.outcome];
+  return { text: mockText, source: "mock" };
 }
 
 router.get("/", (_req, res) => {
@@ -61,13 +71,15 @@ router.post("/", async (req, res) => {
   };
   history.push(playerMessage);
 
-  const { text, source } = await generateGmText(playerMessage.text, history);
+  const actionResult = resolveAction(getActiveCharacter(), playerMessage.text);
+  const { text, source } = await generateGmText(playerMessage.text, history, actionResult);
 
   const gmMessage = {
     id: nanoid(),
     role: "gm",
     text,
     source,
+    roll: actionResult,
     timestamp: Date.now(),
   };
   history.push(gmMessage);

@@ -59,8 +59,27 @@ router.post("/end-turn", (req, res) => {
   if (nextIndex === 0) {
     scene.round += 1;
   }
+
+  const nextToken = scene.tokens[nextIndex];
+  nextToken.actionAvailable = true;
+  nextToken.bonusActionAvailable = true;
+
   res.json(scene);
 });
+
+function requirePlayerAction(res) {
+  const scene = getScene();
+  const playerToken = scene.tokens.find((t) => t.id === "player");
+  if (scene.activeTokenId !== "player") {
+    res.status(400).json({ error: "Sıra sende değil." });
+    return null;
+  }
+  if (!playerToken?.actionAvailable) {
+    res.status(400).json({ error: "Bu tur için Aksiyon hakkın kalmadı." });
+    return null;
+  }
+  return playerToken;
+}
 
 router.post("/item/use", (req, res) => {
   const { characterId, itemId } = req.body || {};
@@ -70,10 +89,14 @@ router.post("/item/use", (req, res) => {
   const item = character.inventory.find((i) => i.id === itemId);
   if (!item) return res.status(404).json({ error: "Eşya bulunamadı." });
 
+  const playerToken = requirePlayerAction(res);
+  if (!playerToken) return;
+
   character.inventory = character.inventory.filter((i) => i.id !== itemId);
   if (item.name.toLocaleLowerCase("tr").includes("iksir")) {
     character.hp.current = Math.min(character.hp.max, character.hp.current + 5);
   }
+  playerToken.actionAvailable = false;
 
   res.json({ character, usedItem: item });
 });
@@ -121,10 +144,14 @@ router.post("/item/throw", (req, res) => {
     return res.status(400).json({ error: "Geçersiz koordinat." });
   }
 
+  const playerToken = requirePlayerAction(res);
+  if (!playerToken) return;
+
   character.inventory = character.inventory.filter((i) => i.id !== itemId);
 
   const scene = getScene();
   scene.loot.push({ id: nanoid(), x, y, name: item.name });
+  playerToken.actionAvailable = false;
 
   res.json({ character, scene, thrownItem: item });
 });

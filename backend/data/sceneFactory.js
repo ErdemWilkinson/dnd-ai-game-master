@@ -23,8 +23,26 @@ function createDefaultScene() {
       { id: nanoid(), x: 8, y: 6, name: "İksir" },
     ],
     tokens: [
-      { id: "player", type: "player", name: "Sen", x: 1, y: 1, speed: 4 },
-      { id: "goblin-1", type: "enemy", name: "Goblin", x: 8, y: 2, speed: 3 },
+      {
+        id: "player",
+        type: "player",
+        name: "Sen",
+        x: 1,
+        y: 1,
+        speed: 5,
+        actionAvailable: true,
+        bonusActionAvailable: true,
+      },
+      {
+        id: "goblin-1",
+        type: "enemy",
+        name: "Goblin",
+        x: 8,
+        y: 2,
+        speed: 3,
+        actionAvailable: true,
+        bonusActionAvailable: true,
+      },
     ],
   };
 }

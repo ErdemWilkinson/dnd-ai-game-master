@@ -47,11 +47,21 @@ export interface AppearanceOption {
   description: string;
 }
 
+export interface ActionRoll {
+  attribute: keyof Attributes;
+  roll: number;
+  modifier: number;
+  total: number;
+  dc: number;
+  outcome: 'critical-success' | 'success' | 'failure' | 'critical-failure';
+}
+
 export interface ChatMessage {
   id: string;
   role: 'player' | 'gm';
   text: string;
   source?: 'ai' | 'mock';
+  roll?: ActionRoll;
   timestamp: number;
 }
 
@@ -62,6 +72,8 @@ export interface SceneToken {
   x: number;
   y: number;
   speed: number;
+  actionAvailable: boolean;
+  bonusActionAvailable: boolean;
 }
 
 export interface SceneLoot {

@@ -276,6 +276,11 @@
   margin: 0;
 }
 
+.action-economy {
+  font-size: 0.75rem;
+  color: #b8ae9c;
+}
+
 .scene-header button {
   margin-left: auto;
   padding: 0.4rem 0.8rem;
@@ -392,6 +397,12 @@
 .chat-source-tag {
   text-transform: none;
   color: #7a6f5c;
+}
+
+.roll-tag {
+  margin: 0.25rem 0 0;
+  font-size: 0.7rem;
+  color: #8a9a7a;
 }
 
 .chat-input-row {

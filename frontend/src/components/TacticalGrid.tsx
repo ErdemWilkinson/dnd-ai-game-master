@@ -68,6 +68,7 @@ export function TacticalGrid({ characterId, throwingItemId = null, onThrowComple
   const activeToken = scene.tokens.find((t) => t.id === scene.activeTokenId);
   const isPlayerTurn = activeToken?.type === 'player';
   const gridInteractive = throwingItemId ? true : isPlayerTurn;
+  const playerToken = scene.tokens.find((t) => t.id === 'player');
 
   return (
     <div className="tactical-grid">
@@ -78,6 +79,11 @@ export function TacticalGrid({ characterId, throwingItemId = null, onThrowComple
             ? 'Fırlatma hedefi seç'
             : `Tur ${scene.round} · Sıra: ${activeToken?.name}${!isPlayerTurn ? ' (senin sıran değil)' : ''}`}
         </span>
+        {playerToken && (
+          <span className="action-economy">
+            Aksiyon: {playerToken.actionAvailable ? '✓' : '✗'} · Bonus: {playerToken.bonusActionAvailable ? '✓' : '✗'}
+          </span>
+        )}
         <button onClick={handleEndTurn}>Turu Bitir</button>
       </div>
 

@@ -33,17 +33,43 @@ async function callGemini(prompt) {
   return text;
 }
 
-function buildPrompt({ character, scene, recentMessages, playerMessage }) {
+const ATTRIBUTE_LABELS_TR = {
+  str: "Güç",
+  dex: "Çeviklik",
+  con: "Dayanıklılık",
+  int: "Zeka",
+  wis: "Bilgelik",
+  cha: "Karizma",
+};
+
+function describeActionResult(actionResult) {
+  if (!actionResult) return "";
+  const { attribute, roll, modifier, total, dc, outcome } = actionResult;
+  const outcomeText =
+    {
+      "critical-success": "BÜYÜK BAŞARI (doğal 20)",
+      success: "BAŞARILI",
+      failure: "BAŞARISIZ",
+      "critical-failure": "BÜYÜK BAŞARISIZLIK (doğal 1)",
+    }[outcome] ?? outcome;
+
+  return `\nEylem çözümlemesi (sistem tarafından zaten atıldı, sen sadece SONUCA göre anlat, kendi zarını uydurma):
+${ATTRIBUTE_LABELS_TR[attribute] ?? attribute} kontrolü — zar: ${roll} + bonus: ${modifier} = ${total} (zorluk: ${dc}) → ${outcomeText}`;
+}
+
+function buildPrompt({ character, scene, recentMessages, playerMessage, actionResult }) {
   const historyText = recentMessages
     .map((m) => `${m.role === "player" ? "Oyuncu" : "GM"}: ${m.text}`)
     .join("\n");
 
-  return `Sen bir D&D 5e Game Master'sın. Türkçe, atmosferik, 2-4 cümlelik bir anlatım yap.
+  return `Sen bir D&D 5e Game Master'sın. Türkçe, atmosferik, 3-5 cümlelik bir anlatım yap.
 Oyunun kural/durum yönetimi (HP, envanter, konum) senin dışında bir sistem tarafından yapılıyor —
-sadece SAHNEYİ ANLAT, sayısal bir durum değişikliği iddia etme veya zar sonucu uydurma.
+sadece SAHNEYİ ANLAT, sayısal bir durum değişikliği iddia etme veya kendi zar sonucunu uydurma.
+Anlatımında mümkün olduğunca 5 duyuya (görme, işitme, koku, dokunma, tat) dokun — sürekli atmosferik ve detaylı ol.
 
 Karakter: ${character?.name ?? "Bilinmiyor"} (${character?.race ?? "?"} / ${character?.class ?? "?"}), HP ${character?.hp?.current ?? "?"}/${character?.hp?.max ?? "?"}
 Sahne: ${scene?.name ?? "Bilinmiyor"}
+${describeActionResult(actionResult)}
 
 Son konuşma:
 ${historyText || "(henüz konuşma yok)"}
@@ -53,8 +79,8 @@ Oyuncu: ${playerMessage}
 GM anlatımı:`;
 }
 
-async function generateAiNarration({ character, scene, recentMessages, playerMessage }) {
-  const prompt = buildPrompt({ character, scene, recentMessages, playerMessage });
+async function generateAiNarration({ character, scene, recentMessages, playerMessage, actionResult }) {
+  const prompt = buildPrompt({ character, scene, recentMessages, playerMessage, actionResult });
   return callGemini(prompt);
 }
 
