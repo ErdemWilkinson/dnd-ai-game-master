@@ -1,8 +1,18 @@
 import { describe, it, expect, beforeEach } from "vitest";
+import { createRequire } from "module";
 import express from "express";
 import request from "supertest";
-import characterRouter from "../routes/character.js";
-import { characters } from "../data/store.js";
+
+// Backend CommonJS (require/module.exports) kullanıyor. ESM `import` ile aynı
+// dosyayı çekmek, Node'un require cache'inden AYRI bir modül kopyası oluşturur
+// (vite-node'un ESM transformu ile native CJS loader farklı kayıtlar tutar).
+// Bu da route dosyasının kullandığı `characters` Map'i ile test dosyasındakinin
+// FARKLI nesneler olmasına yol açar (bkz. tester notu: "store singleton
+// dual-instance" bulgusu). createRequire ile router.js'in require ettiği aynı
+// CJS cache'i kullanmak zorunludur.
+const require = createRequire(import.meta.url);
+const characterRouter = require("../routes/character.js");
+const { characters } = require("../data/store.js");
 
 function buildApp() {
   const app = express();
@@ -10,6 +20,18 @@ function buildApp() {
   app.use("/api/character", characterRouter);
   return app;
 }
+
+describe("GET /api/character/options", () => {
+  it("races ve classes dizilerini döner", async () => {
+    const app = buildApp();
+    const res = await request(app).get("/api/character/options");
+    expect(res.status).toBe(200);
+    expect(Array.isArray(res.body.races)).toBe(true);
+    expect(Array.isArray(res.body.classes)).toBe(true);
+    expect(res.body.races.length).toBeGreaterThan(0);
+    expect(res.body.classes.length).toBeGreaterThan(0);
+  });
+});
 
 describe("POST /api/character/create", () => {
   beforeEach(() => {
@@ -96,6 +118,74 @@ describe("POST /api/character/create", () => {
       .send();
     expect(res.status).toBe(400);
   });
+
+  it("yeni karakter oluşturmak 'aktif karakteri' değiştirir", async () => {
+    const app = buildApp();
+    await request(app)
+      .post("/api/character/create")
+      .send({ name: "Birinci", raceId: "human", classId: "fighter" });
+    const second = await request(app)
+      .post("/api/character/create")
+      .send({ name: "İkinci", raceId: "elf", classId: "rogue" });
+
+    const activeRes = await request(app).get("/api/character");
+    expect(activeRes.status).toBe(200);
+    expect(activeRes.body.id).toBe(second.body.id);
+    expect(activeRes.body.name).toBe("İkinci");
+  });
+});
+
+describe("GET /api/character (aktif karakter)", () => {
+  beforeEach(() => {
+    characters.clear();
+  });
+
+  it("hiç karakter oluşturulmadıysa 404 döner", async () => {
+    const app = buildApp();
+    const res = await request(app).get("/api/character");
+    expect(res.status).toBe(404);
+  });
+
+  it("oluşturulan karakteri aktif karakter olarak döner", async () => {
+    const app = buildApp();
+    const createRes = await request(app)
+      .post("/api/character/create")
+      .send({ name: "Legolas", raceId: "elf", classId: "rogue" });
+
+    const getRes = await request(app).get("/api/character");
+    expect(getRes.status).toBe(200);
+    expect(getRes.body.id).toBe(createRes.body.id);
+    expect(getRes.body.name).toBe("Legolas");
+  });
+});
+
+describe("POST /api/character (aktif karakteri güncelle)", () => {
+  beforeEach(() => {
+    characters.clear();
+  });
+
+  it("aktif karakter yoksa 404 döner", async () => {
+    const app = buildApp();
+    const res = await request(app).post("/api/character").send({ hp: { current: 1 } });
+    expect(res.status).toBe(404);
+  });
+
+  it("hp kısmi güncellemesi diğer alanları korur", async () => {
+    const app = buildApp();
+    const createRes = await request(app)
+      .post("/api/character/create")
+      .send({ name: "Gimli", raceId: "dwarf", classId: "fighter" });
+    const maxHp = createRes.body.hp.max;
+
+    const updateRes = await request(app)
+      .post("/api/character")
+      .send({ hp: { current: 1 } });
+
+    expect(updateRes.status).toBe(200);
+    expect(updateRes.body.hp.current).toBe(1);
+    expect(updateRes.body.hp.max).toBe(maxHp);
+    expect(updateRes.body.id).toBe(createRes.body.id);
+  });
 });
 
 describe("GET /api/character/:id", () => {
@@ -120,45 +210,11 @@ describe("GET /api/character/:id", () => {
     expect(getRes.status).toBe(200);
     expect(getRes.body.name).toBe("Legolas");
   });
-});
 
-describe("POST /api/character/:id (update)", () => {
-  beforeEach(() => {
-    characters.clear();
-  });
-
-  it("var olmayan id için 404 döner", async () => {
+  it("'options' path'i :id route'una düşmemeli (route sırası çakışması)", async () => {
     const app = buildApp();
-    const res = await request(app).post("/api/character/nope").send({ hp: { current: 1 } });
-    expect(res.status).toBe(404);
-  });
-
-  it("hp kısmi güncellemesi diğer alanları korur", async () => {
-    const app = buildApp();
-    const createRes = await request(app)
-      .post("/api/character/create")
-      .send({ name: "Gimli", raceId: "dwarf", classId: "fighter" });
-    const id = createRes.body.id;
-    const maxHp = createRes.body.hp.max;
-
-    const updateRes = await request(app)
-      .post(`/api/character/${id}`)
-      .send({ hp: { current: 1 } });
-
-    expect(updateRes.status).toBe(200);
-    expect(updateRes.body.hp.current).toBe(1);
-    expect(updateRes.body.hp.max).toBe(maxHp);
-  });
-});
-
-describe("GET /api/character (races & classes list)", () => {
-  it("races ve classes dizilerini döner", async () => {
-    const app = buildApp();
-    const res = await request(app).get("/api/character/");
+    const res = await request(app).get("/api/character/options");
     expect(res.status).toBe(200);
-    expect(Array.isArray(res.body.races)).toBe(true);
-    expect(Array.isArray(res.body.classes)).toBe(true);
-    expect(res.body.races.length).toBeGreaterThan(0);
-    expect(res.body.classes.length).toBeGreaterThan(0);
+    expect(res.body.races).toBeDefined();
   });
 });
