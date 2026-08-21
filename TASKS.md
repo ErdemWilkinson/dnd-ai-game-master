@@ -56,12 +56,14 @@ Test durumu: backend 45/46 geçiyor (1 tanesi bilinçli KIRMIZI, bkz. Bug #1), f
 PM kararı (bug #5 netleştirmesi): Faz 2'ye kadar düşman AI'ı yok, bu yüzden düşman sırasında grid tıklaması **engellenmeli** (placeholder olarak bırakmak yerine) — kullanıcının kendi token'ı olmayanı hareket ettirmesi kafa karıştırıcı bir bug gibi görünüyor, davranış olarak kabul edilemez.
 
 ### Coder — öncelik sırasıyla
-- [ ] Bug #1 (Backend): `scene.js:84` iksir regex'i Türkçe "İ" yakalamıyor → `toLocaleLowerCase('tr')` veya `type: 'potion'` alanına göre kontrol
-- [ ] Bug #2 (Frontend, kapsam eksiği): Envanterde kullan/kuşan/at/fırlat için UI ekle (`api.ts`'deki wrapper'lar hazır, `throwItem` eksik olabilir onu da ekle)
-- [ ] Bug #3 (Frontend i18n): CharacterCard'da ırk/sınıf id yerine Türkçe `name` göster (options listesinden lookup)
-- [ ] Bug #4 (Frontend): Sayfa yenilenince `getCurrentCharacter()` ile mevcut karakteri geri yükle (üzerine yazmayı engelle)
-- [ ] Bug #5 (Frontend, PM kararı yukarıda): Sıra oyuncuda değilken grid tıklamasını engelle / uyarı göster
-- [ ] Bug #6 (opsiyonel, düşük öncelik): `scene.js` move endpoint'indeki ölü 404 dalını temizle
+- [x] Bug #1 (Backend): `scene.js:84` iksir regex'i Türkçe "İ" yakalamıyor → `item.name.toLocaleLowerCase('tr').includes('iksir')` ile düzeltildi
+- [x] Bug #2 (Frontend, kapsam eksiği): Envanterde kullan/kuşan/at/fırlat için UI eklendi (`CharacterCard.tsx`, `api.ts`'e `throwItem` eklendi)
+- [x] Bug #3 (Frontend i18n): CharacterCard'da ırk/sınıf artık Türkçe isimle gösteriliyor (`src/data/dndNames.ts` statik id→isim haritası — CharacterCard testleri API mock'lamadığı için senkron çözüm seçildi)
+- [x] Bug #4 (Frontend): Sayfa yenilenince `getCurrentCharacter()` ile mevcut karakter geri yükleniyor (`App.tsx`, loading state eklendi)
+- [x] Bug #5 (Frontend, PM kararı yukarıda): Sıra oyuncuda değilken grid tıklaması engellendi, "senin sıran değil" uyarısı + grid görsel olarak pasifleştiriliyor (`TacticalGrid.tsx`)
+- [x] Bug #6 (opsiyonel, düşük öncelik): `scene.js` move endpoint'inde token varlık kontrolü sıra kontrolünden önceye alındı, 404 dalı artık erişilebilir
+
+Doğrulama: backend 46/46, frontend 7/7 test yeşil; `tsc --noEmit` ve `npm run build` (frontend) temiz; tüm düzeltmeler curl ile uçtan uca de test edildi.
 
 ### Tester
 - [ ] Coder düzeltmeleri push ettikçe ilgili kırmızı testlerin yeşile döndüğünü doğrula

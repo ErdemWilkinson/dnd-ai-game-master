@@ -12,6 +12,11 @@ export function TacticalGrid() {
 
   async function handleCellClick(x: number, y: number) {
     if (!scene) return;
+    const activeToken = scene.tokens.find((t) => t.id === scene.activeTokenId);
+    if (activeToken?.type !== 'player') {
+      setError('Sıra sende değil.');
+      return;
+    }
     setError(null);
     try {
       const { scene: updated } = await moveToken(scene.activeTokenId, x, y);
@@ -34,13 +39,15 @@ export function TacticalGrid() {
 
   const rows = Array.from({ length: scene.height }, (_, y) => y);
   const cols = Array.from({ length: scene.width }, (_, x) => x);
+  const activeToken = scene.tokens.find((t) => t.id === scene.activeTokenId);
+  const isPlayerTurn = activeToken?.type === 'player';
 
   return (
     <div className="tactical-grid">
       <div className="scene-header">
         <h3>{scene.name}</h3>
         <span>
-          Tur {scene.round} · Sıra: {scene.tokens.find((t) => t.id === scene.activeTokenId)?.name}
+          Tur {scene.round} · Sıra: {activeToken?.name} {!isPlayerTurn && '(senin sıran değil)'}
         </span>
         <button onClick={handleEndTurn}>Turu Bitir</button>
       </div>
@@ -48,7 +55,7 @@ export function TacticalGrid() {
       {error && <p className="error">{error}</p>}
 
       <div
-        className="grid"
+        className={`grid ${isPlayerTurn ? '' : 'grid-disabled'}`}
         style={{ gridTemplateColumns: `repeat(${scene.width}, 1fr)` }}
       >
         {rows.map((y) =>
