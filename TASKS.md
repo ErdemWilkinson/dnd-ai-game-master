@@ -160,6 +160,8 @@ Kullanıcının kendi elle test edip verdiği geri bildirim (2026-08-22). Kapsam
 
 **Faz 3 (A, C, D, E) coder tarafı tamamlandı.** B zaten değişiklik gerektirmiyordu. Regresyon QA'sı bekleniyor.
 
+**Takip maddesi (PM, düşük öncelik, blocker değil):** `actionResolver.js`'deki anahtar kelime tespiti Türkçe dotlu/dotsuz ı/i varyasyonlarında ("saldırıyorum" vb.) yanlış stat'a (GÜÇ yerine ÇEVİKLİK) düşebiliyor — zar mekaniği doğru çalışıyor, sadece hangi stat kullanıldığı bazen yanlış tahmin ediliyor. Bug #1'deki Türkçe locale sorununa benzer bir sınıf. Faz 3 regresyonunu bloke etmiyor, ayrı bir küçük iyileştirme olarak ileride ele alınabilir.
+
 ## Notlar
 - FRP (`C:\Users\erdem\OneDrive\Masaüstü\FRP`) yalnızca konsept referansıdır, kod kopyalanmayacak.
 - Değişiklik/karar gerektiren konularda PM'e (bu session) danışın, kullanıcıya sormadan büyük mimari karar almayın.
