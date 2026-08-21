@@ -1,19 +1,9 @@
 const express = require("express");
 const { nanoid } = require("nanoid");
-const { scenes } = require("../data/store");
-const { createDefaultScene } = require("../data/sceneFactory");
 const { characters } = require("../data/store");
+const { getScene } = require("../services/sceneState");
 
 const router = express.Router();
-
-const SESSION_KEY = "default";
-
-function getScene() {
-  if (!scenes.has(SESSION_KEY)) {
-    scenes.set(SESSION_KEY, createDefaultScene());
-  }
-  return scenes.get(SESSION_KEY);
-}
 
 function isBlocked(scene, x, y) {
   if (x < 0 || y < 0 || x >= scene.width || y >= scene.height) return true;

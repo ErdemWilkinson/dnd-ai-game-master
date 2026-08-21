@@ -36,7 +36,10 @@ export function ChatPanel() {
       <div className="chat-messages">
         {messages.map((m) => (
           <div key={m.id} className={`chat-message ${m.role}`}>
-            <span className="chat-role">{m.role === 'gm' ? 'GM' : 'Sen'}</span>
+            <span className="chat-role">
+              {m.role === 'gm' ? 'GM' : 'Sen'}
+              {m.source === 'mock' && <span className="chat-source-tag"> (mock)</span>}
+            </span>
             <p>{m.text}</p>
           </div>
         ))}

@@ -44,6 +44,7 @@ export interface ChatMessage {
   id: string;
   role: 'player' | 'gm';
   text: string;
+  source?: 'ai' | 'mock';
   timestamp: number;
 }
 

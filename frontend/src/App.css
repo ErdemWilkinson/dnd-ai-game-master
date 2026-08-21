@@ -356,6 +356,11 @@
   color: #b8ae9c;
 }
 
+.chat-source-tag {
+  text-transform: none;
+  color: #7a6f5c;
+}
+
 .chat-input-row {
   display: flex;
   gap: 0.5rem;
