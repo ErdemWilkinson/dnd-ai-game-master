@@ -82,3 +82,10 @@ export function dropItem(characterId: string, itemId: string) {
     body: JSON.stringify({ characterId, itemId }),
   });
 }
+
+export function throwItem(characterId: string, itemId: string, x: number, y: number) {
+  return request<{ character: Character; scene: Scene }>('/scene/item/throw', {
+    method: 'POST',
+    body: JSON.stringify({ characterId, itemId, x, y }),
+  });
+}

@@ -159,7 +159,7 @@
 }
 
 .inventory-list li {
-  padding: 0.3rem 0.4rem;
+  padding: 0.4rem;
   background: #14110f;
   border-radius: 4px;
 }
@@ -167,6 +167,69 @@
 .inventory-list .tag {
   font-size: 0.65rem;
   color: #7fb069;
+}
+
+.inventory-list .empty {
+  color: #b8ae9c;
+  font-size: 0.8rem;
+}
+
+.inventory-item-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.inventory-actions {
+  display: flex;
+  gap: 0.3rem;
+  flex-wrap: wrap;
+}
+
+.inventory-actions button {
+  font-size: 0.7rem;
+  padding: 0.25rem 0.5rem;
+  background: #3a332a;
+  border: none;
+  border-radius: 4px;
+  color: #e8e4d8;
+  cursor: pointer;
+}
+
+.inventory-actions button:hover {
+  background: #4a4034;
+}
+
+.throw-form {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-top: 0.4rem;
+  font-size: 0.7rem;
+}
+
+.throw-form label {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.throw-form input {
+  width: 48px;
+  padding: 0.2rem;
+  background: #1e1a15;
+  border: 1px solid #3a332a;
+  border-radius: 4px;
+  color: #e8e4d8;
+}
+
+.throw-form button {
+  padding: 0.25rem 0.5rem;
+  background: #7a3b2e;
+  border: none;
+  border-radius: 4px;
+  color: white;
+  cursor: pointer;
 }
 
 /* Tactical grid */
@@ -202,6 +265,11 @@
 .grid {
   display: grid;
   gap: 2px;
+}
+
+.grid-disabled .cell {
+  cursor: not-allowed;
+  opacity: 0.75;
 }
 
 .cell {
