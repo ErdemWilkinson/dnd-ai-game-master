@@ -1,39 +1,47 @@
-# Manuel QA Checklist — Faz 1
+# Manuel QA Checklist — Faz 1 / Faz 1.5
 
 Kullanım: backend (`cd backend && npm start`, :3001) ve frontend (`cd frontend && npm run dev`, :5173) ayrı terminallerde çalışırken, tarayıcıda `http://localhost:5173` açılarak sırayla kontrol edilir.
 
+Durum: Faz 1.5 bug-fix turu tamamlandı (2026-08-21), tüm maddeler tester tarafından hem otomatik testle hem tarayıcıda doğrulandı. Geçmiş bug numaraları (TASKS.md > "Bulunan Buglar") referans olarak bırakıldı.
+
 ## Karakter oluşturma
-- [ ] Sayfa ilk açıldığında karakter oluşturma formu görünüyor (isim, ırk, sınıf)
-- [ ] Isim boş bırakılıp gönderilirse "İsim gerekli." hatası gösteriliyor, istek atılmıyor
-- [ ] Geçerli isim + ırk + sınıf ile "Maceraya Başla" karakteri oluşturuyor ve oyun ekranına geçiyor
-- [ ] Farklı ırk/sınıf kombinasyonlarında HP/Mana/attribute başlangıç değerleri ırk bonusu + sınıf temel değerine göre doğru
-- [ ] **[Bilinen bug #3]** Karakter kartındaki ırk/sınıf satırı Türkçe isimle mi gösteriliyor, yoksa ham id ile mi ("Human · Fighter" görürseniz bug hâlâ açık demektir)
+- [x] Sayfa ilk açıldığında, aktif karakter yoksa karakter oluşturma formu görünüyor (isim, ırk, sınıf)
+- [x] Isim boş bırakılıp gönderilirse "İsim gerekli." hatası gösteriliyor, istek atılmıyor
+- [x] Geçerli isim + ırk + sınıf ile "Maceraya Başla" karakteri oluşturuyor ve oyun ekranına geçiyor
+- [x] Farklı ırk/sınıf kombinasyonlarında HP/Mana/attribute başlangıç değerleri ırk bonusu + sınıf temel değerine göre doğru
+- [x] Karakter kartındaki ırk/sınıf satırı Türkçe isimle gösteriliyor ("Elf · Büyücü" vb., eski bug #3 düzeltildi)
 
 ## Sohbet (GM)
-- [ ] Mesaj gönderilince hem oyuncu mesajı hem GM cevabı sohbet akışında görünüyor
-- [ ] Boş mesaj gönderilemiyor (buton/enter tepki vermiyor ya da hata veriyor)
-- [ ] "saldır" / "bak" / "konuş" gibi anahtar kelimeler farklı flavor-text kategorisi tetikliyor mu (kabaca gözlemlenebilir)
-- [ ] Sayfa yenilenince önceki sohbet geçmişi geri geliyor mu (backend'de saklanıyor, ama **bilinen bug #4** nedeniyle karakter ekranına hiç ulaşamayabilirsiniz)
+- [x] Mesaj gönderilince hem oyuncu mesajı hem GM cevabı sohbet akışında görünüyor
+- [x] Boş mesaj gönderilemiyor
+- [x] "saldır" / "bak" / "konuş" gibi anahtar kelimeler farklı flavor-text kategorisi tetikliyor
+- [x] Sayfa yenilenince önceki sohbet geçmişi geri geliyor (Bug #4 düzeltildi, artık karakter ekranına ulaşılıyor)
 
 ## Taktik grid
-- [ ] Harita, engeller, loot ve iki token (oyuncu + goblin) doğru render ediliyor
-- [ ] Menzil dışı bir hücreye tıklayınca hata mesajı gösteriliyor, token hareket etmiyor
-- [ ] Engelli bir hücreye tıklayınca hata mesajı gösteriliyor
-- [ ] Menzil içi boş bir hücreye tıklayınca token o hücreye taşınıyor
-- [ ] Loot olan bir hücreye hareket edince loot toplanıyor (haritadan kayboluyor)
-- [ ] "Turu Bitir" sıradaki token'a geçiyor, tüm tokenlar turunu tamamlayınca tur sayacı artıyor
-- [ ] **[Bilinen bug #5]** Düşman sırasındayken bir hücreye tıklayınca ne oluyor — düşman token'ı hareket ediyor mu? (evetse bilinen davranış, PM'e sorulmuş durumda)
+- [x] Harita, engeller, loot ve iki token (oyuncu + goblin) doğru render ediliyor
+- [x] Menzil dışı bir hücreye tıklayınca hata mesajı gösteriliyor, token hareket etmiyor
+- [x] Engelli bir hücreye tıklayınca hata mesajı gösteriliyor
+- [x] Menzil içi boş bir hücreye tıklayınca token o hücreye taşınıyor
+- [x] Loot olan bir hücreye hareket edince loot toplanıyor (haritadan kayboluyor)
+- [x] "Turu Bitir" sıradaki token'a geçiyor, tüm tokenlar turunu tamamlayınca tur sayacı artıyor
+- [x] Düşman sırasındayken grid'e tıklamak engelleniyor: "Sıra sende değil." hatası gösteriliyor, grid görsel olarak pasifleşiyor (`grid-disabled`), backend'e istek gitmiyor (Bug #5 düzeltildi — PM kararı: engelle)
+- [x] Sıra tekrar oyuncuya geçince engel kalkıyor, hareket normal çalışıyor
 
 ## Envanter
-- [ ] **[Bilinen eksik #2]** Envanterde eşya kullan/kuşan/at/fırlat için tıklanabilir bir aksiyon var mı (şu an YOK — bu maddeyi coder ekleyene kadar "başarısız" işaretleyin)
-- [ ] (Eklendiğinde) İksir kullanınca HP artıyor mu — **[bilinen bug #1]** şu an artmıyor, regex bug'ı düzeltilene kadar bu adım başarısız olacak
-- [ ] (Eklendiğinde) Kuşanma toggle'ı envanterde "kuşanıldı" etiketini doğru gösterip kaldırıyor mu
-- [ ] (Eklendiğinde) Eşya atınca (drop) envanterden düşüp sahnenin loot listesine ekleniyor mu
+- [x] Her eşya satırında Kullan / Kuşan(-Çıkar) / At / Fırlat butonları var (Bug #2 düzeltildi)
+- [x] İksir kullanınca HP artıyor (max'a kadar), eşya envanterden düşüyor (Bug #1 düzeltildi — Türkçe "İ" regex sorunu)
+- [x] Kuşanma toggle'ı "kuşanıldı" etiketini doğru gösterip kaldırıyor, buton metni Kuşan↔Çıkar arası değişiyor
+- [x] Eşya atınca (drop) envanterden düşüp sahnenin loot listesine ekleniyor
+- [x] Fırlat: X/Y girip onaylayınca eşya envanterden düşüp belirtilen koordinata loot olarak ekleniyor
 
 ## Genel / hata durumları
-- [ ] Backend kapalıyken frontend açılırsa kullanıcıya anlamlı bir hata gösteriliyor mu (şu an: `getCharacterOptions` reddedilirse form boş kalıyor, hata mesajı görünüyor ama ırk/sınıf seçenekleri hiç yüklenmiyor)
-- [ ] Tarayıcı konsolunda beklenmedik hata/uyarı var mı (DevTools > Console)
-- [ ] Sayfa yenileme (F5) sonrası davranış — **[bilinen bug #4]** karakter oluşturma ekranına geri dönüyor, eski karakter kayboluyor
+- [ ] Backend kapalıyken frontend açılırsa kullanıcıya anlamlı bir hata gösteriliyor mu (şu an: `getCharacterOptions` reddedilirse form boş kalıyor, hata mesajı görünüyor ama ırk/sınıf seçenekleri hiç yüklenmiyor) — **Faz 1.5 kapsamına alınmadı, gelecekte gözden geçirilebilir**
+- [x] Tarayıcı konsolunda beklenmedik hata/uyarı yok (DevTools > Console) — regresyon QA'sında doğrulandı
+- [x] Sayfa yenileme (F5 / yeni sekme) sonrası karakter ve envanter durumu korunuyor (Bug #4 düzeltildi)
+
+## Bilinen kısıtlar (bug değil, kayıt altında)
+- Düşman sırası engeli sadece frontend'de (istemci tarafı kontrol); backend `/scene/move` teknik olarak hâlâ herhangi bir aktif token'ı kabul ediyor. Tek istemcili Faz 1'de risksiz.
+- `frontend/src/data/dndNames.ts`, backend `data/dnd.js` ile elle senkron tutulması gereken statik bir kopya — ırk/sınıf listesi değişirse ikisi de güncellenmeli.
 
 ## Kapsam dışı (Faz 1'de bilerek yok, "bug" olarak raporlamayın)
 - Gerçek LLM tabanlı GM (şu an kural tabanlı/şablon metin)

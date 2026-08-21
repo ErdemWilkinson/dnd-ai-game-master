@@ -54,6 +54,15 @@ describe("POST /api/scene/move", () => {
     expect(res.status).toBe(400);
   });
 
+  it("var olmayan tokenId için 404 döner (Bug #6 fix: varlık kontrolü sıra kontrolünden önce)", async () => {
+    const app = buildApp();
+    const res = await request(app)
+      .post("/api/scene/move")
+      .send({ tokenId: "does-not-exist", x: 0, y: 0 });
+    expect(res.status).toBe(404);
+    expect(res.body.error).toMatch(/bulunamadı/i);
+  });
+
   it("menzil dışı hedef için 400 döner", async () => {
     const app = buildApp();
     // player (1,1) speed 4 -> (9,1) mesafe 8, menzil dışı
