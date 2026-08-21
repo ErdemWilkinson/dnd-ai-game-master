@@ -168,6 +168,16 @@ Kullanıcının kendi elle test edip verdiği geri bildirim (2026-08-22). Kapsam
 
 **QA notu:** Bu regresyon turunda gerçek Gemini AI cevabı doğrulanamadı — önceki Faz 2 turunda kullanılan key kotası tükenmiş (429), bu yüzden intro + chat akışları mock'a düştü. Fallback yine kusursuz çalıştı (konsol/sayfa hatası yok), ama Faz 3'ün "5 duyu betimlemesi" ve zar-sonucu-bağlamlı AI anlatımı gerçek bir AI cevabıyla henüz görsel olarak doğrulanmadı — yeni/dolu kotalı bir key ile tekrar denenebilir.
 
+## Faz 3.5 — Bug Fix (tester regresyon QA sonucu)
+
+### Coder
+- [ ] Bug A: TacticalGrid'deki Aksiyon/Bonus göstergesi, `CharacterCard`'dan tetiklenen aksiyon-tüketen eylemlerden (Kullan, Fırlat) sonra anında güncellenmiyor — sahne state'ini `App.tsx`'e taşı (lift state) ya da `CharacterCard` sonrası scene refetch tetikle
+- [ ] Bug B: `actionResolver.js`'deki "ara" anahtar kelimesi çapasız regex, "duvara"/"kaçarak" gibi kelimelerde yanlışlıkla BİLGELİK'e düşüyor — kelime sınırlı regex'e geçir (`\bara\b` gibi), coder'ın önceki ı/i notuyla birlikte ele alınabilir
+- [ ] (opsiyonel, düşük öncelik) Mock GM + outcome eki ton çelişkisi — "Rakibin geri sekiyor" + "işler kötü gitti" gibi kombinasyonlar; sadece okunabilirlik notu, isterse ele alınır
+
+### Not
+Gerçek Gemini key kotası bu turda yine tükendi (429) — Faz 3'ün "5 duyu betimlemesi" gerçek bir AI cevabıyla henüz görsel doğrulanmadı, fallback sorunsuz çalıştı. Yeni/dolu kotalı bir key gelirse tekrar denenmeli.
+
 ## Notlar
 - FRP (`C:\Users\erdem\OneDrive\Masaüstü\FRP`) yalnızca konsept referansıdır, kod kopyalanmayacak.
 - Değişiklik/karar gerektiren konularda PM'e (bu session) danışın, kullanıcıya sormadan büyük mimari karar almayın.
