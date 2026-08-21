@@ -48,14 +48,17 @@ Otomatik testlerle doğrulanan davranış (`backend/tests/aiGmFallback.test.js`,
 - [x] Gemini başarılı cevap verdiğinde `source: "ai"` ve gerçek anlatım metni kullanıcıya dönüyor
 - [x] Rate limiter: limit dahilinde kabul/sayaç artışı, limit aşımında red, pencere dolunca sıfırlanma, varsayılan limit (30) — hepsi birim testle doğrulandı
 
-**Gerçek key ile QA — kısmen tamamlandı (2026-08-22):** Kullanıcının sağladığı key, Google Cloud proje tarafında bir faturalandırma/kota bloke'una takılıyor (`429 "Your prepayment credits are depleted"` — denenen tüm modellerde, `gemini-2.5-flash`/`gemini-3.1-flash-lite`/`gemini-2.5-flash-lite`/`gemini-3.7-flash`/`gemini-flash-lite-latest`). Bu kod tarafında düzeltilebilecek bir şey değil, kullanıcının Google AI Studio/Cloud faturalandırma ayarlarını düzeltmesi gerekiyor (ai.google.dev/gemini-api/docs/billing#prepay). **Bu blocker sayesinde tester olarak gerçek Gemini SDK + gerçek ağ çağrısıyla fallback yolunu uçtan uca doğrulama fırsatı doğdu** — aşağıdaki ilk 2 madde bu şekilde zaten doğrulandı:
-- [x] Geçersiz/hatalı/kota aşmış bir key ile backend çökmüyor, sessizce mock'a düşüyor — gerçek 429 hatası ile canlı doğrulandı (backend log: "AI GM çağrısı başarısız, mock'a düşülüyor: ... 429 Too Many Requests ...")
-- [x] Frontend'de mock mesajlarda "GM (mock)" etiketi görünüyor — tarayıcıda gerçek key ile canlı doğrulandı, konsol/sayfa hatası yok
-- [ ] `backend/.env` içine geçerli (faturalandırması aktif) bir `GEMINI_API_KEY` girilip ilk sohbet mesajında `source: "ai"` dönüyor mu — **kullanıcının billing sorununu çözmesini bekliyor**
-- [ ] AI'ın anlatımı Türkçe, atmosferik ve 2-4 cümle civarında mı (prompt'un istediği gibi) — **bekliyor**
-- [ ] AI, karakter adı/ırk/sınıf/HP gibi bağlama uygun referanslar veriyor mu (birkaç farklı mesajla dene) — **bekliyor**
-- [ ] AI, oyun durumunu (HP, envanter, konum) DEĞİŞTİRMİYOR — sadece anlatım üretiyor mu (state hâlâ backend'in kontrolünde olmalı) — **bekliyor**
-- [ ] Arka arkaya çok sayıda mesaj gönderilip saatlik limit (varsayılan 30) aşıldığında gerçek AI akışından otomatik olarak `source: "mock"`'a düşüyor mu — **bekliyor** (mock ile birim testte zaten doğrulandı, ama gerçek AI akışının ortasında da denenmeli)
+**Gerçek key ile QA — TAMAMLANDI (2026-08-22).** Kullanıcının önceki key'i Google Cloud proje tarafında bir faturalandırma/kota bloke'una takılmıştı (`429 "Your prepayment credits are depleted"`); bu kod tarafında düzeltilebilecek bir şey değildi (tester ve coder tarafından ayrı ayrı canlı doğrulandı — fallback her ikisinde de kusursuz çalıştı). Kullanıcı farklı bir Google Cloud projesinden yeni bir key sağladıktan sonra tüm maddeler doğrulandı:
+- [x] Geçersiz/hatalı/kota aşmış bir key ile backend çökmüyor, sessizce mock'a düşüyor — gerçek 429 hatasıyla canlı doğrulandı (backend log: "AI GM çağrısı başarısız, mock'a düşülüyor: ... 429 Too Many Requests ...")
+- [x] Frontend'de mock mesajlarda "GM (mock)" etiketi görünüyor — tarayıcıda canlı doğrulandı, konsol/sayfa hatası yok
+- [x] `backend/.env` içine geçerli key girilip ilk sohbet mesajında `source: "ai"` dönüyor — curl ile 3 turluk sohbette de doğrulandı
+- [x] AI'ın anlatımı Türkçe, atmosferik ve birkaç cümle — 3 turluk gerçek bir sohbette gözlemlendi (mahzen/sandık teması), üslup tutarlı ve atmosferik
+- [x] AI, karakter adı/ırk/sınıf'a uygun referanslar veriyor — Elf/Büyücü karakterle test edildi, cevaplarda "keskin elf gözleriniz" ve "asanızın gölgesi" gibi ırk/sınıfa özgü ayrıntılar geçti (genel şablon değil, gerçekten bağlama duyarlı)
+- [x] Çok turlu sohbette önceki mesajlara tutarlı referans veriliyor — 2. ve 3. turdaki cevaplar 1. ve 2. turda tanıtılan sandığa doğrudan atıfta bulundu (AI'ın `recentMessages` bağlamını gerçekten kullandığının kanıtı)
+- [x] AI, oyun durumunu (HP, envanter, konum) DEĞİŞTİRMİYOR — 3 turluk sohbet öncesi/sonrası karakter (HP/mana/envanter) ve sahne (token pozisyonları/loot/round) state'i birebir karşılaştırıldı, hiçbir alan değişmedi
+- [x] Saatlik limit aşılınca gerçek AI akışının ortasında otomatik `source: "mock"`'a düşülüyor — `AI_HOURLY_LIMIT=2` ile canlı test edildi: 1. ve 2. istek `source: "ai"`, 3. ve 4. istek tam beklendiği gibi `source: "mock"`; tarayıcıda "(mock)" etiketi doğru göründü, konsol hatası yok
+
+**Faz 2 tamamen kapandı — bilinen açık madde yok.**
 
 ## Bilinen kısıtlar (bug değil, kayıt altında)
 - Düşman sırası engeli sadece frontend'de (istemci tarafı kontrol); backend `/scene/move` teknik olarak hâlâ herhangi bir aktif token'ı kabul ediyor. Tek istemcili Faz 1'de risksiz.

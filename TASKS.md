@@ -107,14 +107,22 @@ Not: `services/sceneState.js` eklendi — `scene.js`'in özel `getScene()`'i, AI
 ### Tester
 - [x] Gemini çağrısını mock'layarak: (a) başarılı AI cevabı senaryosu, (b) hata/timeout → mock fallback senaryosu, (c) rate limit aşımı → mock fallback senaryosu için testler yazıldı — `backend/tests/aiGmFallback.test.js` (5 test, gerçek API key gerektirmiyor)
 - [x] Rate limiter'ın sayaç mantığını test et — `backend/tests/rateLimiter.test.js` (5 test: limit dahilinde kabul, limit aşımı red, varsayılan limit, pencere dolunca reset, pencere dolmadan reset olmaması)
-- [~] Key eklendikten sonra gerçek bir manuel QA turu — **kısmen yapıldı, kullanıcı tarafında billing blocker'ı beklemede** (bkz. aşağı)
+- [x] Key eklendikten sonra gerçek bir manuel QA turu — **tamamlandı** (bkz. aşağı)
 - [x] QA_CHECKLIST.md'ye Faz 2 maddeleri eklendi
 
 **Test altyapısı notu (Bug #7'nin devamı):** `vi.mock()` bu backend'de (CommonJS) işe yaramıyor — Vitest'in ESM modül grafiği, düz `.js` CommonJS dosyalarının kendi iç `require()` çağrılarını yakalayamıyor. `aiGmFallback.test.js`'te bunun yerine `require.cache`'e chat.js yüklenmeden ÖNCE sahte `aiGm`/`rateLimiter` modülleri enjekte edildi (native Node require-cache tekniği). İleride benzer bir servis mock'lamak gerekirse bu dosyadaki yorum + deseni takip edin, `vi.mock` denemeyin.
 
 Test durumu: backend **57/57**, frontend **12/12** yeşil.
 
-**Gerçek key ile canlı doğrulama (2026-08-22, tester):** Coder'ın bulduğu billing/kota blocker'ı (429 "Your prepayment credits are depleted") ben de backend'i gerçek `.env` key'iyle çalıştırıp curl + tarayıcıdan doğruladım. Backend log'unda gerçek Gemini SDK hatası görüldü, kullanıcıya hiçbir hata sızmadı, `source: "mock"` düzgün döndü, tarayıcıda "GM (mock)" etiketi doğru göründü, konsol/sayfa hatası yok. Yani **fallback mekanizması artık hem mock'lanmış testlerle hem de gerçek (ama kota-bloke) bir Gemini çağrısıyla uçtan uca doğrulanmış durumda** — eksik kalan tek şey gerçek AI içeriğinin (tutarlılık, state mutasyonu yapmaması vb.) doğrulanması, bu da kullanıcının billing sorununu çözmesini bekliyor.
+**Gerçek AI ile tam manuel QA turu (2026-08-22, tester) — TAMAMLANDI:** Kullanıcının yeni key'i (farklı Google Cloud projesi) ile:
+- 3 turluk gerçek bir sohbet (Elf/Büyücü karakterle, mahzen/sandık senaryosu) — hepsi `source: "ai"`, Türkçe/atmosferik, ırk/sınıfa özgü ayrıntılar içeriyordu ("keskin elf gözleriniz", "asanızın gölgesi"), ve turlar birbirine tutarlı referans veriyordu (AI gerçekten `recentMessages` bağlamını kullanıyor).
+- State mutasyonu kontrolü: sohbet öncesi/sonrası karakter (HP/mana/envanter) ve sahne (token pozisyonu/loot/round) birebir karşılaştırıldı — **hiçbir alan değişmedi**, AI sadece anlatım üretiyor.
+- Gerçek rate-limit aşımı: `AI_HOURLY_LIMIT=2` ile backend başlatılıp 4 mesaj gönderildi → 1-2. `source:"ai"`, 3-4. `source:"mock"` (tam beklendiği gibi), tarayıcıda "(mock)" etiketi doğru göründü.
+- Önceki billing-blocker (429) senaryosu da hem coder hem tester tarafından ayrı ayrı canlı doğrulanmıştı (fallback kusursuz çalıştı) — bkz. QA_CHECKLIST.md Faz 2 bölümü.
+
+**Faz 2 KAPANDI.** Bilinen açık madde yok.
+
+**Ortam notu (tester, bu oturumda keşfedildi):** Bu Windows/Git-Bash ortamında `lsof` komutu YOK — `lsof -ti:PORT | xargs kill` deseni sessizce no-op oluyor ve arkada eski (stale) bir node process çalışmaya devam edebiliyor, bu da "restart ettim ama state hâlâ eski" gibi kafa karıştırıcı sonuçlara yol açtı. Doğru yöntem: `netstat -ano | grep ":PORT" | grep LISTENING` ile PID bulup `taskkill //PID <pid> //F` kullanmak.
 
 ## Notlar
 - FRP (`C:\Users\erdem\OneDrive\Masaüstü\FRP`) yalnızca konsept referansıdır, kod kopyalanmayacak.
