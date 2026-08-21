@@ -63,6 +63,21 @@ describe("POST /api/chat", () => {
     expect(res.body.gmMessage.text.length).toBeGreaterThan(0);
   });
 
+  it("Faz 3-D: gmMessage.roll alanı D20 eylem çözümlemesi sonucunu içerir", async () => {
+    const app = buildApp();
+    const res = await request(app).post("/api/chat").send({ message: "goblin'e saldırıyorum" });
+
+    expect(res.body.gmMessage.roll).toMatchObject({
+      attribute: "str",
+      dc: 12,
+    });
+    expect(res.body.gmMessage.roll.roll).toBeGreaterThanOrEqual(1);
+    expect(res.body.gmMessage.roll.roll).toBeLessThanOrEqual(20);
+    expect(["critical-success", "success", "failure", "critical-failure"]).toContain(
+      res.body.gmMessage.roll.outcome,
+    );
+  });
+
   it("mesaj baştaki/sondaki boşluklardan trim edilir", async () => {
     const app = buildApp();
     const res = await request(app).post("/api/chat").send({ message: "  merhaba  " });

@@ -1,13 +1,18 @@
-# Manuel QA Checklist — Faz 1 / Faz 1.5 / Faz 2
+# Manuel QA Checklist — Faz 1 / Faz 1.5 / Faz 2 / Faz 3
 
 Kullanım: backend (`cd backend && npm start`, :3001) ve frontend (`cd frontend && npm run dev`, :5173) ayrı terminallerde çalışırken, tarayıcıda `http://localhost:5173` açılarak sırayla kontrol edilir.
 
-Durum: Faz 1.5 bug-fix turu tamamlandı (2026-08-21), tüm maddeler tester tarafından hem otomatik testle hem tarayıcıda doğrulandı. Geçmiş bug numaraları (TASKS.md > "Bulunan Buglar") referans olarak bırakıldı. Faz 2 (Gemini AI GM) iskeleti otomatik testlerle (mock) doğrulandı (2026-08-22); gerçek key ile manuel tur henüz yapılmadı, kullanıcı key sağlayınca bu dosyaya işlenecek.
+Durum: Faz 1.5, Faz 2 ve Faz 3 (A, C, D, E) tamamlandı ve regresyonla doğrulandı (son: 2026-08-22). Geçmiş bug numaraları (TASKS.md > "Bulunan Buglar") referans olarak bırakıldı. **Faz 3 ile karakter oluşturma akışı ve envanterdeki fırlatma UX'i kökten değişti — bu bölümdeki "Karakter oluşturma" ve alttaki fırlatma maddeleri güncel (Faz 3 sonrası) akışı yansıtıyor.**
 
-## Karakter oluşturma
-- [x] Sayfa ilk açıldığında, aktif karakter yoksa karakter oluşturma formu görünüyor (isim, ırk, sınıf)
+## Karakter oluşturma (Faz 3-A: D20 zar + dış görünüş + AI açılış hikayesi)
+- [x] Sayfa ilk açıldığında, aktif karakter yoksa karakter oluşturma formu görünüyor (isim, ırk, sınıf, dış görünüş)
 - [x] Isim boş bırakılıp gönderilirse "İsim gerekli." hatası gösteriliyor, istek atılmıyor
-- [x] Geçerli isim + ırk + sınıf ile "Maceraya Başla" karakteri oluşturuyor ve oyun ekranına geçiyor
+- [x] "Zar At (D20)" butonuna basmadan "Maceraya Başla" butonu disabled kalır
+- [x] Zar atılınca kısa bir animasyon (rastgele değerler hızlıca değişiyor) ardından gerçek D20+ırk bonusu sonucu attribute kutucuklarında görünüyor
+- [x] Irk değiştirilince önceki zar sonucu sıfırlanıyor (submit tekrar disabled oluyor) — ırk bonusu değiştiği için mantıklı
+- [x] Geçerli isim + zar sonrası "Maceraya Başla" ile karakter oluşuyor, hemen ardından AI (veya mock) açılış hikayesi ekranı ("Macera Başlıyor") gösteriliyor
+- [x] Açılış hikayesi mock kaynaklıysa "(mock anlatım)" etiketi görünüyor
+- [x] "Devam Et" ile oyun ekranına geçiliyor
 - [x] Farklı ırk/sınıf kombinasyonlarında HP/Mana/attribute başlangıç değerleri ırk bonusu + sınıf temel değerine göre doğru
 - [x] Karakter kartındaki ırk/sınıf satırı Türkçe isimle gösteriliyor ("Elf · Büyücü" vb., eski bug #3 düzeltildi)
 
@@ -16,9 +21,11 @@ Durum: Faz 1.5 bug-fix turu tamamlandı (2026-08-21), tüm maddeler tester taraf
 - [x] Boş mesaj gönderilemiyor
 - [x] "saldır" / "bak" / "konuş" gibi anahtar kelimeler farklı flavor-text kategorisi tetikliyor
 - [x] Sayfa yenilenince önceki sohbet geçmişi geri geliyor (Bug #4 düzeltildi, artık karakter ekranına ulaşılıyor)
+- [x] **(Faz 3-D)** Her GM mesajının altında zar sonucu özeti görünüyor (örn. "Güç kontrolü: 14+2=16 (DC 12) — Başarılı")
 
 ## Taktik grid
 - [x] Harita, engeller, loot ve iki token (oyuncu + goblin) doğru render ediliyor
+- [x] **(Faz 3-C)** Hareket hakkı 5 kareye çıkarıldı — menzil kontrolleri buna göre çalışıyor
 - [x] Menzil dışı bir hücreye tıklayınca hata mesajı gösteriliyor, token hareket etmiyor
 - [x] Engelli bir hücreye tıklayınca hata mesajı gösteriliyor
 - [x] Menzil içi boş bir hücreye tıklayınca token o hücreye taşınıyor
@@ -26,13 +33,17 @@ Durum: Faz 1.5 bug-fix turu tamamlandı (2026-08-21), tüm maddeler tester taraf
 - [x] "Turu Bitir" sıradaki token'a geçiyor, tüm tokenlar turunu tamamlayınca tur sayacı artıyor
 - [x] Düşman sırasındayken grid'e tıklamak engelleniyor: "Sıra sende değil." hatası gösteriliyor, grid görsel olarak pasifleşiyor (`grid-disabled`), backend'e istek gitmiyor (Bug #5 düzeltildi — PM kararı: engelle)
 - [x] Sıra tekrar oyuncuya geçince engel kalkıyor, hareket normal çalışıyor
+- [x] **(Faz 3-C)** Sahne başlığında "Aksiyon: ✓/✗ · Bonus: ✓/✗" göstergesi var
+- [ ] **(Faz 3-C, bilinen bug — bkz. TASKS.md)** Kullan/Fırlat ile Aksiyon harcandıktan hemen sonra gösterge anında ✗'e dönmüyor (bir sonraki hareket/Turu Bitir/grid-fırlatmaya kadar eski görünüyor) — backend doğru davranıyor, sadece UI göstergesi gecikiyor. Coder düzeltene kadar bu maddeyi "bilinen kusur" olarak işaretleyin.
+- [x] End-turn ile sıra tekrar oyuncuya gelince Aksiyon/Bonus Aksiyon ✓'a sıfırlanıyor
 
 ## Envanter
 - [x] Her eşya satırında Kullan / Kuşan(-Çıkar) / At / Fırlat butonları var (Bug #2 düzeltildi)
 - [x] İksir kullanınca HP artıyor (max'a kadar), eşya envanterden düşüyor (Bug #1 düzeltildi — Türkçe "İ" regex sorunu)
-- [x] Kuşanma toggle'ı "kuşanıldı" etiketini doğru gösterip kaldırıyor, buton metni Kuşan↔Çıkar arası değişiyor
-- [x] Eşya atınca (drop) envanterden düşüp sahnenin loot listesine ekleniyor
-- [x] Fırlat: X/Y girip onaylayınca eşya envanterden düşüp belirtilen koordinata loot olarak ekleniyor
+- [x] Kuşanma toggle'ı "kuşanıldı" etiketini doğru gösterip kaldırıyor, buton metni Kuşan↔Çıkar arası değişiyor, Aksiyon TÜKETMİYOR
+- [x] Eşya atınca (drop) envanterden düşüp sahnenin loot listesine ekleniyor, Aksiyon TÜKETMİYOR
+- [x] **(Faz 3-E, yeniden tasarlandı)** Fırlat artık X/Y formu değil — "Fırlat" tıklanınca grid hedef-seçim moduna geçiyor ("Fırlatma hedefi seç"), bir kareye tıklayınca fırlatılıyor, tekrar "Fırlat"a (artık "Hedef Seçiliyor...") basılınca iptal ediliyor
+- [x] **(Faz 3-C)** Kullan ve Fırlat, oyuncunun sırası VE Aksiyon hakkı gerektiriyor — Aksiyon tükenmişken ikinci kullanım/fırlatma "Bu tur için Aksiyon hakkın kalmadı." ile reddediliyor
 
 ## Genel / hata durumları
 - [ ] Backend kapalıyken frontend açılırsa kullanıcıya anlamlı bir hata gösteriliyor mu (şu an: `getCharacterOptions` reddedilirse form boş kalıyor, hata mesajı görünüyor ama ırk/sınıf seçenekleri hiç yüklenmiyor) — **Faz 1.5 kapsamına alınmadı, gelecekte gözden geçirilebilir**
@@ -60,9 +71,29 @@ Otomatik testlerle doğrulanan davranış (`backend/tests/aiGmFallback.test.js`,
 
 **Faz 2 tamamen kapandı — bilinen açık madde yok.**
 
+## Faz 3 — Karakter yaratımı, BG3-esinli savaş sistemi, zengin AI anlatımı
+
+Otomatik testlerle doğrulanan davranış (`backend/tests/dice.test.js`, `actionResolver.test.js`, `characterIntro.test.js`, `scene.test.js`'teki Faz 3-C testleri; `frontend/src/components/TacticalGrid.test.tsx`, `ChatPanel.test.tsx`, `CharacterCreation.test.tsx`):
+- [x] D20 zar atma (`rollD20`) her zaman 1-20 aralığında, uç değerler (Math.random 0 ve ~1) doğru çalışıyor
+- [x] `/character/roll-stats` ırk bonusunu doğru uyguluyor, geçersiz ırk için 400
+- [x] `/character/create`'e geçerli attributes gönderilirse sunucu zar atmıyor (aynen kullanılıyor); eksik/geçersizse sunucu kendi zarını atıyor
+- [x] `/character/intro`: var olmayan karakter 404; AI başarılı → `source:"ai"`; AI hata/key yok → sessizce mock açılışa düşüyor; üretilen mesaj sohbet geçmişine ilk GM mesajı olarak ekleniyor
+- [x] `actionResolver`: nat20 her zaman critical-success, nat1 her zaman critical-failure (toplam DC'yi geçse/geçmese bile), DC 12 karşılaştırması doğru
+- [x] Aksiyon ekonomisi: Kullan/Fırlat Aksiyon tüketiyor ve tükenmişken 400 dönüyor; Kuşan/Çıkar/At bedava kalıyor (PM onaylı kapsam); end-turn ile yeni aktif token'ın Aksiyon/Bonus Aksiyon hakları sıfırlanıyor
+- [x] `gmMessage.roll` alanı her sohbet cevabında dolduruluyor, ChatPanel'de gösteriliyor
+
+**Tarayıcıda uçtan uca regresyon (Playwright, 2026-08-22) — TAMAMLANDI:** Karakter oluştur (isim → zar animasyonu → D20 sonucu → dış görünüş) → AI/mock açılış hikayesi ekranı → "Devam Et" ile oyun ekranı → saldırı mesajı gönder (zar sonucu chat'te göründü) → eşya kullan (Aksiyon tüketti, backend doğru reddetti ikinci kullanımda) → iki kez "Turu Bitir" (Aksiyon sıfırlandı) → grid'de tıklayarak fırlat (çalıştı, Aksiyon tekrar tüketildi ve gösterge bu sefer doğru güncellendi). Konsol/sayfa hatası yok. **2 bulgu tespit edildi, detaylar TASKS.md > Faz 3 tester notlarında:**
+1. Aksiyon göstergesi CharacterCard-tetiklemeli eylemlerden sonra anında güncellenmiyor (UI staleness, backend doğru — bilinen bug, blocker değil)
+2. `actionResolver`'daki `ara` anahtar kelimesi çapasız regex yüzünden "duvara", "kaçarak" gibi kelimelerde yanlış stat'a düşüyor (coder'ın zaten bildiği ı/i sorununun daha geniş bir versiyonu)
+
+Gerçek Gemini AI içeriği bu turda yeniden doğrulanamadı (kota tükenmişti, 429) — fallback yolu sorunsuz çalıştı ama Faz 3'ün "5 duyu" + zar-bağlamlı anlatım kalitesi henüz gerçek bir AI cevabıyla görsel olarak teyit edilmedi; dolu kotalı bir key ile tekrar denenmeli.
+
+**Faz 3 (A, C, D, E) kapandı — yukarıdaki 2 küçük bulgu dışında açık madde yok.**
+
 ## Bilinen kısıtlar (bug değil, kayıt altında)
 - Düşman sırası engeli sadece frontend'de (istemci tarafı kontrol); backend `/scene/move` teknik olarak hâlâ herhangi bir aktif token'ı kabul ediyor. Tek istemcili Faz 1'de risksiz.
 - `frontend/src/data/dndNames.ts`, backend `data/dnd.js` ile elle senkron tutulması gereken statik bir kopya — ırk/sınıf listesi değişirse ikisi de güncellenmeli.
+- Aksiyon ekonomisi kontrolü sadece backend'de (`/scene/item/use`, `/scene/item/throw`) uygulanıyor; grid hareketi (`/scene/move`) Aksiyon hakkı tüketmiyor — PM onaylı kapsam (BG3'te hareket ayrı bir kaynaktan gelir), bug değil.
 
 ## Kapsam dışı (Faz 1'de bilerek yok, "bug" olarak raporlamayın)
 - Gerçek LLM tabanlı GM (şu an kural tabanlı/şablon metin)

@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect, beforeEach, vi, afterEach } from "vitest";
 import { createRequire } from "module";
 import express from "express";
 import request from "supertest";
@@ -22,14 +22,54 @@ function buildApp() {
 }
 
 describe("GET /api/character/options", () => {
-  it("races ve classes dizilerini döner", async () => {
+  it("races, classes ve appearances dizilerini döner", async () => {
     const app = buildApp();
     const res = await request(app).get("/api/character/options");
     expect(res.status).toBe(200);
     expect(Array.isArray(res.body.races)).toBe(true);
     expect(Array.isArray(res.body.classes)).toBe(true);
+    expect(Array.isArray(res.body.appearances)).toBe(true);
     expect(res.body.races.length).toBeGreaterThan(0);
     expect(res.body.classes.length).toBeGreaterThan(0);
+    expect(res.body.appearances.length).toBeGreaterThan(0);
+  });
+});
+
+describe("POST /api/character/roll-stats", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("geçersiz raceId için 400 döner", async () => {
+    const app = buildApp();
+    const res = await request(app).post("/api/character/roll-stats").send({ raceId: "orc-lord" });
+    expect(res.status).toBe(400);
+  });
+
+  it("geçerli raceId ile D20 zarları + ırk bonusu uygulanmış attributes döner", async () => {
+    vi.spyOn(Math, "random").mockReturnValue(0.5); // D20 -> 11 her attribute
+    const app = buildApp();
+    const res = await request(app).post("/api/character/roll-stats").send({ raceId: "elf" });
+
+    expect(res.status).toBe(200);
+    expect(res.body.rolls).toMatchObject({
+      str: 11, dex: 11, con: 11, int: 11, wis: 11, cha: 11,
+    });
+    // Elf bonusu: dex +2, int +1 (bkz. data/dnd.js)
+    expect(res.body.attributes).toMatchObject({
+      str: 11, dex: 13, con: 11, int: 12, wis: 11, cha: 11,
+    });
+  });
+
+  it("her çağrıda D20 aralığında (1-20) rastgele değerler döner (gerçek RNG ile)", async () => {
+    const app = buildApp();
+    const res = await request(app).post("/api/character/roll-stats").send({ raceId: "human" });
+
+    expect(res.status).toBe(200);
+    for (const value of Object.values(res.body.rolls)) {
+      expect(value).toBeGreaterThanOrEqual(1);
+      expect(value).toBeLessThanOrEqual(20);
+    }
   });
 });
 
@@ -57,15 +97,56 @@ describe("POST /api/character/create", () => {
     expect(res.body.inventory.length).toBeGreaterThan(0);
   });
 
-  it("insan ırkı tüm attribute'lara +1 bonus uygular", async () => {
+  it("attributes gönderilmeden istek atılırsa sunucu kendi D20 zarını atar ve ırk bonusunu uygular", async () => {
+    // Faz 3-A: stat ataması artık D20 zarla belirleniyor. `attributes` body'de
+    // yoksa (veya geçersizse) server kendi zarını atıp ırk bonusunu uyguluyor.
+    // Math.random'ı sabitleyerek D20 sonucunu deterministik hale getiriyoruz:
+    // floor(0.5 * 20) + 1 = 11 her attribute için, insan ırkı +1 bonus -> 12.
+    vi.spyOn(Math, "random").mockReturnValue(0.5);
+    try {
+      const app = buildApp();
+      const res = await request(app)
+        .post("/api/character/create")
+        .send({ name: "Test", raceId: "human", classId: "fighter" });
+
+      expect(res.body.attributes).toMatchObject({
+        str: 12, dex: 12, con: 12, int: 12, wis: 12, cha: 12,
+      });
+    } finally {
+      vi.restoreAllMocks();
+    }
+  });
+
+  it("geçerli attributes gönderilirse sunucu zar atmaz, gönderilen değerler aynen kullanılır", async () => {
+    const randomSpy = vi.spyOn(Math, "random");
+    try {
+      const app = buildApp();
+      const providedAttributes = { str: 18, dex: 8, con: 14, int: 6, wis: 10, cha: 16 };
+      const res = await request(app)
+        .post("/api/character/create")
+        .send({ name: "Test", raceId: "human", classId: "fighter", attributes: providedAttributes });
+
+      expect(res.status).toBe(201);
+      // Bonus UYGULANMAZ: /roll-stats zaten bonus uygulanmış sonucu döndürüyor,
+      // /create bunun üzerine ikinci kez ırk bonusu eklemez.
+      expect(res.body.attributes).toEqual(providedAttributes);
+      expect(randomSpy).not.toHaveBeenCalled();
+    } finally {
+      vi.restoreAllMocks();
+    }
+  });
+
+  it("eksik/kısmi attributes gönderilirse geçersiz sayılıp sunucu kendi zarını atar", async () => {
     const app = buildApp();
     const res = await request(app)
       .post("/api/character/create")
-      .send({ name: "Test", raceId: "human", classId: "fighter" });
+      .send({ name: "Test", raceId: "human", classId: "fighter", attributes: { str: 15 } });
 
-    expect(res.body.attributes).toMatchObject({
-      str: 11, dex: 11, con: 11, int: 11, wis: 11, cha: 11,
-    });
+    expect(res.status).toBe(201);
+    // Tüm ATTRIBUTE_KEYS dolu olmalı (server fallback zarı devreye girdi)
+    expect(Object.keys(res.body.attributes).sort()).toEqual(
+      ["cha", "con", "dex", "int", "str", "wis"],
+    );
   });
 
   it("isim boşsa 400 döner", async () => {

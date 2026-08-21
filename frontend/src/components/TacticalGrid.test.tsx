@@ -6,7 +6,10 @@ import * as api from '../api';
 
 vi.mock('../api');
 
-function sceneWith(activeTokenId: string) {
+function sceneWith(
+  activeTokenId: string,
+  tokenOverrides: { actionAvailable?: boolean; bonusActionAvailable?: boolean } = {},
+) {
   return {
     id: 's1',
     name: 'Test Sahnesi',
@@ -17,8 +20,27 @@ function sceneWith(activeTokenId: string) {
     obstacles: [],
     loot: [],
     tokens: [
-      { id: 'player', type: 'player' as const, name: 'Sen', x: 0, y: 0, speed: 3 },
-      { id: 'goblin-1', type: 'enemy' as const, name: 'Goblin', x: 1, y: 0, speed: 3 },
+      {
+        id: 'player',
+        type: 'player' as const,
+        name: 'Sen',
+        x: 0,
+        y: 0,
+        speed: 3,
+        actionAvailable: true,
+        bonusActionAvailable: true,
+        ...tokenOverrides,
+      },
+      {
+        id: 'goblin-1',
+        type: 'enemy' as const,
+        name: 'Goblin',
+        x: 1,
+        y: 0,
+        speed: 3,
+        actionAvailable: true,
+        bonusActionAvailable: true,
+      },
     ],
   };
 }
@@ -33,7 +55,7 @@ describe('TacticalGrid — Bug #5: düşman sırasındayken grid tıklaması eng
     vi.mocked(api.moveToken).mockResolvedValue({ scene: sceneWith('player'), collectedLoot: null });
 
     const user = userEvent.setup();
-    render(<TacticalGrid />);
+    render(<TacticalGrid characterId="char-1" />);
     await waitFor(() => expect(screen.getByText('Test Sahnesi')).toBeInTheDocument());
 
     const cells = document.querySelectorAll('.grid .cell');
@@ -46,7 +68,7 @@ describe('TacticalGrid — Bug #5: düşman sırasındayken grid tıklaması eng
     vi.mocked(api.getScene).mockResolvedValue(sceneWith('goblin-1'));
 
     const user = userEvent.setup();
-    render(<TacticalGrid />);
+    render(<TacticalGrid characterId="char-1" />);
     await waitFor(() => expect(screen.getByText('Test Sahnesi')).toBeInTheDocument());
     expect(screen.getByText(/senin sıran değil/i)).toBeInTheDocument();
 
@@ -59,8 +81,87 @@ describe('TacticalGrid — Bug #5: düşman sırasındayken grid tıklaması eng
 
   it('sıra düşmandayken grid görsel olarak devre dışı sınıfı alır', async () => {
     vi.mocked(api.getScene).mockResolvedValue(sceneWith('goblin-1'));
-    render(<TacticalGrid />);
+    render(<TacticalGrid characterId="char-1" />);
     await waitFor(() => expect(document.querySelector('.grid')).toBeInTheDocument());
     expect(document.querySelector('.grid')).toHaveClass('grid-disabled');
+  });
+});
+
+describe('TacticalGrid — Faz 3-E: fırlatma hedefi grid üzerinden seçiliyor', () => {
+  it('throwingItemId varken hücreye tıklamak moveToken değil throwItem çağırır', async () => {
+    vi.mocked(api.getScene).mockResolvedValue(sceneWith('player'));
+    vi.mocked(api.throwItem).mockResolvedValue({
+      character: { id: 'char-1' } as never,
+      scene: sceneWith('player'),
+    });
+
+    const user = userEvent.setup();
+    render(<TacticalGrid characterId="char-1" throwingItemId="item-1" />);
+    await waitFor(() => expect(screen.getByText('Fırlatma hedefi seç')).toBeInTheDocument());
+
+    const cells = document.querySelectorAll('.grid .cell');
+    await user.click(cells[1]); // (x=1, y=0)
+
+    expect(api.throwItem).toHaveBeenCalledWith('char-1', 'item-1', 1, 0);
+    expect(api.moveToken).not.toHaveBeenCalled();
+  });
+
+  it('fırlatma modunda grid, sıra düşmanda olsa bile devre dışı BIRAKILMAZ (throw her zaman aktif)', async () => {
+    vi.mocked(api.getScene).mockResolvedValue(sceneWith('goblin-1'));
+    render(<TacticalGrid characterId="char-1" throwingItemId="item-1" />);
+    await waitFor(() => expect(document.querySelector('.grid')).toBeInTheDocument());
+    expect(document.querySelector('.grid')).not.toHaveClass('grid-disabled');
+    expect(document.querySelector('.grid')).toHaveClass('grid-throw-mode');
+  });
+
+  it('fırlatma başarılı olunca onThrowComplete güncellenmiş karakterle çağrılır', async () => {
+    vi.mocked(api.getScene).mockResolvedValue(sceneWith('player'));
+    const updatedCharacter = { id: 'char-1', name: 'Güncellendi' } as never;
+    vi.mocked(api.throwItem).mockResolvedValue({ character: updatedCharacter, scene: sceneWith('player') });
+    const onThrowComplete = vi.fn();
+
+    const user = userEvent.setup();
+    render(<TacticalGrid characterId="char-1" throwingItemId="item-1" onThrowComplete={onThrowComplete} />);
+    await waitFor(() => expect(screen.getByText('Fırlatma hedefi seç')).toBeInTheDocument());
+
+    const cells = document.querySelectorAll('.grid .cell');
+    await user.click(cells[0]);
+
+    await waitFor(() => expect(onThrowComplete).toHaveBeenCalledWith(updatedCharacter));
+  });
+
+  it('throwingItemId yokken normal hareket modu çalışmaya devam eder (regresyon)', async () => {
+    vi.mocked(api.getScene).mockResolvedValue(sceneWith('player'));
+    vi.mocked(api.moveToken).mockResolvedValue({ scene: sceneWith('player'), collectedLoot: null });
+
+    const user = userEvent.setup();
+    render(<TacticalGrid characterId="char-1" throwingItemId={null} />);
+    await waitFor(() => expect(screen.getByText('Test Sahnesi')).toBeInTheDocument());
+
+    const cells = document.querySelectorAll('.grid .cell');
+    await user.click(cells[0]);
+
+    expect(api.moveToken).toHaveBeenCalled();
+    expect(api.throwItem).not.toHaveBeenCalled();
+  });
+});
+
+describe('TacticalGrid — Faz 3-C: Aksiyon ekonomisi göstergesi', () => {
+  it('oyuncunun Aksiyon/Bonus Aksiyon durumunu ✓ olarak gösterir', async () => {
+    vi.mocked(api.getScene).mockResolvedValue(
+      sceneWith('player', { actionAvailable: true, bonusActionAvailable: true }),
+    );
+    render(<TacticalGrid characterId="char-1" />);
+    await waitFor(() => expect(screen.getByText(/Aksiyon:/)).toBeInTheDocument());
+    expect(screen.getByText('Aksiyon: ✓ · Bonus: ✓')).toBeInTheDocument();
+  });
+
+  it('Aksiyon tükenmişse ✗ olarak gösterir', async () => {
+    vi.mocked(api.getScene).mockResolvedValue(
+      sceneWith('player', { actionAvailable: false, bonusActionAvailable: true }),
+    );
+    render(<TacticalGrid characterId="char-1" />);
+    await waitFor(() => expect(screen.getByText(/Aksiyon:/)).toBeInTheDocument());
+    expect(screen.getByText('Aksiyon: ✗ · Bonus: ✓')).toBeInTheDocument();
   });
 });

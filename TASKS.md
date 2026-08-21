@@ -155,12 +155,18 @@ Kullanıcının kendi elle test edip verdiği geri bildirim (2026-08-22). Kapsam
 - [x] x/y formu kaldırıldı, "Fırlat" tıklanınca grid hedef seçim moduna geçiyor (BG3 tarzı), bir kareye tıklayarak fırlatılıyor.
 
 ### Tester
-- [x] A, E, C, D implemente edildikçe testler güncellendi (coder ilerledikçe tester paralel çalıştı: frontend 24/24, backend 72/72 yeşil)
-- [ ] Faz 3 sonunda tam regresyon QA'sı + kullanıcıya elle deneyebileceği bir özet checklist
+- [x] A, E, C, D implemente edildikçe testler güncellendi/genişletildi — backend **104/104** (yeni: `dice.test.js`, `characterIntro.test.js`, `actionResolver.test.js`, `scene.test.js`'e Aksiyon ekonomisi gating testleri, `chat.test.js`'e `roll` alanı testi), frontend **31/31** (yeni: `ChatPanel.test.tsx` baştan, `TacticalGrid.test.tsx`'e fırlatma-modu + Aksiyon göstergesi testleri, `CharacterCreation.test.tsx` D20 akışına göre yeniden yazıldı). `tsc -b` ve `vite build` temiz.
+- [x] Faz 3 sonunda tam regresyon QA'sı yapıldı (Playwright/chromium ile uçtan uca) — bkz. aşağı ve `QA_CHECKLIST.md`
 
-**Faz 3 (A, C, D, E) coder tarafı tamamlandı.** B zaten değişiklik gerektirmiyordu. Regresyon QA'sı bekleniyor.
+**Faz 3 (A, C, D, E) tamamen kapandı** — coder implementasyonu + tester test/QA turu bitti. B zaten değişiklik gerektirmiyordu.
 
-**Takip maddesi (PM, düşük öncelik, blocker değil):** `actionResolver.js`'deki anahtar kelime tespiti Türkçe dotlu/dotsuz ı/i varyasyonlarında ("saldırıyorum" vb.) yanlış stat'a (GÜÇ yerine ÇEVİKLİK) düşebiliyor — zar mekaniği doğru çalışıyor, sadece hangi stat kullanıldığı bazen yanlış tahmin ediliyor. Bug #1'deki Türkçe locale sorununa benzer bir sınıf. Faz 3 regresyonunu bloke etmiyor, ayrı bir küçük iyileştirme olarak ileride ele alınabilir.
+**Takip maddesi (PM, düşük öncelik, blocker değil):** `actionResolver.js`'deki `detectActionAttribute`'un BİLGELİK anahtar kelimesi `ara` çapasız (unanchored substring) olduğu için Türkçe'de çok yaygın olan "-ara-" hecesini içeren kelimelerde (`duvarA`, `kaçARAk`, `karanlığA`...) yanlışlıkla tetikleniyor — tester tarafından `actionResolver.test.js`'te somut örneklerle doğrulandı, coder'ın zaten not düştüğü "ı/i varyasyonu" sorunundan daha geniş kapsamlı bir kök neden. Zar mekaniği bozuk değil, sadece bazen yanlış stat/modifier ile atılıyor. Öneri: `ara` yerine `\bara\b` gibi kelime sınırlı regex. Faz 3 regresyonunu bloke etmiyor.
+
+**Yeni bug bulundu (tester, regresyon QA — Faz 3.5'e alınabilir, blocker değil):** TacticalGrid'deki "Aksiyon: ✓/✗ · Bonus: ✓/✗" göstergesi, envanterden `CharacterCard` üzerinden tetiklenen eylem-tüketen aksiyonlardan (Kullan, Fırlat) sonra ANINDA güncellenmiyor. Backend Aksiyon hakkını doğru tüketiyor (ikinci kullanım gerçekten 400 "Bu tur için Aksiyon hakkın kalmadı." ile reddediliyor — canlı doğrulandı), ama gösterge bir sonraki sahne fetch'ine (hareket/Turu Bitir/grid-üzerinden fırlatma) kadar yanlışlıkla "✓" göstermeye devam ediyor. Kök neden: `TacticalGrid` kendi `scene` state'ini tutuyor, sadece kendi tetiklediği aksiyonlarda (`move`/`end-turn`/grid-throw) `setScene` çağırıyor; `CharacterCard`'ın `onCharacterChange` callback'i `TacticalGrid`'i haberdar etmiyor. (Grid üzerinden fırlatma — TacticalGrid'in kendi yönettiği akış — göstergeyi doğru güncelliyor, bu da kök nedeni doğruluyor.) Öneri: sahne state'ini `App.tsx`'e taşımak (lift state) ya da `CharacterCard`'ın aksiyon tüketen çağrılarından sonra da bir sahne refetch'i tetiklemek.
+
+**Küçük içerik notu:** Mock GM cevabı + outcome eki kombinasyonu bazen ton olarak çelişebiliyor — örnek: "Rakibin geri sekiyor." (ATTACK_RESPONSES şablonu) + "Ve işler olabileceğin en kötü şekilde ters gitti." (critical-failure eki) aynı cümlede yan yana geldi. Fonksiyonel değil, sadece okuma deneyimi açısından not.
+
+**QA notu:** Bu regresyon turunda gerçek Gemini AI cevabı doğrulanamadı — önceki Faz 2 turunda kullanılan key kotası tükenmiş (429), bu yüzden intro + chat akışları mock'a düştü. Fallback yine kusursuz çalıştı (konsol/sayfa hatası yok), ama Faz 3'ün "5 duyu betimlemesi" ve zar-sonucu-bağlamlı AI anlatımı gerçek bir AI cevabıyla henüz görsel olarak doğrulanmadı — yeni/dolu kotalı bir key ile tekrar denenebilir.
 
 ## Notlar
 - FRP (`C:\Users\erdem\OneDrive\Masaüstü\FRP`) yalnızca konsept referansıdır, kod kopyalanmayacak.

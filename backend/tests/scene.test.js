@@ -149,6 +149,33 @@ describe("POST /api/scene/end-turn", () => {
     expect(res.body.activeTokenId).toBe("player");
     expect(res.body.round).toBe(2);
   });
+
+  it("yeni aktif olan token'ın Aksiyon/Bonus Aksiyon hakları sıfırlanır", async () => {
+    const app = buildApp();
+    // oyuncunun aksiyonunu tüket
+    const createRes = await request(app)
+      .post("/api/character/create")
+      .send({ name: "Test", raceId: "human", classId: "fighter" });
+    const potion = createRes.body.inventory.find((i) => i.name.includes("ksir"));
+    await request(app)
+      .post("/api/scene/item/use")
+      .send({ characterId: createRes.body.id, itemId: potion.id });
+
+    // sıra goblin'e geçer, sonra tekrar oyuncuya döner (round 2)
+    await request(app).post("/api/scene/end-turn").send({});
+    const res = await request(app).post("/api/scene/end-turn").send({});
+
+    const playerToken = res.body.tokens.find((t) => t.id === "player");
+    expect(playerToken.actionAvailable).toBe(true);
+    expect(playerToken.bonusActionAvailable).toBe(true);
+  });
+
+  it("varsayılan sahnede hareket hakkı 5 kareye çıkarılmış (Faz 3-C)", async () => {
+    const app = buildApp();
+    const res = await request(app).get("/api/scene");
+    const playerToken = res.body.tokens.find((t) => t.id === "player");
+    expect(playerToken.speed).toBe(5);
+  });
 });
 
 describe("POST /api/scene/item/use", () => {
@@ -216,6 +243,62 @@ describe("POST /api/scene/item/use", () => {
     expect(useRes.body.character.hp.current).toBe(character.hp.max);
     expect(useRes.body.character.inventory.find((i) => i.id === potion.id)).toBeUndefined();
   });
+
+  it("Faz 3-C: eşya kullanmak oyuncunun Aksiyon hakkını tüketir", async () => {
+    const app = buildApp();
+    const sceneBefore = await request(app).get("/api/scene");
+    expect(sceneBefore.body.tokens.find((t) => t.id === "player").actionAvailable).toBe(true);
+
+    const createRes = await request(app)
+      .post("/api/character/create")
+      .send({ name: "Test", raceId: "human", classId: "fighter" });
+    const item = createRes.body.inventory.find((i) => !i.name.includes("ksir")); // iksir olmayan bir eşya, HP'yi karıştırmasın
+
+    await request(app)
+      .post("/api/scene/item/use")
+      .send({ characterId: createRes.body.id, itemId: item.id });
+
+    const sceneAfter = await request(app).get("/api/scene");
+    expect(sceneAfter.body.tokens.find((t) => t.id === "player").actionAvailable).toBe(false);
+  });
+
+  it("Faz 3-C: Aksiyon hakkı tükenmişse ikinci eşya kullanımı 400 döner", async () => {
+    const app = buildApp();
+    const createRes = await request(app)
+      .post("/api/character/create")
+      .send({ name: "Test", raceId: "human", classId: "fighter" });
+    const [item1, item2] = createRes.body.inventory;
+
+    const firstUse = await request(app)
+      .post("/api/scene/item/use")
+      .send({ characterId: createRes.body.id, itemId: item1.id });
+    expect(firstUse.status).toBe(200);
+
+    const secondUse = await request(app)
+      .post("/api/scene/item/use")
+      .send({ characterId: createRes.body.id, itemId: item2.id });
+    expect(secondUse.status).toBe(400);
+    expect(secondUse.body.error).toMatch(/aksiyon/i);
+    // ikinci eşya envanterden düşmemiş olmalı (istek reddedildi)
+    const charAfter = await request(app).get("/api/character");
+    expect(charAfter.body.inventory.find((i) => i.id === item2.id)).toBeTruthy();
+  });
+
+  it("Faz 3-C: sıra oyuncuda değilken eşya kullanımı 400 döner", async () => {
+    const app = buildApp();
+    const createRes = await request(app)
+      .post("/api/character/create")
+      .send({ name: "Test", raceId: "human", classId: "fighter" });
+    await request(app).post("/api/scene/end-turn").send({}); // sıra goblin'e geçer
+
+    const item = createRes.body.inventory[0];
+    const res = await request(app)
+      .post("/api/scene/item/use")
+      .send({ characterId: createRes.body.id, itemId: item.id });
+
+    expect(res.status).toBe(400);
+    expect(res.body.error).toMatch(/sıra/i);
+  });
 });
 
 describe("POST /api/scene/item/equip", () => {
@@ -240,6 +323,21 @@ describe("POST /api/scene/item/equip", () => {
       .post("/api/scene/item/equip")
       .send({ characterId: createRes.body.id, itemId: item.id });
     expect(unequipRes.body.item.equipped).toBe(false);
+  });
+
+  it("Faz 3-C: kuşanmak Aksiyon hakkını TÜKETMEZ (PM onaylı kapsam: bedava)", async () => {
+    const app = buildApp();
+    const createRes = await request(app)
+      .post("/api/character/create")
+      .send({ name: "Test", raceId: "human", classId: "fighter" });
+    const item = createRes.body.inventory[0];
+
+    await request(app)
+      .post("/api/scene/item/equip")
+      .send({ characterId: createRes.body.id, itemId: item.id });
+
+    const sceneAfter = await request(app).get("/api/scene");
+    expect(sceneAfter.body.tokens.find((t) => t.id === "player").actionAvailable).toBe(true);
   });
 });
 
@@ -270,6 +368,21 @@ describe("POST /api/scene/item/drop", () => {
     expect(dropped).toBeTruthy();
     expect(dropped.x).toBe(1); // varsayılan player pozisyonu
     expect(dropped.y).toBe(1);
+  });
+
+  it("Faz 3-C: eşya atmak (drop) Aksiyon hakkını TÜKETMEZ (PM onaylı kapsam: bedava)", async () => {
+    const app = buildApp();
+    const createRes = await request(app)
+      .post("/api/character/create")
+      .send({ name: "Test", raceId: "human", classId: "fighter" });
+    const item = createRes.body.inventory[0];
+
+    await request(app)
+      .post("/api/scene/item/drop")
+      .send({ characterId: createRes.body.id, itemId: item.id });
+
+    const sceneAfter = await request(app).get("/api/scene");
+    expect(sceneAfter.body.tokens.find((t) => t.id === "player").actionAvailable).toBe(true);
   });
 });
 
@@ -305,5 +418,39 @@ describe("POST /api/scene/item/throw", () => {
 
     expect(res.status).toBe(200);
     expect(res.body.scene.loot.find((l) => l.x === 9 && l.y === 7 && l.name === item.name)).toBeTruthy();
+  });
+
+  it("Faz 3-C: eşya fırlatmak Aksiyon hakkını tüketir", async () => {
+    const app = buildApp();
+    const createRes = await request(app)
+      .post("/api/character/create")
+      .send({ name: "Test", raceId: "human", classId: "fighter" });
+    const item = createRes.body.inventory[0];
+
+    await request(app)
+      .post("/api/scene/item/throw")
+      .send({ characterId: createRes.body.id, itemId: item.id, x: 5, y: 5 });
+
+    const sceneAfter = await request(app).get("/api/scene");
+    expect(sceneAfter.body.tokens.find((t) => t.id === "player").actionAvailable).toBe(false);
+  });
+
+  it("Faz 3-C: Aksiyon hakkı zaten tükenmişse fırlatma 400 döner", async () => {
+    const app = buildApp();
+    const createRes = await request(app)
+      .post("/api/character/create")
+      .send({ name: "Test", raceId: "human", classId: "fighter" });
+    const [item1, item2] = createRes.body.inventory;
+
+    await request(app)
+      .post("/api/scene/item/use")
+      .send({ characterId: createRes.body.id, itemId: item1.id }); // Aksiyonu tüket
+
+    const res = await request(app)
+      .post("/api/scene/item/throw")
+      .send({ characterId: createRes.body.id, itemId: item2.id, x: 5, y: 5 });
+
+    expect(res.status).toBe(400);
+    expect(res.body.error).toMatch(/aksiyon/i);
   });
 });
