@@ -171,9 +171,11 @@ Kullanıcının kendi elle test edip verdiği geri bildirim (2026-08-22). Kapsam
 ## Faz 3.5 — Bug Fix (tester regresyon QA sonucu)
 
 ### Coder
-- [ ] Bug A: TacticalGrid'deki Aksiyon/Bonus göstergesi, `CharacterCard`'dan tetiklenen aksiyon-tüketen eylemlerden (Kullan, Fırlat) sonra anında güncellenmiyor — sahne state'ini `App.tsx`'e taşı (lift state) ya da `CharacterCard` sonrası scene refetch tetikle
-- [ ] Bug B: `actionResolver.js`'deki "ara" anahtar kelimesi çapasız regex, "duvara"/"kaçarak" gibi kelimelerde yanlışlıkla BİLGELİK'e düşüyor — kelime sınırlı regex'e geçir (`\bara\b` gibi), coder'ın önceki ı/i notuyla birlikte ele alınabilir
-- [ ] (opsiyonel, düşük öncelik) Mock GM + outcome eki ton çelişkisi — "Rakibin geri sekiyor" + "işler kötü gitti" gibi kombinasyonlar; sadece okunabilirlik notu, isterse ele alınır
+- [x] Bug A (commit eb04d66): `App.tsx`'e `sceneRefreshTick` eklendi — `CharacterCard`'ın `onCharacterChange`'i artık bu sayacı da artırıyor, `TacticalGrid` bunu `refreshKey` prop'u olarak alıp sahneyi yeniden çekiyor. Sahne state'i tam lift edilmedi (daha küçük bir müdahale tercih edildi), ama sonuç aynı: Kullan/Fırlat sonrası Aksiyon/Bonus göstergesi artık anında güncelleniyor.
+- [x] Bug B (commit eb04d66): Kategori regex'leri Türkçe harfleri tanıyan bir kelime-başı sınırıyla (`WORD_START`) sarmalandı — "duvara"/"kaçarak" artık yanlışlıkla BİLGELİK'e düşmüyor (node ile doğrulandı). Ayrıca aşırı genel "it" kökü STR listesinden çıkarıldı (aynı sınıf false-positive riski taşıyordu: "itiraz", "itibar"), "saldır" için dotsuz/dotlu ı toleransı eklendi.
+- [ ] (opsiyonel, düşük öncelik, dokunulmadı) Mock GM + outcome eki ton çelişkisi — "Rakibin geri sekiyor" + "işler kötü gitti" gibi kombinasyonlar; sadece okunabilirlik notu, isterse ele alınır
+
+**Not:** `backend/tests/actionResolver.test.js`'teki Bug B regresyon testi bilinçli olarak eski (buggy) `"wis"` değerini bekliyordu — düzeltme sonrası bu assertion artık kırmızı (doğru sonuç `"dex"` dönüyor), tester assertion'ı `"dex"`e çevirince yeşile dönecek. backend 103/104 (1 bilinçli kırmızı), frontend 31/31 yeşil, tsc+build temiz.
 
 ### Not
 Gerçek Gemini key kotası bu turda yine tükendi (429) — Faz 3'ün "5 duyu betimlemesi" gerçek bir AI cevabıyla henüz görsel doğrulanmadı, fallback sorunsuz çalıştı. Yeni/dolu kotalı bir key gelirse tekrar denenmeli.
