@@ -51,6 +51,23 @@ Test durumu: backend 45/46 geçiyor (1 tanesi bilinçli KIRMIZI, bkz. Bug #1), f
 7. **[Test altyapısı notu — coder'ı etkilemez ama gelecekteki test yazarları bilmeli] `backend/data/store.js` singleton'ları CJS/ESM karışımında ikiye katlanabiliyor.**
    Backend `require`/`module.exports` (CommonJS) kullanıyor. Bir test dosyası aynı store'u ESM `import` ile çekerse (Vitest'in `vite-node` transformu ile native `require()` cache'i ayrışabildiği için), test `characters.clear()` çağırsa bile route'ların kullandığı GERÇEK Map temizlenmiyor — testler rastgele başarısız oluyor gibi görünüyor. Çözüm: `backend/tests/*.test.js` içinde `createRequire(import.meta.url)` kullanarak app kodunu her zaman `require()` ile çekmek (mevcut 3 test dosyasında bu yapıldı). Yeni backend test dosyası yazan biri aynı deseni takip etmeli.
 
+## Faz 1.5 — Bug Fix / Polish (kullanıcı kararı: AI'dan önce sağlamlaştırma)
+
+PM kararı (bug #5 netleştirmesi): Faz 2'ye kadar düşman AI'ı yok, bu yüzden düşman sırasında grid tıklaması **engellenmeli** (placeholder olarak bırakmak yerine) — kullanıcının kendi token'ı olmayanı hareket ettirmesi kafa karıştırıcı bir bug gibi görünüyor, davranış olarak kabul edilemez.
+
+### Coder — öncelik sırasıyla
+- [ ] Bug #1 (Backend): `scene.js:84` iksir regex'i Türkçe "İ" yakalamıyor → `toLocaleLowerCase('tr')` veya `type: 'potion'` alanına göre kontrol
+- [ ] Bug #2 (Frontend, kapsam eksiği): Envanterde kullan/kuşan/at/fırlat için UI ekle (`api.ts`'deki wrapper'lar hazır, `throwItem` eksik olabilir onu da ekle)
+- [ ] Bug #3 (Frontend i18n): CharacterCard'da ırk/sınıf id yerine Türkçe `name` göster (options listesinden lookup)
+- [ ] Bug #4 (Frontend): Sayfa yenilenince `getCurrentCharacter()` ile mevcut karakteri geri yükle (üzerine yazmayı engelle)
+- [ ] Bug #5 (Frontend, PM kararı yukarıda): Sıra oyuncuda değilken grid tıklamasını engelle / uyarı göster
+- [ ] Bug #6 (opsiyonel, düşük öncelik): `scene.js` move endpoint'indeki ölü 404 dalını temizle
+
+### Tester
+- [ ] Coder düzeltmeleri push ettikçe ilgili kırmızı testlerin yeşile döndüğünü doğrula
+- [ ] Bug #4 ve #5 için (test yoktu) yeni test/QA adımı ekle
+- [ ] Tüm Faz 1.5 bugları kapanınca tam regresyon QA'sı yap, QA_CHECKLIST.md'yi güncelle
+
 ## Notlar
 - FRP (`C:\Users\erdem\OneDrive\Masaüstü\FRP`) yalnızca konsept referansıdır, kod kopyalanmayacak.
 - Değişiklik/karar gerektiren konularda PM'e (bu session) danışın, kullanıcıya sormadan büyük mimari karar almayın.
