@@ -12,6 +12,7 @@ function App() {
   const [character, setCharacter] = useState<Character | null>(null);
   const [pendingIntro, setPendingIntro] = useState<{ text: string; source: 'ai' | 'mock' } | null>(null);
   const [loading, setLoading] = useState(true);
+  const [throwingItemId, setThrowingItemId] = useState<string | null>(null);
 
   useEffect(() => {
     getCurrentCharacter()
@@ -61,8 +62,21 @@ function App() {
         <h1>D&D AI Game Master</h1>
       </header>
       <main className="app-main">
-        <CharacterCard character={character} onCharacterChange={setCharacter} />
-        <TacticalGrid />
+        <CharacterCard
+          character={character}
+          onCharacterChange={setCharacter}
+          throwingItemId={throwingItemId}
+          onStartThrow={setThrowingItemId}
+          onCancelThrow={() => setThrowingItemId(null)}
+        />
+        <TacticalGrid
+          characterId={character.id}
+          throwingItemId={throwingItemId}
+          onThrowComplete={(updated) => {
+            setCharacter(updated);
+            setThrowingItemId(null);
+          }}
+        />
         <ChatPanel />
       </main>
     </div>

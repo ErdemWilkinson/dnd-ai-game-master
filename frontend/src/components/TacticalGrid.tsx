@@ -1,8 +1,14 @@
 import { useEffect, useState } from 'react';
-import { endTurn, getScene, moveToken } from '../api';
-import type { Scene } from '../types';
+import { endTurn, getScene, moveToken, throwItem } from '../api';
+import type { Character, Scene } from '../types';
 
-export function TacticalGrid() {
+interface Props {
+  characterId: string;
+  throwingItemId?: string | null;
+  onThrowComplete?: (character: Character) => void;
+}
+
+export function TacticalGrid({ characterId, throwingItemId = null, onThrowComplete }: Props) {
   const [scene, setScene] = useState<Scene | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -10,7 +16,19 @@ export function TacticalGrid() {
     getScene().then(setScene);
   }, []);
 
-  async function handleCellClick(x: number, y: number) {
+  async function handleThrowTarget(x: number, y: number) {
+    if (!throwingItemId) return;
+    setError(null);
+    try {
+      const { character, scene: updated } = await throwItem(characterId, throwingItemId, x, y);
+      setScene(updated);
+      onThrowComplete?.(character);
+    } catch (e) {
+      setError((e as Error).message);
+    }
+  }
+
+  async function handleMoveTarget(x: number, y: number) {
     if (!scene) return;
     const activeToken = scene.tokens.find((t) => t.id === scene.activeTokenId);
     if (activeToken?.type !== 'player') {
@@ -23,6 +41,14 @@ export function TacticalGrid() {
       setScene(updated);
     } catch (e) {
       setError((e as Error).message);
+    }
+  }
+
+  function handleCellClick(x: number, y: number) {
+    if (throwingItemId) {
+      handleThrowTarget(x, y);
+    } else {
+      handleMoveTarget(x, y);
     }
   }
 
@@ -41,13 +67,16 @@ export function TacticalGrid() {
   const cols = Array.from({ length: scene.width }, (_, x) => x);
   const activeToken = scene.tokens.find((t) => t.id === scene.activeTokenId);
   const isPlayerTurn = activeToken?.type === 'player';
+  const gridInteractive = throwingItemId ? true : isPlayerTurn;
 
   return (
     <div className="tactical-grid">
       <div className="scene-header">
         <h3>{scene.name}</h3>
         <span>
-          Tur {scene.round} · Sıra: {activeToken?.name} {!isPlayerTurn && '(senin sıran değil)'}
+          {throwingItemId
+            ? 'Fırlatma hedefi seç'
+            : `Tur ${scene.round} · Sıra: ${activeToken?.name}${!isPlayerTurn ? ' (senin sıran değil)' : ''}`}
         </span>
         <button onClick={handleEndTurn}>Turu Bitir</button>
       </div>
@@ -55,7 +84,7 @@ export function TacticalGrid() {
       {error && <p className="error">{error}</p>}
 
       <div
-        className={`grid ${isPlayerTurn ? '' : 'grid-disabled'}`}
+        className={`grid ${gridInteractive ? '' : 'grid-disabled'} ${throwingItemId ? 'grid-throw-mode' : ''}`}
         style={{ gridTemplateColumns: `repeat(${scene.width}, 1fr)` }}
       >
         {rows.map((y) =>

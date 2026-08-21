@@ -1,11 +1,14 @@
 import { useState } from 'react';
-import { dropItem, equipItem, throwItem, useItem } from '../api';
+import { dropItem, equipItem, useItem } from '../api';
 import { CLASS_NAMES, RACE_NAMES } from '../data/dndNames';
 import type { Character } from '../types';
 
 interface Props {
   character: Character;
   onCharacterChange?: (character: Character) => void;
+  throwingItemId?: string | null;
+  onStartThrow?: (itemId: string) => void;
+  onCancelThrow?: () => void;
 }
 
 const ATTR_LABELS: Record<string, string> = {
@@ -17,10 +20,13 @@ const ATTR_LABELS: Record<string, string> = {
   cha: 'KARİZMA',
 };
 
-export function CharacterCard({ character, onCharacterChange }: Props) {
-  const [throwTargetItemId, setThrowTargetItemId] = useState<string | null>(null);
-  const [throwX, setThrowX] = useState('0');
-  const [throwY, setThrowY] = useState('0');
+export function CharacterCard({
+  character,
+  onCharacterChange,
+  throwingItemId = null,
+  onStartThrow,
+  onCancelThrow,
+}: Props) {
   const [error, setError] = useState<string | null>(null);
 
   const raceName = RACE_NAMES[character.race] ?? character.race;
@@ -56,20 +62,12 @@ export function CharacterCard({ character, onCharacterChange }: Props) {
     }
   }
 
-  async function handleThrow(itemId: string) {
+  function handleThrowClick(itemId: string) {
     setError(null);
-    const x = Number(throwX);
-    const y = Number(throwY);
-    if (!Number.isFinite(x) || !Number.isFinite(y)) {
-      setError('Geçersiz koordinat.');
-      return;
-    }
-    try {
-      const { character: updated } = await throwItem(character.id, itemId, x, y);
-      onCharacterChange?.(updated);
-      setThrowTargetItemId(null);
-    } catch (e) {
-      setError((e as Error).message);
+    if (throwingItemId === itemId) {
+      onCancelThrow?.();
+    } else {
+      onStartThrow?.(itemId);
     }
   }
 
@@ -117,6 +115,9 @@ export function CharacterCard({ character, onCharacterChange }: Props) {
 
       <h4>Envanter</h4>
       {error && <p className="error">{error}</p>}
+      {throwingItemId && (
+        <p className="throw-hint">Fırlatmak için taktik haritada bir kareye tıkla (iptal için tekrar Fırlat'a bas).</p>
+      )}
       <ul className="inventory-list">
         {character.inventory.map((item) => (
           <li key={item.id} className={item.equipped ? 'equipped' : ''}>
@@ -136,35 +137,13 @@ export function CharacterCard({ character, onCharacterChange }: Props) {
                 </button>
                 <button
                   type="button"
-                  onClick={() => setThrowTargetItemId(throwTargetItemId === item.id ? null : item.id)}
+                  className={throwingItemId === item.id ? 'active' : ''}
+                  onClick={() => handleThrowClick(item.id)}
                 >
-                  Fırlat
+                  {throwingItemId === item.id ? 'Hedef Seçiliyor...' : 'Fırlat'}
                 </button>
               </div>
             </div>
-            {throwTargetItemId === item.id && (
-              <div className="throw-form">
-                <label>
-                  X
-                  <input
-                    type="number"
-                    value={throwX}
-                    onChange={(e) => setThrowX(e.target.value)}
-                  />
-                </label>
-                <label>
-                  Y
-                  <input
-                    type="number"
-                    value={throwY}
-                    onChange={(e) => setThrowY(e.target.value)}
-                  />
-                </label>
-                <button type="button" onClick={() => handleThrow(item.id)}>
-                  Onayla
-                </button>
-              </div>
-            )}
           </li>
         ))}
         {character.inventory.length === 0 && <li className="empty">Envanter boş.</li>}

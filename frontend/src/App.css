@@ -244,36 +244,16 @@
   background: #4a4034;
 }
 
-.throw-form {
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
-  margin-top: 0.4rem;
-  font-size: 0.7rem;
+.inventory-actions button.active {
+  background: #f2c14e;
+  color: #14110f;
+  font-weight: 600;
 }
 
-.throw-form label {
-  display: flex;
-  align-items: center;
-  gap: 0.25rem;
-}
-
-.throw-form input {
-  width: 48px;
-  padding: 0.2rem;
-  background: #1e1a15;
-  border: 1px solid #3a332a;
-  border-radius: 4px;
-  color: #e8e4d8;
-}
-
-.throw-form button {
-  padding: 0.25rem 0.5rem;
-  background: #7a3b2e;
-  border: none;
-  border-radius: 4px;
-  color: white;
-  cursor: pointer;
+.throw-hint {
+  font-size: 0.8rem;
+  color: #f2c14e;
+  margin: 0 0 0.5rem;
 }
 
 /* Tactical grid */
@@ -314,6 +294,15 @@
 .grid-disabled .cell {
   cursor: not-allowed;
   opacity: 0.75;
+}
+
+.grid-throw-mode .cell {
+  cursor: crosshair;
+}
+
+.grid-throw-mode .cell:hover {
+  background: #4a4034;
+  outline: 2px solid #f2c14e;
 }
 
 .cell {
