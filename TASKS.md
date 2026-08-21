@@ -94,12 +94,14 @@ Tasarım ilkeleri (PM):
 - `GEMINI_API_KEY` ortam değişkeninden okunur, **asla commit edilmez** (`.env`, `.gitignore`'da olmalı). Key gelene kadar sistem otomatik mock'a düşerek çalışmaya devam eder.
 
 ### Coder
-- [ ] `backend`: `.env.example` ekle (`GEMINI_API_KEY=`), `.gitignore`'a `.env` olduğunu doğrula, `dotenv` ile yükle
-- [ ] `backend`: `@google/generative-ai` (veya güncel resmi Gemini SDK) bağımlılığını ekle, Flash ailesinden ücretsiz katmana uygun hızlı/ucuz bir model seç
-- [ ] `backend`: `services/aiGm.js` — karakter + sahne durumu + son birkaç sohbet mesajından bir GM anlatım promptu kurup Gemini'den tek bir narration metni döndüren fonksiyon
-- [ ] `backend`: basit in-memory rate limiter (saatlik sayaç) — limit aşılınca veya `GEMINI_API_KEY` yoksa/istek hata verirse mevcut `gmFlavor.js` mock yoluna sessizce düş
-- [ ] `backend`: chat POST route'unu bu yeni AI-GM katmanını kullanacak şekilde bağla (try AI → catch/limit → fallback mock), hangi kaynaktan geldiğini (ai/mock) mesaj objesine ekle (debug/QA için)
-- [ ] Key olmadan da (mock fallback ile) sistemin sorunsuz çalıştığını doğrula, key eklenince gerçek AI cevabını da test et
+- [x] `backend`: `.env.example` eklendi (`GEMINI_API_KEY=`, `PORT=`), `.env` `.gitignore`'a eklendi, `dotenv` ile `server.js`'de yükleniyor
+- [x] `backend`: `@google/generative-ai` eklendi, model `gemini-2.5-flash` (`GEMINI_MODEL` env ile override edilebilir)
+- [x] `backend`: `services/aiGm.js` — karakter + sahne + son 6 mesajdan prompt kurup Gemini'den narration metni döndürüyor
+- [x] `backend`: `services/rateLimiter.js` — saatlik sabit pencere sayacı, varsayılan limit 30 (`AI_HOURLY_LIMIT` ile override edilebilir)
+- [x] `backend`: `routes/chat.js` AI katmanına bağlandı — key yok/rate limit aşıldı/Gemini hata verdi → sessizce `gmFlavor.js` mock'a düşer, `gmMessage.source` alanı (`"ai"`/`"mock"`) eklendi
+- [x] Key olmadan (curl ile: `source: "mock"` dönüyor) ve geçersiz key ile (Gemini 400 hatası loglanıp sessizce mock'a düşüyor) doğrulandı. **Gerçek geçerli key ile henüz test edilmedi** — kullanıcının key'i geldiğinde bu adım tekrar doğrulanmalı.
+
+Not: `services/sceneState.js` eklendi — `scene.js`'in özel `getScene()`'i, AI prompt'unun sahne bağlamına da ihtiyacı olduğu için `routes/scene.js` ve `routes/chat.js` arasında paylaşılan ortak modüle taşındı (küçük bir refactor, davranış değişmedi).
 
 ### Tester
 - [ ] Gemini çağrısını mock'layarak: (a) başarılı AI cevabı senaryosu, (b) hata/timeout → mock fallback senaryosu, (c) rate limit aşımı → mock fallback senaryosu için testler yaz — gerçek API key gerektirmemeli
