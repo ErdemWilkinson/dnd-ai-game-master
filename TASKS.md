@@ -5,11 +5,11 @@ Durum: `[ ]` yapılmadı, `[~]` devam ediyor, `[x]` tamamlandı
 ## Faz 1 — İskelet
 
 ### Coder
-- [ ] `backend/`: package.json + Express server scaffold (server.js, `npm start`)
-- [ ] `backend`: karakter oluşturma endpoint'i (`POST /api/character/create`) — sadece D&D, ırk/sınıf/isim al
-- [ ] `backend`: karakter state endpoint'leri (`GET/POST /api/character`)
-- [ ] `backend`: sohbet endpoint'leri (`GET/POST /api/chat`) — GM cevabı kural tabanlı/şablon metin üretsin (rastgele flavor text havuzu yeterli)
-- [ ] `backend`: sahne/taktik map endpoint'leri (`GET /api/scene`, `move`, `end-turn`, item use/equip/drop/throw)
+- [x] `backend/`: package.json + Express server scaffold (server.js, `npm start`)
+- [x] `backend`: karakter oluşturma endpoint'i (`POST /api/character/create`) — sadece D&D, ırk/sınıf/isim al
+- [x] `backend`: karakter state endpoint'leri (`GET/POST /api/character`)
+- [x] `backend`: sohbet endpoint'leri (`GET/POST /api/chat`) — GM cevabı kural tabanlı/şablon metin üretsin (rastgele flavor text havuzu yeterli)
+- [x] `backend`: sahne/taktik map endpoint'leri (`GET /api/scene`, `move`, `end-turn`, item use/equip/drop/throw)
 - [ ] `frontend/`: Vite + React + TS scaffold
 - [ ] `frontend`: karakter oluşturma formu (ırk + sınıf seçimi, isim) — tek evren, wizard yok
 - [ ] `frontend`: karakter kartı bileşeni (HP/mana/attributes/envanter)
