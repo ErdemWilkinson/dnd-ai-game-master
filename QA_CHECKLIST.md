@@ -48,14 +48,14 @@ Otomatik testlerle doğrulanan davranış (`backend/tests/aiGmFallback.test.js`,
 - [x] Gemini başarılı cevap verdiğinde `source: "ai"` ve gerçek anlatım metni kullanıcıya dönüyor
 - [x] Rate limiter: limit dahilinde kabul/sayaç artışı, limit aşımında red, pencere dolunca sıfırlanma, varsayılan limit (30) — hepsi birim testle doğrulandı
 
-**Gerçek key ile manuel QA (kullanıcı key sağlayınca yapılacak — henüz YAPILMADI):**
-- [ ] `backend/.env` içine gerçek `GEMINI_API_KEY` girilip backend yeniden başlatılınca ilk sohbet mesajında `source: "ai"` dönüyor mu
-- [ ] AI'ın anlatımı Türkçe, atmosferik ve 2-4 cümle civarında mı (prompt'un istediği gibi)
-- [ ] AI, karakter adı/ırk/sınıf/HP gibi bağlama uygun referanslar veriyor mu (birkaç farklı mesajla dene)
-- [ ] AI, oyun durumunu (HP, envanter, konum) DEĞİŞTİRMİYOR — sadece anlatım üretiyor mu (state hâlâ backend'in kontrolünde olmalı, AI cevabı bunu etkilemiyor olmalı)
-- [ ] Arka arkaya çok sayıda mesaj gönderilip saatlik limit (varsayılan 30) aşıldığında otomatik olarak `source: "mock"`'a düşüyor mu (frontend'de "(mock)" etiketi görünüyor mu)
-- [ ] Geçersiz/hatalı bir key ile backend'in çökmediği, sessizce mock'a düştüğü teyit edilsin
-- [ ] Frontend'de mock mesajlarda "(mock)" etiketi görünüyor, AI mesajlarında görünmüyor
+**Gerçek key ile QA — kısmen tamamlandı (2026-08-22):** Kullanıcının sağladığı key, Google Cloud proje tarafında bir faturalandırma/kota bloke'una takılıyor (`429 "Your prepayment credits are depleted"` — denenen tüm modellerde, `gemini-2.5-flash`/`gemini-3.1-flash-lite`/`gemini-2.5-flash-lite`/`gemini-3.7-flash`/`gemini-flash-lite-latest`). Bu kod tarafında düzeltilebilecek bir şey değil, kullanıcının Google AI Studio/Cloud faturalandırma ayarlarını düzeltmesi gerekiyor (ai.google.dev/gemini-api/docs/billing#prepay). **Bu blocker sayesinde tester olarak gerçek Gemini SDK + gerçek ağ çağrısıyla fallback yolunu uçtan uca doğrulama fırsatı doğdu** — aşağıdaki ilk 2 madde bu şekilde zaten doğrulandı:
+- [x] Geçersiz/hatalı/kota aşmış bir key ile backend çökmüyor, sessizce mock'a düşüyor — gerçek 429 hatası ile canlı doğrulandı (backend log: "AI GM çağrısı başarısız, mock'a düşülüyor: ... 429 Too Many Requests ...")
+- [x] Frontend'de mock mesajlarda "GM (mock)" etiketi görünüyor — tarayıcıda gerçek key ile canlı doğrulandı, konsol/sayfa hatası yok
+- [ ] `backend/.env` içine geçerli (faturalandırması aktif) bir `GEMINI_API_KEY` girilip ilk sohbet mesajında `source: "ai"` dönüyor mu — **kullanıcının billing sorununu çözmesini bekliyor**
+- [ ] AI'ın anlatımı Türkçe, atmosferik ve 2-4 cümle civarında mı (prompt'un istediği gibi) — **bekliyor**
+- [ ] AI, karakter adı/ırk/sınıf/HP gibi bağlama uygun referanslar veriyor mu (birkaç farklı mesajla dene) — **bekliyor**
+- [ ] AI, oyun durumunu (HP, envanter, konum) DEĞİŞTİRMİYOR — sadece anlatım üretiyor mu (state hâlâ backend'in kontrolünde olmalı) — **bekliyor**
+- [ ] Arka arkaya çok sayıda mesaj gönderilip saatlik limit (varsayılan 30) aşıldığında gerçek AI akışından otomatik olarak `source: "mock"`'a düşüyor mu — **bekliyor** (mock ile birim testte zaten doğrulandı, ama gerçek AI akışının ortasında da denenmeli)
 
 ## Bilinen kısıtlar (bug değil, kayıt altında)
 - Düşman sırası engeli sadece frontend'de (istemci tarafı kontrol); backend `/scene/move` teknik olarak hâlâ herhangi bir aktif token'ı kabul ediyor. Tek istemcili Faz 1'de risksiz.

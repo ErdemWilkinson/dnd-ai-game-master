@@ -107,12 +107,14 @@ Not: `services/sceneState.js` eklendi — `scene.js`'in özel `getScene()`'i, AI
 ### Tester
 - [x] Gemini çağrısını mock'layarak: (a) başarılı AI cevabı senaryosu, (b) hata/timeout → mock fallback senaryosu, (c) rate limit aşımı → mock fallback senaryosu için testler yazıldı — `backend/tests/aiGmFallback.test.js` (5 test, gerçek API key gerektirmiyor)
 - [x] Rate limiter'ın sayaç mantığını test et — `backend/tests/rateLimiter.test.js` (5 test: limit dahilinde kabul, limit aşımı red, varsayılan limit, pencere dolunca reset, pencere dolmadan reset olmaması)
-- [ ] Key eklendikten sonra gerçek bir manuel QA turu: birkaç sohbet mesajı gönderip AI cevabının tutarlı/oyun bağlamına uygun geldiğini doğrula — **kullanıcı key sağlayınca yapılacak, PM haber verecek**
+- [~] Key eklendikten sonra gerçek bir manuel QA turu — **kısmen yapıldı, kullanıcı tarafında billing blocker'ı beklemede** (bkz. aşağı)
 - [x] QA_CHECKLIST.md'ye Faz 2 maddeleri eklendi
 
 **Test altyapısı notu (Bug #7'nin devamı):** `vi.mock()` bu backend'de (CommonJS) işe yaramıyor — Vitest'in ESM modül grafiği, düz `.js` CommonJS dosyalarının kendi iç `require()` çağrılarını yakalayamıyor. `aiGmFallback.test.js`'te bunun yerine `require.cache`'e chat.js yüklenmeden ÖNCE sahte `aiGm`/`rateLimiter` modülleri enjekte edildi (native Node require-cache tekniği). İleride benzer bir servis mock'lamak gerekirse bu dosyadaki yorum + deseni takip edin, `vi.mock` denemeyin.
 
-Test durumu: backend **57/57**, frontend **12/12** yeşil. AI-GM entegrasyonunda (henüz gerçek key olmadan) console/response hatası yok.
+Test durumu: backend **57/57**, frontend **12/12** yeşil.
+
+**Gerçek key ile canlı doğrulama (2026-08-22, tester):** Coder'ın bulduğu billing/kota blocker'ı (429 "Your prepayment credits are depleted") ben de backend'i gerçek `.env` key'iyle çalıştırıp curl + tarayıcıdan doğruladım. Backend log'unda gerçek Gemini SDK hatası görüldü, kullanıcıya hiçbir hata sızmadı, `source: "mock"` düzgün döndü, tarayıcıda "GM (mock)" etiketi doğru göründü, konsol/sayfa hatası yok. Yani **fallback mekanizması artık hem mock'lanmış testlerle hem de gerçek (ama kota-bloke) bir Gemini çağrısıyla uçtan uca doğrulanmış durumda** — eksik kalan tek şey gerçek AI içeriğinin (tutarlılık, state mutasyonu yapmaması vb.) doğrulanması, bu da kullanıcının billing sorununu çözmesini bekliyor.
 
 ## Notlar
 - FRP (`C:\Users\erdem\OneDrive\Masaüstü\FRP`) yalnızca konsept referansıdır, kod kopyalanmayacak.
