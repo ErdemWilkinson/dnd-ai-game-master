@@ -198,6 +198,21 @@ Otomatik testlerle doğrulanan davranış: backend **216/216**, frontend **73/73
 
 **Faz 6 (A+B+C) TAMAMEN KAPANDI** — bilinen açık bug yok. QA sırasında oluşturulan test verileri gerçek `game.db`'den temizlendi.
 
+## Faz 7 — İçerik çeşitliliği + Postgres soyutlaması + Render deploy hazırlığı
+
+Otomatik testlerle doğrulanan davranış: backend **237/237**, frontend **75/75**, tsc+vite build (varsayılan + `VITE_API_BASE` override'lı) temiz.
+
+- [x] Karşılaşma temizlenince (`/attack` veya `/cast`) sıradaki alana otomatik geçiliyor, ilerleme (`encounterIndex/totalEncounters`) DB'ye yazılıp restart sonrası korunuyor, frontend'de "Karşılaşma: N/M" doğru gösteriliyor
+- [x] Çok düşmanlı bir karşılaşmada sadece SON düşman ölünce geçiş tetikleniyor (ilk düşman ölümünde henüz değil)
+- [x] `DATABASE_URL` yokken davranış hiç değişmedi (SQLite, testler dahil); `DATABASE_URL`+`VITEST` iken de yine SQLite (test izolasyonu korunuyor); `DATABASE_URL` tek başına iken Postgres motoru seçiliyor ve modül import anında çökmüyor
+- [x] Erişilemez bir Postgres URL'iyle gerçek sunucu başlatma denemesi net bir hatayla (ECONNREFUSED) temiz exit ediyor (asılı kalmıyor) — bağımsız olarak tekrar doğrulandı
+- [x] `VITE_API_BASE` build-time env'i verilince bundle'a tam backend URL'i gömülüyor, verilmeyince varsayılan `/api` proxy davranışı bozulmuyor — iki gerçek `vite build` ile doğrulandı
+- [x] `render.yaml`'daki `healthCheckPath` (`/api/health`) gerçekten var ve çalışıyor, hiçbir secret dosyada yok
+
+**Not:** Gerçek bir Postgres/Render ortamı yok — Postgres bağlantısı ve Render'daki `fromService` şema uyumu dry-run/mock ile doğrulandı, gerçek deploy denemesi PM+kullanıcı ile ayrıca yapılacak (bu tester'ın/coder'ın yetkisinde değil).
+
+**Faz 7 (A+B+C) TAMAMEN KAPANDI** — bilinen açık bug yok.
+
 ## Kapsam dışı (bilerek yok, "bug" olarak raporlamayın)
 - Gerçek LLM tabanlı GM (Gemini varsa kullanılıyor, yoksa kural tabanlı/şablon metin — bkz. Faz 2)
 - Login/hesap sistemi (oturum izolasyonu var — Faz 6-A — ve kalıcılık var — Faz 6-B, SQLite — ama kullanıcı hesabı/parola/login akışı yok, sessionId localStorage tabanlı anonim kimlik)

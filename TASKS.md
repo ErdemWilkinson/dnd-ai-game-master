@@ -343,7 +343,7 @@ Kullanıcı kararı: "inovasyonlara devam et". PM değerlendirmesi: tek sabit sa
 
 ### Tester
 - [x] Yeni sahne geçişi için testler (karşılaşma temizlenince doğru geçiş, ilerlemenin DB'ye yazılıp restart sonrası korunduğu)
-- [ ] Postgres soyutlamasının SQLite davranışını bozmadığını doğrula (mevcut testler hâlâ geçmeli, `DATABASE_URL` yokken SQLite'a düştüğü açıkça test edilsin). Gerçek bir Postgres instance'ı yoksa bu kısmı mock'la/dokümante et, gerçek Postgres bağlantı testi PM ile birlikte deploy aşamasında yapılacak. **(coder'ın Faz 7-B WIP'i henüz commit edilmedi, bu madde açık kalıyor.)**
+- [x] Postgres soyutlamasının SQLite davranışını bozmadığını doğrula (mevcut testler hâlâ geçmeli, `DATABASE_URL` yokken SQLite'a düştüğü açıkça test edilsin). Gerçek bir Postgres instance'ı yoksa bu kısmı mock'la/dokümante et, gerçek Postgres bağlantı testi PM ile birlikte deploy aşamasında yapılacak.
 
 **Tester notları (Faz 7-A kısmı, 2026-08-22):**
 - Coder'ın işaret ettiği stale test düzeltildi: yenilmiş bir düşmana tekrar saldırma artık 404 dönüyor (eskiden 400 "aksiyon tükendi" bekliyordu) — karşılaşma geçişinde oyuncu token'ı taze (`actionAvailable:true`) yeniden kuruluyor, o yüzden davranış gerçekten değişti
@@ -353,9 +353,19 @@ Kullanıcı kararı: "inovasyonlara devam et". PM değerlendirmesi: tek sabit sa
 - Test durumu (Faz 7-A kapsamı): backend **234/234**, frontend **75/75**, tsc+vite build temiz
 - **Canlı sunucuya karşı uçtan uca doğrulama (curl, çalışan gerçek dev server, 2026-08-22):** Goblin'i öldürünce sahne otomatik "Örümcek İni"ye geçti (`encounterIndex:0→1`, yeni düşman "Dev Örümcek"), narration'da "Karşılaşma temizlendi! Yeni bir alana geçiliyor: Örümcek İni." cümlesi doğru eklendi, geçiş sonrası aynı goblin-1'e tekrar saldırma denemesi doğru şekilde 404 döndü.
 
-**Not:** Coder eşzamanlı olarak (uncommitted) B maddesine (Postgres soyutlaması, `data/dbSqlite.js`/`dbPostgres.js`) başlamış durumda — bu WIP nedeniyle `persistence.test.js` geçici olarak kırmızıya düştü (paylaşılan working tree). Bu A maddesinin bir regresyonu DEĞİL, kendi dosyalarıma dokunmadım; coder committen sonra persistence testlerini yeniden çalıştırıp B'yi ayrıca test edeceğim. Bu yüzden Faz 6-B'de yaptığım gibi gerçek `game.db` ile ekstra bir restart-persistence turu bu fazda YAPILMADI (coder'ın kendi commit mesajındaki `encounterIndex=1 restart sonrası korunuyor` doğrulamasına güveniyorum) — canlı DB dosyasını coder'ın aktif WIP'iyle karıştırmamak için.
+**Tester notları (B — Postgres soyutlaması, 2026-08-22):**
+- Coder'ın belgelediği tek bilinen kırılma (`loadAll()` artık async) düzeltildi: `persistence.test.js`'teki 3 `loadAll()` çağrısı `await`'lendi, ilgili test callback'leri `async` yapıldı. Beyaz-kutu testler (`db.exec`/`db.prepare` ile doğrudan erişim) `dbSqlite.js`'in geriye dönük uyumluluk için hâlâ export ettiği ham `db` instance'ı sayesinde değişiklik gerektirmedi.
+- `db.test.js` (yeni, 3 test): motor seçimi env değişkenlerine göre doğru çalışıyor mu — bunu AYNI process içinde test etmek güvenilir değil çünkü `data/db.js` import ANINDA `process.env` okuyor ve Node'un CJS require cache'i `vi.resetModules()` ile temizlenmiyor; onun yerine her senaryoyu ayrı bir `node -e` alt process'inde çalıştırıp `engine` alanını okudum (gerçek "import anı" davranışını birebir test eden tek güvenilir yöntem). Doğrulanan 3 senaryo: `DATABASE_URL` yokken `engine==='sqlite'`, `DATABASE_URL`+`VITEST=true` iken YİNE `'sqlite'` (test izolasyonu), `DATABASE_URL` tek başına iken `'postgres'` (ve modül import anında ÇÖKMÜYOR — `pg` Pool'un eager bağlanmadığını doğruluyor).
+- Coder'ın "sahte Postgres URL'iyle gerçek başlatma denemesi temiz exit ediyor" iddiasını bağımsız olarak tekrar doğruladım: `DATABASE_URL=postgres://...localhost:59999/...` ile gerçek `node server.js` çalıştırdım — `ECONNREFUSED` ile net bir hata basıp **exit code 1** ile temiz çıktı (asılı kalmadı).
+- Gerçek dosya `game.db` ile canlı restart: refactor sonrası da bozulmadı — `node --watch` dev server'ı coder'ın kaydettiği değişiklikleri otomatik yükledi, restart öncesi oluşturduğum bir karakteri ve hareketini restart sonrası birebir doğruladım.
+- Test durumu: backend **237/237**, tsc gerekmiyor (backend-only).
 
-**A maddesi (içerik çeşitliliği) tester tarafından TAMAMEN doğrulandı** — bilinen açık bug yok. B (Postgres) ve C (Render deploy hazırlığı) coder'da devam ediyor, ayrı test turu gerekecek.
+**Tester notları (C — Render deploy hazırlığı, 2026-08-22):**
+- `render.yaml`'ı gözden geçirdim — `healthCheckPath: /api/health` gerçekten var ve çalışıyor (curl ile doğrulandı), `GEMINI_API_KEY` gerçekten `sync: false` (repoda secret yok), yapı mantıklı. Coder'ın kendi notuyla aynı fikirdeyim: `fromService`/`hostport` alanının Render'ın güncel şemasına birebir uyup uymadığı gerçek bir hesap olmadan doğrulanamaz — bu PM+kullanıcı ile ilk deploy denemesinde kontrol edilecek, benim/coder'ın yetkisinde değil.
+- `VITE_API_BASE` build-time davranışını BAĞIMSIZ olarak iki gerçek `vite build` ile doğruladım: `VITE_API_BASE` verilince bundle'a tam URL (`onrender.com/api`) gömülüyor; verilmeyince bundle'da hiç `onrender` referansı yok (varsayılan `/api` davranışı bozulmamış).
+- Test durumu: frontend **75/75**, tsc+vite build (hem varsayılan hem `VITE_API_BASE` override'lı) temiz.
+
+**Faz 7 (A+B+C) tester tarafından TAMAMEN doğrulandı** — bilinen açık bug yok. Gerçek Postgres/Render ortamı olmadığı için B/C'nin bir kısmı (gerçek bağlantı, gerçek dashboard deploy'u) mock/dry-run ile doğrulandı — gerçek doğrulama PM+kullanıcı ile deploy aşamasında yapılacak.
 
 ## Notlar
 - FRP (`C:\Users\erdem\OneDrive\Masaüstü\FRP`) yalnızca konsept referansıdır, kod kopyalanmayacak. Kök `.gitignore` ile git takibi dışında.

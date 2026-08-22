@@ -67,7 +67,7 @@ describe("persistence — save* fonksiyonları DB'ye doğru yazıyor", () => {
 });
 
 describe("persistence — loadAll() 'restart' senaryosunu doğru simüle ediyor", () => {
-  it("DB'de veri varken loadAll() çağrılırsa in-memory Map'ler doğru şekilde dolduruluyor", () => {
+  it("DB'de veri varken loadAll() çağrılırsa in-memory Map'ler doğru şekilde dolduruluyor", async () => {
     // 1) DB'ye doğrudan (route'lardan bağımsız) veri yaz - "önceki oturumdan kalan" veri
     const character = { id: "char-1", name: "Aragorn", hp: { current: 7, max: 12 } };
     const scene = { id: "scene-1", round: 3, tokens: [{ id: "player", x: 4, y: 2 }] };
@@ -84,8 +84,8 @@ describe("persistence — loadAll() 'restart' senaryosunu doğru simüle ediyor"
     activeCharacterIdBySession.clear();
     expect(characters.size).toBe(0);
 
-    // 3) loadAll() - server.js'in açılışta yaptığı şey
-    loadAll();
+    // 3) loadAll() - server.js'in açılışta yaptığı şey (Faz 7-B: async)
+    await loadAll();
 
     // 4) Her şey geri gelmiş olmalı
     expect(characters.get("char-1")).toEqual(character);
@@ -94,15 +94,15 @@ describe("persistence — loadAll() 'restart' senaryosunu doğru simüle ediyor"
     expect(activeCharacterIdBySession.get("session-x")).toBe("char-1");
   });
 
-  it("DB boşken loadAll() hata vermeden çalışır, Map'ler boş kalır", () => {
-    expect(() => loadAll()).not.toThrow();
+  it("DB boşken loadAll() hata vermeden çalışır, Map'ler boş kalır", async () => {
+    await loadAll(); // reject ederse test zaten fail olur
     expect(characters.size).toBe(0);
     expect(scenes.size).toBe(0);
   });
 
-  it("active_character_id NULL olan bir session satırı loadAll()'da atlanır (Map'e boş/null değer eklenmez)", () => {
+  it("active_character_id NULL olan bir session satırı loadAll()'da atlanır (Map'e boş/null değer eklenmez)", async () => {
     db.prepare("INSERT INTO sessions (session_id, active_character_id) VALUES (?, NULL)").run("session-y");
-    loadAll();
+    await loadAll();
     expect(activeCharacterIdBySession.has("session-y")).toBe(false);
   });
 });
@@ -142,8 +142,8 @@ describe("persistence — uçtan uca: route mutasyonu → DB'ye yazılıyor → 
     chatHistories.clear();
     activeCharacterIdBySession.clear();
 
-    // server.js'in açılışta yaptığını yap
-    loadAll();
+    // server.js'in açılışta yaptığını yap (Faz 7-B: async)
+    await loadAll();
 
     // Yeni bir app/request ile (gerçek restart'ı taklit etmek için) aynı sessionId'yle sorgula
     const app2 = buildApp();
