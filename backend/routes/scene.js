@@ -7,6 +7,7 @@ const { rollD20, rollDie } = require("../services/dice");
 const { abilityModifier, DIFFICULTY_CLASS } = require("../services/actionResolver");
 const { generateNarration } = require("../services/narrationService");
 const { getSessionId } = require("../services/sessionId");
+const { saveScene, saveChatHistory, saveCharacter } = require("../services/persistence");
 const { CLASSES } = require("../data/dnd");
 
 const router = express.Router();
@@ -26,7 +27,9 @@ function getChatHistoryList(sessionId) {
 }
 
 function pushGmMessage(sessionId, text, source) {
-  getChatHistoryList(sessionId).push({ id: nanoid(), role: "gm", text, source, timestamp: Date.now() });
+  const history = getChatHistoryList(sessionId);
+  history.push({ id: nanoid(), role: "gm", text, source, timestamp: Date.now() });
+  saveChatHistory(sessionId, history);
 }
 
 router.get("/", (req, res) => {
@@ -83,6 +86,7 @@ router.post("/move", async (req, res) => {
     narration = { text, source };
   }
 
+  saveScene(sessionId, scene);
   res.json({ scene, collectedLoot: collected, narration });
 });
 
@@ -110,8 +114,8 @@ router.post("/end-turn", (req, res) => {
   let activeToken = advanceTurn(scene);
   // Düşman token'ların sırası tamamen deterministik/scriptli işlenir (ek AI
   // çağrısı yok), sonra sıra otomatik olarak oyuncuya geri döner.
+  const character = getActiveCharacter(sessionId);
   while (activeToken.type === "enemy") {
-    const character = getActiveCharacter(sessionId);
     const message = runEnemyTurn(scene, activeToken, character);
     if (message) enemyMessages.push(message);
     activeToken = advanceTurn(scene);
@@ -120,6 +124,9 @@ router.post("/end-turn", (req, res) => {
   for (const text of enemyMessages) {
     pushGmMessage(sessionId, text, "mock");
   }
+
+  saveScene(sessionId, scene);
+  if (character && enemyMessages.length) saveCharacter(character);
 
   // Geriye dönük uyumluluk: end-turn geleneksel olarak sahneyi düz (top-level)
   // döndürüyordu, mevcut testler/frontend `res.body.activeTokenId` gibi
@@ -194,6 +201,7 @@ router.post("/attack", async (req, res) => {
   });
   const narrationText = defeated ? `${text} ${target.name} yenildi!` : text;
   pushGmMessage(sessionId, narrationText, source);
+  saveScene(sessionId, scene);
 
   res.json({
     character,
@@ -213,7 +221,8 @@ router.post("/item/use", (req, res) => {
   const item = character.inventory.find((i) => i.id === itemId);
   if (!item) return res.status(404).json({ error: "Eşya bulunamadı." });
 
-  const playerToken = requirePlayerAction(getSessionId(req), res);
+  const sessionId = getSessionId(req);
+  const playerToken = requirePlayerAction(sessionId, res);
   if (!playerToken) return;
 
   character.inventory = character.inventory.filter((i) => i.id !== itemId);
@@ -221,6 +230,8 @@ router.post("/item/use", (req, res) => {
     character.hp.current = Math.min(character.hp.max, character.hp.current + 5);
   }
   playerToken.actionAvailable = false;
+  saveCharacter(character);
+  saveScene(sessionId, getScene(sessionId));
 
   res.json({ character, usedItem: item });
 });
@@ -249,6 +260,7 @@ router.post("/item/equip", (req, res) => {
     item.equipped = true;
   }
 
+  saveCharacter(character);
   res.json({ character, item });
 });
 
@@ -262,12 +274,15 @@ router.post("/item/drop", (req, res) => {
 
   character.inventory = character.inventory.filter((i) => i.id !== itemId);
 
-  const scene = getScene(getSessionId(req));
+  const sessionId = getSessionId(req);
+  const scene = getScene(sessionId);
   const playerToken = scene.tokens.find((t) => t.id === "player");
   if (playerToken) {
     scene.loot.push({ id: nanoid(), x: playerToken.x, y: playerToken.y, name: item.name });
   }
 
+  saveCharacter(character);
+  saveScene(sessionId, scene);
   res.json({ character, droppedItem: item });
 });
 
@@ -293,6 +308,8 @@ router.post("/item/throw", (req, res) => {
   scene.loot.push({ id: nanoid(), x, y, name: item.name });
   playerToken.actionAvailable = false;
 
+  saveCharacter(character);
+  saveScene(sessionId, scene);
   res.json({ character, scene, thrownItem: item });
 });
 

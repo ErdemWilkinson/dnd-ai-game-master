@@ -9,6 +9,7 @@ const { generateOpeningStory, isConfigured } = require("../services/aiGm");
 const { generateOpeningMock } = require("../data/openingFlavor");
 const { allowRequest } = require("../services/rateLimiter");
 const { getSessionId } = require("../services/sessionId");
+const { saveCharacter, saveChatHistory, saveActiveCharacterId } = require("../services/persistence");
 
 const router = express.Router();
 
@@ -93,8 +94,11 @@ router.post("/create", (req, res) => {
     }),
   };
 
+  const sessionId = getSessionId(req);
   characters.set(id, character);
-  activeCharacterIdBySession.set(getSessionId(req), id);
+  activeCharacterIdBySession.set(sessionId, id);
+  saveCharacter(character);
+  saveActiveCharacterId(sessionId, id);
   res.status(201).json(character);
 });
 
@@ -131,6 +135,7 @@ router.post("/intro", async (req, res) => {
   const history = chatHistories.get(sessionId);
   const introMessage = { id: nanoid(), role: "gm", text, source, timestamp: Date.now() };
   history.push(introMessage);
+  saveChatHistory(sessionId, history);
 
   res.json({ text, source });
 });
@@ -156,6 +161,7 @@ router.post("/", (req, res) => {
   if (inventory) character.inventory = inventory;
 
   characters.set(character.id, character);
+  saveCharacter(character);
   res.json(character);
 });
 

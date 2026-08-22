@@ -3,12 +3,15 @@ require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
 
+const { loadAll } = require("./services/persistence");
 const characterRouter = require("./routes/character");
 const chatRouter = require("./routes/chat");
 const sceneRouter = require("./routes/scene");
 
 const app = express();
 const PORT = process.env.PORT || 3001;
+
+loadAll();
 
 app.use(cors());
 app.use(express.json());
