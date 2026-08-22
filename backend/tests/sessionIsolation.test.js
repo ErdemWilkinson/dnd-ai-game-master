@@ -180,8 +180,13 @@ describe("Faz 6-A: rate limiter kasıtlı olarak GLOBAL kalmalı (PM kararı)", 
   });
 });
 
-describe("Faz 6-A: bilinen tasarım notu — characterId sahiplik doğrulaması yok", () => {
-  it("BİLGİ (bug değil, kayıt): item/attack endpoint'leri characterId'nin GERÇEKTEN o session'a ait olduğunu doğrulamıyor — sadece characters Map'inde var mı diye bakıyor. Pratikte nanoid ID'leri tahmin edilemez olduğu için düşük risk, ama mimari olarak session sınırı bu endpoint'lerde 'characterId bilme' varsayımına dayanıyor.", async () => {
+describe("Faz 6-B güvenlik takibi: characterId sahiplik doğrulaması (commit 309cb89)", () => {
+  // REGRESYON NOTU: bu describe eskiden "characterId sahiplik doğrulaması
+  // YOK" tasarım notunu belgeliyordu (tester bulgusu, Faz 6-A). Coder bunu
+  // Faz 6-B'de requireOwnedCharacter() helper'ıyla kapattı - artık başka bir
+  // session'ın characterId'sini "bilmek" tek başına erişim için yetmiyor.
+
+  it("session B, session A'nın characterId'siyle item/equip çağırırsa 403 döner", async () => {
     const app = buildApp();
     const a = withSession(app, SESSION_A);
     const b = withSession(app, SESSION_B);
@@ -189,10 +194,69 @@ describe("Faz 6-A: bilinen tasarım notu — characterId sahiplik doğrulaması 
     const createA = await a.post("/api/character/create").send({ name: "Aragorn", raceId: "human", classId: "fighter" });
     const item = createA.body.inventory[0];
 
-    // B, A'nın characterId'sini "bilseydi" (nanoid tahmin edilemez, ama
-    // teorik olarak) onun envanterini değiştirebilir - bu davranış BİLİNÇLİ
-    // olarak burada belgeleniyor, bir regresyon testi değil.
     const res = await b.post("/api/scene/item/equip").send({ characterId: createA.body.id, itemId: item.id });
-    expect(res.status).toBe(200); // beklenen mevcut davranış - "bug" olarak açılmadı, tasarım notu
+    expect(res.status).toBe(403);
+    expect(res.body.error).toMatch(/erişim yetkin yok/i);
+
+    // Ve gerçekten hiçbir şey değişmemiş olmalı
+    const stillA = await a.get("/api/character");
+    expect(stillA.body.inventory.find((i) => i.id === item.id).equipped).toBe(false);
+  });
+
+  it.each(["item/use", "item/equip", "item/drop", "item/throw"])(
+    "%s endpoint'i de başka session'ın characterId'sini 403 ile reddeder",
+    async (endpoint) => {
+      const app = buildApp();
+      const a = withSession(app, SESSION_A);
+      const b = withSession(app, SESSION_B);
+
+      const createA = await a.post("/api/character/create").send({ name: "Aragorn", raceId: "human", classId: "fighter" });
+      const item = createA.body.inventory[0];
+
+      const res = await b.post(`/api/scene/${endpoint}`).send({ characterId: createA.body.id, itemId: item.id, x: 1, y: 1 });
+      expect(res.status).toBe(403);
+    },
+  );
+
+  it("/scene/attack de aynı kontrolden geçer (başka session'ın characterId'si 403)", async () => {
+    const app = buildApp();
+    const a = withSession(app, SESSION_A);
+    const b = withSession(app, SESSION_B);
+
+    const createA = await a.post("/api/character/create").send({ name: "Aragorn", raceId: "human", classId: "fighter" });
+
+    const res = await b.post("/api/scene/attack").send({ characterId: createA.body.id, targetTokenId: "goblin-1" });
+    expect(res.status).toBe(403);
+  });
+
+  it("/character/intro de aynı kontrolden geçer", async () => {
+    const app = buildApp();
+    const a = withSession(app, SESSION_A);
+    const b = withSession(app, SESSION_B);
+
+    const createA = await a.post("/api/character/create").send({ name: "Aragorn", raceId: "human", classId: "fighter" });
+
+    const res = await b.post("/api/character/intro").send({ characterId: createA.body.id });
+    expect(res.status).toBe(403);
+  });
+
+  it("sahip kendi characterId'siyle çağırınca normal çalışmaya devam eder (regresyon değil)", async () => {
+    const app = buildApp();
+    const a = withSession(app, SESSION_A);
+
+    const createA = await a.post("/api/character/create").send({ name: "Aragorn", raceId: "human", classId: "fighter" });
+    const item = createA.body.inventory[0];
+
+    const res = await a.post("/api/scene/item/equip").send({ characterId: createA.body.id, itemId: item.id });
+    expect(res.status).toBe(200);
+    expect(res.body.item.equipped).toBe(true);
+  });
+
+  it("var olmayan bir characterId ile çağrılırsa (hiç kimseye ait değil) 404 döner, 403 değil", async () => {
+    const app = buildApp();
+    const b = withSession(app, SESSION_B);
+
+    const res = await b.post("/api/scene/item/equip").send({ characterId: "does-not-exist", itemId: "nope" });
+    expect(res.status).toBe(404);
   });
 });

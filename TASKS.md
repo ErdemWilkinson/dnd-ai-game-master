@@ -282,7 +282,9 @@ PM'in kendi değerlendirmesi (kullanıcı onayladı): Proje şu ana kadar tek ki
 
 **Faz 6-B TAMAMEN KAPANDI** — bilinen açık bug yok.
 
-**[x] Ek düzeltme (commit 309cb89, coder):** Tester'ın Faz 6-A'da bulduğu "characterId sahiplik doğrulaması yok" mimari notu PM onayıyla giderildi. `routes/scene.js`'e `requireOwnedCharacter()` helper'ı eklendi (karakter yoksa 404, session'ın aktif karakteri değilse 403) — `attack`, `item/use`, `item/equip`, `item/drop`, `item/throw` ve `character.js`'teki `/intro` endpoint'lerine uygulandı. İzole portta doğrulandı: session B, session A'nın characterId'siyle işlem yapmaya çalışınca 403 aldı. `sessionIsolation.test.js`'teki bu davranışı belgeleyen test (eski davranışı `200` bekliyordu) artık kasıtlı olarak kırmızı — tester assertion'ı `403`'e çevirince yeşile dönecek.
+**[x] Ek düzeltme (commit 309cb89, coder):** Tester'ın Faz 6-A'da bulduğu "characterId sahiplik doğrulaması yok" mimari notu PM onayıyla giderildi. `routes/scene.js`'e `requireOwnedCharacter()` helper'ı eklendi (karakter yoksa 404, session'ın aktif karakteri değilse 403) — `attack`, `item/use`, `item/equip`, `item/drop`, `item/throw` ve `character.js`'teki `/intro` endpoint'lerine uygulandı.
+
+**[x] Tester doğrulaması:** Eski (200 bekleyen) tasarım-notu testi `403` bekleyecek şekilde güncellendi + kapsam genişletildi: `sessionIsolation.test.js`'e 6 test — `item/equip` 403 (state gerçekten değişmemiş), `item/use`/`item/equip`/`item/drop`/`item/throw`'un hepsi (`it.each`) 403, `/scene/attack` 403, `/character/intro` 403, sahibin kendi characterId'siyle hâlâ normal (200) çalıştığı regresyon testi, var olmayan characterId'nin 403 değil 404 döndüğü (öncelik sırası doğru: önce "var mı", sonra "sahibi mi"). Backend **192/192** yeşil.
 
 ### C) Oyun döngüsü tamamlama (öncelik 3, A+B'den sonra)
 - [ ] **Oyuncu ölümü**: HP 0'a inince bir "Game Over" durumu — savaş sona ersin, oyuncuya net bir mesaj/ekran gösterilsin (yeniden başlama seçeneğiyle)

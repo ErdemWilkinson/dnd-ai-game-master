@@ -155,6 +155,18 @@ Otomatik testlerle doğrulanan davranış: backend **175/175**, frontend **57/57
 
 **Faz 6-A TAMAMEN KAPANDI** — bilinen açık bug yok.
 
+## Faz 6-B — SQLite kalıcılık
+
+Otomatik testlerle doğrulanan davranış: backend **184/184** (test koşumları otomatik `:memory:` DB kullanıyor, gerçek `game.db`'ye dokunmuyor), tsc/build backend-only olduğu için gerekmiyor.
+
+- [x] Karakter/sahne/sohbet her mutasyon noktasında (create/move/end-turn/attack/item aksiyonları/chat/intro) SQLite'a da yazılıyor
+- [x] Sunucu açılışında (`loadAll()`) DB'deki her şey in-memory Map'lere geri yükleniyor
+- [x] DB boşken veya bir session'ın aktif karakteri yokken (`active_character_id` NULL) hata vermeden çalışıyor
+
+**Gerçek dosya DB'siyle canlı restart testi (2026-08-22) — TAMAMLANDI, test suite'inin kullandığı `:memory:` değil, gerçek `game.db`:** Backend'i başlattım → karakter oluşturdum → grid'de hareket ettim → sohbet ettim → backend process'ini `taskkill` ile GERÇEKTEN sonlandırıp yeniden başlattım. Restart sonrası: karakter (isim/HP/envanter) birebir aynı, oyuncu token'ı tam hareket ettiğim konumda (movementLeft doğru düşürülmüş halde), sohbet geçmişindeki tüm mesajlar eksiksiz geri geldi.
+
+**Faz 6-B TAMAMEN KAPANDI** — bilinen açık bug yok.
+
 ## Bilinen kısıtlar (bug değil, kayıt altında)
 - SS13 slot listesinde ayrı bir "kalkan" slotu yok — Kalkan eşyası en yakın karşılık olan "back" (sırt) slotuna atanmış, PM/coder kararı, tutarlı davranıyor.
 - Silahlar (hand slotu) için tgstation asset setinde ikon yok — frontend metin/emoji fallback (⚔) kullanıyor, kapsam dışı değil ama görsel olarak diğer slotlardan farklı.
@@ -164,6 +176,6 @@ Otomatik testlerle doğrulanan davranış: backend **175/175**, frontend **57/57
 
 ## Kapsam dışı (bilerek yok, "bug" olarak raporlamayın)
 - Gerçek LLM tabanlı GM (Gemini varsa kullanılıyor, yoksa kural tabanlı/şablon metin — bkz. Faz 2)
-- Kalıcı depolama / login (state hâlâ sunucu belleğinde — çoklu OTURUM artık var, Faz 6-A, ama server restart'ta her şey siliniyor; kalıcılık Faz 6-B'de planlı)
+- Login/hesap sistemi (oturum izolasyonu var — Faz 6-A — ve kalıcılık var — Faz 6-B, SQLite — ama kullanıcı hesabı/parola/login akışı yok, sessionId localStorage tabanlı anonim kimlik)
 - Sahne görselleri (statik placeholder yok, sadece grid) ve AI ile görsel/portre üretimi
 - Savaş mekaniği derinliği (kapak, yükseklik, fırlatma menzili vb.)
