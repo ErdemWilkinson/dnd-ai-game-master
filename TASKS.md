@@ -320,9 +320,11 @@ PM'in kendi değerlendirmesi (kullanıcı onayladı): Proje şu ana kadar tek ki
 
 Kullanıcı kararı: "inovasyonlara devam et". PM değerlendirmesi: tek sabit sahne/karşılaşma var (kazanınca hiçbir yere ilerlenmiyor), ve proje hâlâ sadece localhost'ta çalışıyor. Deploy için araştırma yapıldı: Render kart istemeyen gerçek bir ücretsiz katman sunuyor ama ücretsiz web servislerinde kalıcı disk YOK (SQLite dosyası silinebilir) — kullanıcı kararı: Render + ücretsiz Postgres'e geçilecek, gerçek kalıcılık korunacak.
 
-### A) İçerik çeşitliliği (coder, hemen başlanabilir)
-- [ ] Tek sabit sahne/düşman kümesi yerine, mevcut karşılaşma temizlenince (tüm düşmanlar yenilince) bir "sonraki alan/karşılaşma"ya geçiş — yeni bir `scenes` veri seti (birkaç farklı oda/düşman kombinasyonu tanımı, D&D temasına uygun) ve bir "encounter cleared → next scene" mantığı
-- [ ] Basit bir ilerleme göstergesi (örn. "1. Karşılaşma / 2. Karşılaşma") — kalıcılığa (Faz 6-B) uygun şekilde DB'ye yazılmalı
+### A) İçerik çeşitliliği (coder, hemen başlanabilir) [x] TAMAMLANDI (commit 1ff7458)
+- [x] `data/encounters.js` — 4 farklı karşılaşma (Terk Edilmiş Mahzen/goblin, Örümcek İni/dev örümcek, İskelet Mezarlığı/2 iskelet, Ejderha İni/genç ejderha). `sceneFactory.js`'teki `createScene(encounterIndex)` bu listeden kurulum yapıyor (liste sonuna gelince başa dönüyor). `/attack` ve `/cast`, sahnede düşman kalmayınca `advanceToNextEncounter()` çağırıp anlatıma geçiş mesajı ekliyor.
+- [x] İlerleme göstergesi: `scene.encounterIndex`/`totalEncounters` — sahne zaten bütünüyle JSON olarak DB'ye yazıldığından (Faz 6-B) yeni bir DB şeması gerekmedi, otomatik kalıcı. Frontend'de "Karşılaşma: N/M" gösteriliyor.
+
+**Doğrulama:** izole portta uçtan uca — goblin ölünce sahne otomatik "Örümcek İni"ye geçti (yeni düşman, oyuncu spawn'a döndü, tur/aksiyon sıfırlandı), gerçek dosya DB'siyle restart testinde `encounterIndex` korundu. backend 215/216 (1 bilinen davranış değişikliği — bkz. commit mesajı, tester güncellemeli), frontend 73/73 yeşil.
 
 ### B) Postgres'e geçiş (coder, A'dan bağımsız paralel yapılabilir)
 - [ ] `backend/services/persistence.js`'i hem SQLite (yerel geliştirme/test — mevcut davranış korunur) hem Postgres (üretim) destekleyecek şekilde soyutla: `DATABASE_URL` ortam değişkeni varsa (`pg` paketiyle) Postgres kullan, yoksa mevcut `better-sqlite3`'e düş. Test ortamı (`VITEST=true`) davranışı değişmeyecek.
