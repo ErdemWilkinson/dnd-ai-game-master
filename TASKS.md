@@ -199,10 +199,18 @@ Kullanıcının elle test edip verdiği geri bildirim. Kullanıcı kararları: d
 **Davranışsal not (Bug değil, tasarım gereği):** `/scene/end-turn`'ün yanıt şekli korundu (hâlâ sahneyi düz/top-level döndürüyor, üzerine `enemyMessages` eklendi — geriye dönük uyumlu) ama DAVRANIŞ değişti: artık tek bir `end-turn` çağrısı, düşman turu varsa onu da otomatik çözüp sırayı oyuncuya kadar ilerletiyor (eskiden manuel iki çağrı gerekiyordu). `backend/tests/scene.test.js`'teki 3 eski test bu eski akışı varsayıyordu, güncellenmesi gerekiyor.
 
 ### Tester
-- [ ] Bug A/B için regresyon testleri (engelin üzerinden geçilemediğini, mesafe aşımının reddedildiğini doğrulayan testler)
-- [ ] Ekipman slot sistemi için testler (doğru slota doğru eşya türü, slot çakışması engellensin mi vb. — coder'ın kararına göre)
-- [ ] Basit düşman AI için testler (düşman sırası geldiğinde hareket ettiğini, menzildeyse saldırdığını doğrula — deterministik olduğu için mock RNG ile test edilebilir)
-- [ ] Görsel stil değişikliği için otomatik test beklenmiyor, tarayıcıda elle QA yeterli
+- [x] Bug A/B için regresyon testleri — `scene.test.js`: hedef boş ama yol engelden geçiyorsa 400, yol açıksa normal çalışıyor; ardışık hareketlerin kümülatif mesafesi budget'i aşınca red, dahilindeyse kabul, end-turn'de sıfırlanıyor
+- [x] Ekipman slot sistemi için testler — `itemSlots.test.js` (6 test) + `scene.test.js`'e slotu-olmayan-eşya-400 ve aynı-slotta-swap testleri + `character.test.js`'e create-time slot ataması testi + `CharacterCard.test.tsx`'e paper-doll render testleri (5 test)
+- [x] Basit düşman AI için testler — `enemyAI.test.js` (moveEnemyToward + runEnemyTurn doğrudan birim testleri, Math.random mock ile deterministik) + `scene.test.js`'e end-turn üzerinden uçtan uca senaryolar (yaklaşma mesajı, isabetli saldırı+hasar, nat1 ıskalama, aksiyon tüketimi, chat history'ye ekleniyor)
+- [x] Eski 3 end-turn testi yeni atomik-tur-çözümleme davranışına göre güncellendi (regresyon değil, kasıtlı davranış değişikliği)
+- [x] Görsel stil için tarayıcıda elle QA yapıldı (Playwright screenshot'ları) — bkz. aşağıdaki bulgu
+- [x] Test durumu: backend **138/138**, frontend **38/38**, tsc+vite build temiz
+
+**Tarayıcıda uçtan uca QA (Playwright, 2026-08-22):** Karakter oluştur → oyun ekranı → eşya kuşan (paper-doll'da doğru slotta göründü, gold border) → engelin arkasındaki boş bir kareye tek hamlede gitmeye çalış (reddedildi: "Yol bir engelle kesiliyor.") → art arda iki hareketle kümülatif limiti aş (reddedildi: "Hedef menzil dışında.", "Hareket: 2/5" göstergesi doğruydu) → Turu Bitir (düşman otomatik yaklaştı, "Goblin sana doğru yaklaşıyor." sohbete düştü, sıra hemen oyuncuya döndü). Konsol/sayfa hatası yok (sadece kasıtlı test 400'leri ve başlangıç 404'ü).
+
+**BG3 görsel teması:** Cinzel/Spectral fontları doğru yükleniyor (Google Fonts + fallback stack), bronz/altın vurgulu ornate paneller, iyi kontrast, okunabilirlik sorunu yok, bozuk layout yok. Görsel olarak başarılı.
+
+**⚠️ Bulgu — panel yerleşimi onaylanan spesifikasyona ters:** Hem Faz 3-B ("Macera günlüğü (sohbet) merkezde, taktik kare kenarda... kullanıcı onayladı") hem Faz 4-B ("sol=karakter bilgisi, orta=günlük/sohbet, sağ=taktik harita") açıkça **sohbetin ORTADA** olmasını istiyor. Ama gerçek render'da (`App.css:31` — `grid-template-columns: 280px 1fr 320px`, DOM sırası `CharacterCard → TacticalGrid → ChatPanel`) **taktik harita ortada (1fr, en geniş sütun), sohbet sağda** görünüyor — iki fazdır tam tersi. Bu Faz 4'ün yeni bir regresyonu değil (DOM/CSS sırası muhtemelen Faz 1'den beri hiç değişmedi), ama iki ayrı kullanıcı onayına rağmen hiç düzeltilmemiş. Ekran görüntüsüyle doğrulandı. Düzeltme küçük: `App.tsx`'te `<TacticalGrid>` ve `<ChatPanel>`'in DOM sırasını değiştirmek yeterli olabilir (grid-template-columns'un orta sütunu zaten `1fr` genişlikte, sohbete daha uygun).
 
 ## Notlar
 - FRP (`C:\Users\erdem\OneDrive\Masaüstü\FRP`) yalnızca konsept referansıdır, kod kopyalanmayacak. Kök `.gitignore` ile git takibi dışında.

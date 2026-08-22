@@ -1,4 +1,4 @@
-# Manuel QA Checklist — Faz 1 / Faz 1.5 / Faz 2 / Faz 3
+# Manuel QA Checklist — Faz 1 / Faz 1.5 / Faz 2 / Faz 3 / Faz 3.5 / Faz 4
 
 Kullanım: backend (`cd backend && npm start`, :3001) ve frontend (`cd frontend && npm run dev`, :5173) ayrı terminallerde çalışırken, tarayıcıda `http://localhost:5173` açılarak sırayla kontrol edilir.
 
@@ -92,13 +92,30 @@ Gerçek Gemini AI içeriği bu turda yeniden doğrulanamadı (kota tükenmişti,
 
 **Faz 3 + Faz 3.5 kapandı — bilinen açık bug yok** (mock+outcome ton notu kayıtlı, düşük öncelikli, blocker değil).
 
-## Bilinen kısıtlar (bug değil, kayıt altında)
-- Düşman sırası engeli sadece frontend'de (istemci tarafı kontrol); backend `/scene/move` teknik olarak hâlâ herhangi bir aktif token'ı kabul ediyor. Tek istemcili Faz 1'de risksiz.
-- `frontend/src/data/dndNames.ts`, backend `data/dnd.js` ile elle senkron tutulması gereken statik bir kopya — ırk/sınıf listesi değişirse ikisi de güncellenmeli.
-- Aksiyon ekonomisi kontrolü sadece backend'de (`/scene/item/use`, `/scene/item/throw`) uygulanıyor; grid hareketi (`/scene/move`) Aksiyon hakkı tüketmiyor — PM onaylı kapsam (BG3'te hareket ayrı bir kaynaktan gelir), bug değil.
+## Faz 4 — Hareket bugları, ekipman slotları, basit düşman AI, BG3 görsel stili
 
-## Kapsam dışı (Faz 1'de bilerek yok, "bug" olarak raporlamayın)
-- Gerçek LLM tabanlı GM (şu an kural tabanlı/şablon metin)
+Otomatik testlerle doğrulanan davranış: backend **138/138**, frontend **38/38**, tsc+vite build temiz.
+
+- [x] Hedef kare boş olsa bile yol arada bir engelden geçiyorsa hareket reddediliyor ("Yol bir engelle kesiliyor.") — Bresenham yol kontrolü
+- [x] Aynı turda ardışık hareketlerin toplam mesafesi (`movementLeft`) budget'i aşınca reddediliyor, dahilindeyse kabul ediliyor, end-turn'de `speed`'e sıfırlanıyor
+- [x] Sahne başlığında "Hareket: kalan/max" göstergesi doğru çalışıyor
+- [x] Ekipman: envanterdeki her eşyaya doğru slot atanıyor (Kısa Kılıç→El, Deri Zırh→Göğüs, İksir→yok); slotu olmayan eşya kuşanılamaz (400); aynı slotta yeni eşya kuşanılınca eskisi otomatik çıkarılıyor (paper-doll swap)
+- [x] CharacterCard'da "Ekipman" başlığı altında 6 slotluk (Baş/Göğüs/Kollar/El/Bacaklar/Ayaklar) paper-doll görünümü — kuşanılmış eşya doğru slotta ve altın çerçeveyle, boş slotlar "(boş)"
+- [x] Basit düşman AI: düşman sırası geldiğinde `Turu Bitir` çağrısı İÇİNDE otomatik olarak çözülüyor — bitişik değilse oyuncuya doğru hareket edip "X sana doğru yaklaşıyor." mesajı, bitişikse D20+2 vs DC12 ile saldırı deniyor (isabette d6 hasar + HP düşüyor, ıskada mesaj), sıra hemen oyuncuya geri dönüyor. Ek AI/LLM çağrısı YOK, tamamen deterministik.
+- [x] Düşman mesajları sohbet geçmişine `source:"mock"` ile ekleniyor, ChatPanel'de görünüyor
+- [x] BG3 görsel teması: Cinzel/Spectral fontları doğru yükleniyor, bronz/altın vurgulu paneller, iyi kontrast, okunabilirlik sorunu yok, bozuk layout yok — tarayıcıda (Playwright) görsel olarak doğrulandı
+
+**⚠️ Açık bulgu (Faz 4.5'e alınabilir, blocker değil):** Panel yerleşimi Faz 3-B ve Faz 4-B'de iki kez açıkça "sohbet ORTADA, taktik harita kenarda" olarak onaylanmıştı, ama gerçek render'da taktik harita ortada (geniş sütun), sohbet sağda görünüyor — hiç düzeltilmemiş bir tutarsızlık (Faz 4 regresyonu değil, muhtemelen Faz 1'den beri böyle). Detaylar TASKS.md'de, öneri: `App.tsx`'te `TacticalGrid`/`ChatPanel` DOM sırasını değiştirmek.
+
+**Faz 4 KAPANDI** — yukarıdaki panel-sırası bulgusu ve daha önceki düşük öncelikli notlar (mock+outcome ton çelişkisi) dışında açık madde yok.
+
+## Bilinen kısıtlar (bug değil, kayıt altında)
+- `frontend/src/data/dndNames.ts`, backend `data/dnd.js` ile elle senkron tutulması gereken statik bir kopya — ırk/sınıf listesi değişirse ikisi de güncellenmeli.
+- Aksiyon ekonomisi kontrolü backend'de `/scene/item/use` ve `/scene/item/throw`'da uygulanıyor; grid hareketi (`/scene/move`) ayrı bir kaynaktan (movementLeft) yönetiliyor — PM onaylı kapsam, bug değil.
+- Düşman AI tamamen scriptli/deterministik (greedy hareket + basit D20 saldırı) — karmaşık strateji, kapak/yükseklik mekaniği ve AI görsel üretimi Faz 4 kapsamı dışında bırakıldı (kullanıcı kararı).
+
+## Kapsam dışı (bilerek yok, "bug" olarak raporlamayın)
+- Gerçek LLM tabanlı GM (Gemini varsa kullanılıyor, yoksa kural tabanlı/şablon metin — bkz. Faz 2)
 - Kalıcı depolama / login / çoklu oturum (state sunucu belleğinde, tek global oturum)
-- Sahne görselleri (statik placeholder yok, sadece grid)
-- Düşman AI / otomatik saldırı mantığı
+- Sahne görselleri (statik placeholder yok, sadece grid) ve AI ile görsel/portre üretimi
+- Savaş mekaniği derinliği (kapak, yükseklik, fırlatma menzili vb.)
