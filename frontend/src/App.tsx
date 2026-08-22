@@ -5,14 +5,16 @@ import { CharacterCard } from './components/CharacterCard';
 import { ChatPanel } from './components/ChatPanel';
 import { TacticalGrid } from './components/TacticalGrid';
 import { IntroScreen } from './components/IntroScreen';
-import { getCurrentCharacter } from './api';
-import type { Character } from './types';
+import { GameOverScreen } from './components/GameOverScreen';
+import { getCurrentCharacter, resetSession } from './api';
+import type { Character, SpellId } from './types';
 
 function App() {
   const [character, setCharacter] = useState<Character | null>(null);
   const [pendingIntro, setPendingIntro] = useState<{ text: string; source: 'ai' | 'mock' } | null>(null);
   const [loading, setLoading] = useState(true);
   const [throwingItemId, setThrowingItemId] = useState<string | null>(null);
+  const [castingSpellId, setCastingSpellId] = useState<SpellId | null>(null);
   const [sceneRefreshTick, setSceneRefreshTick] = useState(0);
   const [chatRefreshTick, setChatRefreshTick] = useState(0);
 
@@ -50,6 +52,16 @@ function App() {
     setChatRefreshTick((tick) => tick + 1);
   }
 
+  async function handleRestart() {
+    await resetSession();
+    setCharacter(null);
+    setPendingIntro(null);
+    setThrowingItemId(null);
+    setCastingSpellId(null);
+    setSceneRefreshTick(0);
+    setChatRefreshTick(0);
+  }
+
   if (loading) {
     return (
       <div className="app app-centered">
@@ -78,6 +90,14 @@ function App() {
     );
   }
 
+  if (character.hp.current <= 0) {
+    return (
+      <div className="app app-centered">
+        <GameOverScreen characterName={character.name} level={character.level} onRestart={handleRestart} />
+      </div>
+    );
+  }
+
   return (
     <div className="app app-game">
       <header className="app-header">
@@ -90,15 +110,24 @@ function App() {
           throwingItemId={throwingItemId}
           onStartThrow={setThrowingItemId}
           onCancelThrow={() => setThrowingItemId(null)}
+          castingSpellId={castingSpellId}
+          onStartCast={setCastingSpellId}
+          onCancelCast={() => setCastingSpellId(null)}
+          onChatActivity={handleChatActivity}
         />
         <ChatPanel refreshKey={chatRefreshTick} />
         <TacticalGrid
           characterId={character.id}
           throwingItemId={throwingItemId}
+          castingSpellId={castingSpellId}
           refreshKey={sceneRefreshTick}
           onThrowComplete={(updated) => {
             setCharacter(updated);
             setThrowingItemId(null);
+          }}
+          onCastComplete={(updated) => {
+            setCharacter(updated);
+            setCastingSpellId(null);
           }}
           onTurnResolved={handleTurnResolved}
           onCharacterChange={setCharacter}

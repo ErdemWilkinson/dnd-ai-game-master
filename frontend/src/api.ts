@@ -1,4 +1,4 @@
-import type { ActionRoll, AppearanceOption, Attributes, Character, ChatMessage, ClassOption, RaceOption, Scene } from './types';
+import type { ActionRoll, AppearanceOption, Attributes, Character, ChatMessage, ClassOption, RaceOption, Scene, SpellId } from './types';
 import { getSessionId } from './session';
 
 export interface Narration {
@@ -93,11 +93,33 @@ export function attackTarget(characterId: string, targetTokenId: string) {
     attackResult: ActionRoll;
     damage: number;
     defeated: boolean;
+    levelsGained: number;
     narration: Narration;
   }>('/scene/attack', {
     method: 'POST',
     body: JSON.stringify({ characterId, targetTokenId }),
   });
+}
+
+export function castSpell(characterId: string, spellId: SpellId, targetTokenId?: string) {
+  return request<{
+    character: Character;
+    scene: Scene;
+    spell: SpellId;
+    castResult?: ActionRoll;
+    damage?: number;
+    defeated?: boolean;
+    levelsGained?: number;
+    healed?: number;
+    narration: Narration;
+  }>('/scene/cast', {
+    method: 'POST',
+    body: JSON.stringify({ characterId, spellId, targetTokenId }),
+  });
+}
+
+export function resetSession() {
+  return request<{ ok: boolean }>('/character/reset', { method: 'POST' });
 }
 
 export function endTurn() {

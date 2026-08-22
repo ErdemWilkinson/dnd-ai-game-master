@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react';
-import { attackTarget, endTurn, getScene, moveToken, throwItem } from '../api';
-import type { Character, Scene } from '../types';
+import { attackTarget, castSpell, endTurn, getScene, moveToken, throwItem } from '../api';
+import type { Character, Scene, SpellId } from '../types';
 
 interface Props {
   characterId: string;
   throwingItemId?: string | null;
+  castingSpellId?: SpellId | null;
   onThrowComplete?: (character: Character) => void;
+  onCastComplete?: (character: Character) => void;
   onTurnResolved?: (enemyMessages: string[]) => void;
   onCharacterChange?: (character: Character) => void;
   onChatActivity?: () => void;
@@ -15,7 +17,9 @@ interface Props {
 export function TacticalGrid({
   characterId,
   throwingItemId = null,
+  castingSpellId = null,
   onThrowComplete,
+  onCastComplete,
   onTurnResolved,
   onCharacterChange,
   onChatActivity,
@@ -35,6 +39,19 @@ export function TacticalGrid({
       const { character, scene: updated } = await throwItem(characterId, throwingItemId, x, y);
       setScene(updated);
       onThrowComplete?.(character);
+    } catch (e) {
+      setError((e as Error).message);
+    }
+  }
+
+  async function handleCastTarget(targetTokenId: string) {
+    if (!castingSpellId) return;
+    setError(null);
+    try {
+      const { character, scene: updated } = await castSpell(characterId, castingSpellId, targetTokenId);
+      if (updated) setScene(updated);
+      onCastComplete?.(character);
+      onChatActivity?.();
     } catch (e) {
       setError((e as Error).message);
     }
@@ -76,6 +93,10 @@ export function TacticalGrid({
     }
     const key = `${x},${y}`;
     const token = scene?.tokens.find((t) => `${t.x},${t.y}` === key);
+    if (castingSpellId && token?.type === 'enemy') {
+      handleCastTarget(token.id);
+      return;
+    }
     if (token?.type === 'enemy') {
       handleAttack(token.id);
       return;
@@ -99,7 +120,8 @@ export function TacticalGrid({
   const cols = Array.from({ length: scene.width }, (_, x) => x);
   const activeToken = scene.tokens.find((t) => t.id === scene.activeTokenId);
   const isPlayerTurn = activeToken?.type === 'player';
-  const gridInteractive = throwingItemId ? true : isPlayerTurn;
+  const specialMode = Boolean(throwingItemId || castingSpellId);
+  const gridInteractive = specialMode ? true : isPlayerTurn;
   const playerToken = scene.tokens.find((t) => t.id === 'player');
 
   return (
@@ -109,7 +131,9 @@ export function TacticalGrid({
         <span>
           {throwingItemId
             ? 'Fırlatma hedefi seç'
-            : `Tur ${scene.round} · Sıra: ${activeToken?.name}${!isPlayerTurn ? ' (senin sıran değil)' : ''}`}
+            : castingSpellId
+              ? 'Büyü hedefi seç'
+              : `Tur ${scene.round} · Sıra: ${activeToken?.name}${!isPlayerTurn ? ' (senin sıran değil)' : ''}`}
         </span>
         {playerToken && (
           <span className="movement-economy">
@@ -124,13 +148,13 @@ export function TacticalGrid({
         <button onClick={handleEndTurn}>Turu Bitir</button>
       </div>
 
-      {!throwingItemId && isPlayerTurn && (
+      {!specialMode && isPlayerTurn && (
         <p className="throw-hint">Bitişik bir düşmana tıklayarak saldırabilirsin.</p>
       )}
       {error && <p className="error">{error}</p>}
 
       <div
-        className={`grid ${gridInteractive ? '' : 'grid-disabled'} ${throwingItemId ? 'grid-throw-mode' : ''}`}
+        className={`grid ${gridInteractive ? '' : 'grid-disabled'} ${specialMode ? 'grid-throw-mode' : ''}`}
         style={{ gridTemplateColumns: `repeat(${scene.width}, 1fr)` }}
       >
         {rows.map((y) =>

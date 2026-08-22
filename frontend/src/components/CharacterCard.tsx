@@ -1,7 +1,12 @@
 import { useState } from 'react';
-import { dropItem, equipItem, useItem } from '../api';
+import { castSpell, dropItem, equipItem, useItem } from '../api';
 import { CLASS_NAMES, RACE_NAMES } from '../data/dndNames';
-import type { Character, EquipmentSlot } from '../types';
+import type { Character, EquipmentSlot, SpellId } from '../types';
+
+const SPELLS: { id: SpellId; name: string; manaCost: number; needsTarget: boolean }[] = [
+  { id: 'heal', name: 'İyileştir', manaCost: 4, needsTarget: false },
+  { id: 'fireball', name: 'Ateş Topu', manaCost: 4, needsTarget: true },
+];
 
 // SS13 (tgstation ikon seti) tarzı genişletilmiş paper-doll slot düzeni.
 const SLOT_ORDER: EquipmentSlot[] = [
@@ -47,6 +52,10 @@ interface Props {
   throwingItemId?: string | null;
   onStartThrow?: (itemId: string) => void;
   onCancelThrow?: () => void;
+  castingSpellId?: SpellId | null;
+  onStartCast?: (spellId: SpellId) => void;
+  onCancelCast?: () => void;
+  onChatActivity?: () => void;
 }
 
 const ATTR_LABELS: Record<string, string> = {
@@ -64,6 +73,10 @@ export function CharacterCard({
   throwingItemId = null,
   onStartThrow,
   onCancelThrow,
+  castingSpellId = null,
+  onStartCast,
+  onCancelCast,
+  onChatActivity,
 }: Props) {
   const [error, setError] = useState<string | null>(null);
 
@@ -109,6 +122,25 @@ export function CharacterCard({
     }
   }
 
+  async function handleSpellClick(spell: (typeof SPELLS)[number]) {
+    setError(null);
+    if (spell.needsTarget) {
+      if (castingSpellId === spell.id) {
+        onCancelCast?.();
+      } else {
+        onStartCast?.(spell.id);
+      }
+      return;
+    }
+    try {
+      const { character: updated } = await castSpell(character.id, spell.id);
+      onCharacterChange?.(updated);
+      onChatActivity?.();
+    } catch (e) {
+      setError((e as Error).message);
+    }
+  }
+
   return (
     <div className="character-card">
       <h3>{character.name}</h3>
@@ -150,6 +182,26 @@ export function CharacterCard({
           </div>
         ))}
       </div>
+
+      {character.mana.max > 0 && (
+        <>
+          <h4>Büyüler</h4>
+          <div className="spell-list">
+            {SPELLS.map((spell) => (
+              <button
+                key={spell.id}
+                type="button"
+                className={castingSpellId === spell.id ? 'active' : ''}
+                disabled={character.mana.current < spell.manaCost}
+                onClick={() => handleSpellClick(spell)}
+                title={`${spell.manaCost} mana`}
+              >
+                {castingSpellId === spell.id ? 'Hedef Seçiliyor...' : `${spell.name} (${spell.manaCost} mana)`}
+              </button>
+            ))}
+          </div>
+        </>
+      )}
 
       <h4>Ekipman</h4>
       <div className="paper-doll">

@@ -45,6 +45,7 @@
 /* Ortak "ornate" panel görünümü */
 .character-creation,
 .intro-screen,
+.game-over-screen,
 .character-card,
 .tactical-grid,
 .chat-panel {
@@ -102,6 +103,26 @@
   align-self: flex-start;
 }
 
+.game-over-screen {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  width: 420px;
+  padding: 2rem;
+  text-align: center;
+  align-items: center;
+  border-color: var(--blood) !important;
+}
+
+.game-over-screen h2 {
+  color: #e07a5f;
+}
+
+.game-over-text {
+  line-height: 1.6;
+  color: var(--parchment);
+}
+
 .character-creation label {
   display: flex;
   flex-direction: column;
@@ -124,6 +145,7 @@
 /* Ortak buton stili - BG3 tarzı altın/bronz vurgulu */
 .character-creation button,
 .intro-screen button,
+.game-over-screen button,
 .chat-input-row button,
 .scene-header button {
   padding: 0.6rem 1rem;
@@ -381,6 +403,40 @@
   font-size: 0.8rem;
   color: var(--gold);
   margin: 0 0 0.5rem;
+}
+
+.spell-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  margin: 0.5rem 0 0.75rem;
+}
+
+.spell-list button {
+  padding: 0.4rem 0.6rem;
+  background: linear-gradient(180deg, #24507a, var(--arcane-blue));
+  border: 1px solid var(--bronze-bright);
+  border-radius: 4px;
+  color: var(--parchment);
+  cursor: pointer;
+  font-size: 0.75rem;
+  text-align: left;
+}
+
+.spell-list button:hover:not(:disabled) {
+  box-shadow: 0 0 8px rgba(58, 110, 165, 0.5);
+}
+
+.spell-list button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.spell-list button.active {
+  background: var(--gold);
+  color: var(--bg-void);
+  font-weight: 700;
+  border-color: var(--gold);
 }
 
 /* Tactical grid */

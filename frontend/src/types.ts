@@ -37,6 +37,7 @@ export interface Character {
   class: string;
   appearance: string | null;
   level: number;
+  xp: number;
   hp: { current: number; max: number };
   mana: { current: number; max: number };
   attributes: Attributes;
@@ -102,6 +103,8 @@ export interface SceneLoot {
   y: number;
   name: string;
 }
+
+export type SpellId = 'fireball' | 'heal';
 
 export interface Scene {
   id: string;
