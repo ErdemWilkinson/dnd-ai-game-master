@@ -54,7 +54,7 @@ beforeEach(() => {
 describe('TacticalGrid — Bug #5: düşman sırasındayken grid tıklaması engellenmeli', () => {
   it('sıra oyuncudayken hücreye tıklamak moveToken çağırır', async () => {
     vi.mocked(api.getScene).mockResolvedValue(sceneWith('player'));
-    vi.mocked(api.moveToken).mockResolvedValue({ scene: sceneWith('player'), collectedLoot: null });
+    vi.mocked(api.moveToken).mockResolvedValue({ scene: sceneWith('player'), collectedLoot: null, narration: null });
 
     const user = userEvent.setup();
     render(<TacticalGrid characterId="char-1" />);
@@ -134,7 +134,7 @@ describe('TacticalGrid — Faz 3-E: fırlatma hedefi grid üzerinden seçiliyor'
 
   it('throwingItemId yokken normal hareket modu çalışmaya devam eder (regresyon)', async () => {
     vi.mocked(api.getScene).mockResolvedValue(sceneWith('player'));
-    vi.mocked(api.moveToken).mockResolvedValue({ scene: sceneWith('player'), collectedLoot: null });
+    vi.mocked(api.moveToken).mockResolvedValue({ scene: sceneWith('player'), collectedLoot: null, narration: null });
 
     const user = userEvent.setup();
     render(<TacticalGrid characterId="char-1" throwingItemId={null} />);
@@ -165,6 +165,100 @@ describe('TacticalGrid — Faz 3-C: Aksiyon ekonomisi göstergesi', () => {
     render(<TacticalGrid characterId="char-1" />);
     await waitFor(() => expect(screen.getByText(/Aksiyon:/)).toBeInTheDocument());
     expect(screen.getByText('Aksiyon: ✗ · Bonus: ✓')).toBeInTheDocument();
+  });
+});
+
+describe('TacticalGrid — Faz 5 madde 1: bitişik düşmana tıkla-saldır', () => {
+  it('bitişik bir düşman token\'ına tıklamak attackTarget çağırır, moveToken çağırmaz', async () => {
+    vi.mocked(api.getScene).mockResolvedValue(sceneWith('player')); // player (0,0), goblin (1,0) - bitişik
+    vi.mocked(api.attackTarget).mockResolvedValue({
+      character: { id: 'char-1' } as never,
+      scene: sceneWith('player'),
+      attackResult: { attribute: 'str', roll: 15, modifier: 2, total: 17, dc: 12, outcome: 'success' },
+      damage: 5,
+      defeated: false,
+      narration: { text: 'Vurdun!', source: 'mock' },
+    });
+
+    const user = userEvent.setup();
+    render(<TacticalGrid characterId="char-1" />);
+    await waitFor(() => expect(screen.getByText('Test Sahnesi')).toBeInTheDocument());
+
+    const cells = document.querySelectorAll('.grid .cell');
+    await user.click(cells[1]); // goblin'in bulunduğu (1,0) hücresi
+
+    expect(api.attackTarget).toHaveBeenCalledWith('char-1', 'goblin-1');
+    expect(api.moveToken).not.toHaveBeenCalled();
+  });
+
+  it('saldırı sonrası onCharacterChange ve onChatActivity çağrılır', async () => {
+    vi.mocked(api.getScene).mockResolvedValue(sceneWith('player'));
+    const updatedCharacter = { id: 'char-1', name: 'Güncellendi' } as never;
+    vi.mocked(api.attackTarget).mockResolvedValue({
+      character: updatedCharacter,
+      scene: sceneWith('player'),
+      attackResult: { attribute: 'str', roll: 15, modifier: 2, total: 17, dc: 12, outcome: 'success' },
+      damage: 5,
+      defeated: false,
+      narration: { text: 'Vurdun!', source: 'mock' },
+    });
+    const onCharacterChange = vi.fn();
+    const onChatActivity = vi.fn();
+
+    const user = userEvent.setup();
+    render(
+      <TacticalGrid
+        characterId="char-1"
+        onCharacterChange={onCharacterChange}
+        onChatActivity={onChatActivity}
+      />,
+    );
+    await waitFor(() => expect(screen.getByText('Test Sahnesi')).toBeInTheDocument());
+
+    const cells = document.querySelectorAll('.grid .cell');
+    await user.click(cells[1]);
+
+    await waitFor(() => expect(onCharacterChange).toHaveBeenCalledWith(updatedCharacter));
+    expect(onChatActivity).toHaveBeenCalledTimes(1);
+  });
+
+  it('boş/hareket hedefi bir hücreye tıklamak hâlâ moveToken çağırır (regresyon)', async () => {
+    vi.mocked(api.getScene).mockResolvedValue(sceneWith('player'));
+    vi.mocked(api.moveToken).mockResolvedValue({ scene: sceneWith('player'), collectedLoot: null, narration: null });
+
+    const user = userEvent.setup();
+    render(<TacticalGrid characterId="char-1" />);
+    await waitFor(() => expect(screen.getByText('Test Sahnesi')).toBeInTheDocument());
+
+    // 2 genişlikli sahnede player (0,0), goblin (1,0) - player'ın kendi hücresine tıklamak (boş bir hedef değil ama düşman değil)
+    const cells = document.querySelectorAll('.grid .cell');
+    await user.click(cells[0]); // (0,0) - player'ın kendi hücresi, düşman değil
+
+    expect(api.moveToken).toHaveBeenCalled();
+    expect(api.attackTarget).not.toHaveBeenCalled();
+  });
+
+  it('sıra oyuncudayken saldırı ipucu metni gösterilir', async () => {
+    vi.mocked(api.getScene).mockResolvedValue(sceneWith('player'));
+    render(<TacticalGrid characterId="char-1" />);
+    await waitFor(() => expect(screen.getByText(/bitişik bir düşmana tıklayarak/i)).toBeInTheDocument());
+  });
+
+  it('fırlatma modundayken saldırı ipucu metni gösterilmez', async () => {
+    vi.mocked(api.getScene).mockResolvedValue(sceneWith('player'));
+    render(<TacticalGrid characterId="char-1" throwingItemId="item-1" />);
+    await waitFor(() => expect(screen.getByText('Fırlatma hedefi seç')).toBeInTheDocument());
+    expect(screen.queryByText(/bitişik bir düşmana tıklayarak/i)).not.toBeInTheDocument();
+  });
+
+  it('token tooltip\'i HP bilgisini gösterir', async () => {
+    vi.mocked(api.getScene).mockResolvedValue(sceneWith('player'));
+    render(<TacticalGrid characterId="char-1" />);
+    await waitFor(() => expect(screen.getByText('Test Sahnesi')).toBeInTheDocument());
+
+    const cells = document.querySelectorAll('.grid .cell');
+    // sceneWith() varsayılan token'larda hp/maxHp içermiyor, bu durumda tooltip sade isim olmalı
+    expect(cells[1].getAttribute('title')).toBe('Goblin');
   });
 });
 

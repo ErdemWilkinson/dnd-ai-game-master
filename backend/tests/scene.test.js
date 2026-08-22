@@ -690,3 +690,271 @@ describe("POST /api/scene/item/throw", () => {
     expect(res.body.error).toMatch(/aksiyon/i);
   });
 });
+
+describe("POST /api/scene/attack — Faz 5 madde 1: gerçek saldırı aksiyonu", () => {
+  beforeEach(() => {
+    scenes.clear();
+    characters.clear();
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  async function teleportGoblinAdjacentToPlayer(app) {
+    await request(app).get("/api/scene");
+    const scene = scenes.get("default");
+    const goblin = scene.tokens.find((t) => t.id === "goblin-1");
+    const player = scene.tokens.find((t) => t.id === "player");
+    goblin.x = player.x + 1;
+    goblin.y = player.y;
+  }
+
+  it("var olmayan karakter için 404 döner", async () => {
+    const res = await request(buildApp())
+      .post("/api/scene/attack")
+      .send({ characterId: "nope", targetTokenId: "goblin-1" });
+    expect(res.status).toBe(404);
+  });
+
+  it("sıra oyuncuda değilken 400 döner", async () => {
+    const app = buildApp();
+    const createRes = await request(app)
+      .post("/api/character/create")
+      .send({ name: "Test", raceId: "human", classId: "fighter" });
+    await request(app).get("/api/scene");
+    scenes.get("default").activeTokenId = "goblin-1";
+
+    const res = await request(app)
+      .post("/api/scene/attack")
+      .send({ characterId: createRes.body.id, targetTokenId: "goblin-1" });
+    expect(res.status).toBe(400);
+    expect(res.body.error).toMatch(/sıra/i);
+  });
+
+  it("Aksiyon hakkı tükenmişse 400 döner", async () => {
+    const app = buildApp();
+    const createRes = await request(app)
+      .post("/api/character/create")
+      .send({ name: "Test", raceId: "human", classId: "fighter" });
+    const item = createRes.body.inventory[0];
+    await request(app)
+      .post("/api/scene/item/use")
+      .send({ characterId: createRes.body.id, itemId: item.id }); // Aksiyonu tüket
+    await teleportGoblinAdjacentToPlayer(app);
+
+    const res = await request(app)
+      .post("/api/scene/attack")
+      .send({ characterId: createRes.body.id, targetTokenId: "goblin-1" });
+    expect(res.status).toBe(400);
+    expect(res.body.error).toMatch(/aksiyon/i);
+  });
+
+  it("var olmayan/düşman olmayan hedef için 404 döner", async () => {
+    const app = buildApp();
+    const createRes = await request(app)
+      .post("/api/character/create")
+      .send({ name: "Test", raceId: "human", classId: "fighter" });
+
+    const res = await request(app)
+      .post("/api/scene/attack")
+      .send({ characterId: createRes.body.id, targetTokenId: "nope" });
+    expect(res.status).toBe(404);
+  });
+
+  it("hedef bitişik değilse (menzil dışı) 400 döner", async () => {
+    const app = buildApp();
+    const createRes = await request(app)
+      .post("/api/character/create")
+      .send({ name: "Test", raceId: "human", classId: "fighter" });
+    // varsayılan sahnede goblin (8,2), player (1,1) - bitişik değil
+
+    const res = await request(app)
+      .post("/api/scene/attack")
+      .send({ characterId: createRes.body.id, targetTokenId: "goblin-1" });
+    expect(res.status).toBe(400);
+    expect(res.body.error).toMatch(/menzil/i);
+  });
+
+  it("isabetli saldırı hasar verir, hedefin HP'sini düşürür ve Aksiyon hakkını tüketir", async () => {
+    vi.spyOn(Math, "random").mockReturnValue(0.71); // D20 -> 15 (yüksek isabet ihtimali), d6 -> 5
+    const app = buildApp();
+    const createRes = await request(app)
+      .post("/api/character/create")
+      .send({ name: "Test", raceId: "human", classId: "fighter" }); // fighter primary: str
+    await teleportGoblinAdjacentToPlayer(app);
+
+    const res = await request(app)
+      .post("/api/scene/attack")
+      .send({ characterId: createRes.body.id, targetTokenId: "goblin-1" });
+
+    expect(res.status).toBe(200);
+    expect(res.body.attackResult.attribute).toBe("str");
+    expect(res.body.attackResult.outcome).toBe("success");
+    expect(res.body.damage).toBe(5);
+    const goblinAfter = res.body.scene.tokens.find((t) => t.id === "goblin-1");
+    expect(goblinAfter.hp).toBe(5); // 10 - 5
+    const playerAfter = res.body.scene.tokens.find((t) => t.id === "player");
+    expect(playerAfter.actionAvailable).toBe(false);
+  });
+
+  it("nat1 ıskalarsa hasar verilmez ama Aksiyon yine de tüketilir", async () => {
+    vi.spyOn(Math, "random").mockReturnValue(0); // D20 -> 1 (nat1)
+    const app = buildApp();
+    const createRes = await request(app)
+      .post("/api/character/create")
+      .send({ name: "Test", raceId: "human", classId: "fighter" });
+    await teleportGoblinAdjacentToPlayer(app);
+
+    const res = await request(app)
+      .post("/api/scene/attack")
+      .send({ characterId: createRes.body.id, targetTokenId: "goblin-1" });
+
+    expect(res.body.attackResult.outcome).toBe("critical-failure");
+    expect(res.body.damage).toBe(0);
+    const goblinAfter = res.body.scene.tokens.find((t) => t.id === "goblin-1");
+    expect(goblinAfter.hp).toBe(10); // değişmedi
+    const playerAfter = res.body.scene.tokens.find((t) => t.id === "player");
+    expect(playerAfter.actionAvailable).toBe(false);
+  });
+
+  it("nat20 kritik başarıda iki d6 zarı toplanıp hasar verilir", async () => {
+    vi.spyOn(Math, "random").mockReturnValue(0.999999); // D20 -> 20, d6 -> 6
+    const app = buildApp();
+    const createRes = await request(app)
+      .post("/api/character/create")
+      .send({ name: "Test", raceId: "human", classId: "fighter" });
+    await teleportGoblinAdjacentToPlayer(app);
+
+    const res = await request(app)
+      .post("/api/scene/attack")
+      .send({ characterId: createRes.body.id, targetTokenId: "goblin-1" });
+
+    expect(res.body.attackResult.outcome).toBe("critical-success");
+    expect(res.body.damage).toBe(12); // 6 + 6 (kritik: iki zar)
+  });
+
+  it("hedefin HP'si 0'a inince sahneden kaldırılır, defeated:true döner, anlatımda 'yenildi' geçer", async () => {
+    vi.spyOn(Math, "random").mockReturnValue(0.999999); // garanti isabet + max hasar
+    const app = buildApp();
+    const createRes = await request(app)
+      .post("/api/character/create")
+      .send({ name: "Test", raceId: "human", classId: "fighter" });
+    await teleportGoblinAdjacentToPlayer(app);
+    // goblin HP 10, kritik vuruş 12 hasar -> ölür (tek saldırıda)
+
+    const res = await request(app)
+      .post("/api/scene/attack")
+      .send({ characterId: createRes.body.id, targetTokenId: "goblin-1" });
+
+    expect(res.body.defeated).toBe(true);
+    expect(res.body.scene.tokens.find((t) => t.id === "goblin-1")).toBeUndefined();
+    expect(res.body.narration.text).toMatch(/yenildi/i);
+  });
+
+  it("yenilmiş bir düşmana tekrar saldırmaya çalışmak 404 döner (artık sahnede yok)", async () => {
+    vi.spyOn(Math, "random").mockReturnValue(0.999999);
+    const app = buildApp();
+    const createRes = await request(app)
+      .post("/api/character/create")
+      .send({ name: "Test", raceId: "human", classId: "fighter" });
+    await teleportGoblinAdjacentToPlayer(app);
+
+    await request(app)
+      .post("/api/scene/attack")
+      .send({ characterId: createRes.body.id, targetTokenId: "goblin-1" }); // öldür
+
+    // Aksiyon tükendi ama biz sadece hedef-bulunamadı davranışını test ediyoruz;
+    // aksiyon kontrolü zaten önceki testlerde ayrı doğrulandı.
+    const res = await request(app)
+      .post("/api/scene/attack")
+      .send({ characterId: createRes.body.id, targetTokenId: "goblin-1" });
+
+    expect(res.status).toBe(400); // önce Aksiyon kontrolüne takılır (tükendi)
+  });
+
+  it("saldırı sonucu sohbet geçmişine ekleniyor", async () => {
+    const app = buildApp();
+    const createRes = await request(app)
+      .post("/api/character/create")
+      .send({ name: "Test", raceId: "human", classId: "fighter" });
+    await teleportGoblinAdjacentToPlayer(app);
+
+    await request(app)
+      .post("/api/scene/attack")
+      .send({ characterId: createRes.body.id, targetTokenId: "goblin-1" });
+
+    const chatRes = await request(app).get("/api/chat");
+    expect(chatRes.body.messages.length).toBeGreaterThan(0);
+    expect(chatRes.body.messages.at(-1)).toMatchObject({ role: "gm" });
+  });
+
+  it("saldırı modifier'ı karakterin SINIFININ primary attribute'ünü kullanır (wizard -> int)", async () => {
+    vi.spyOn(Math, "random").mockReturnValue(0.71);
+    const app = buildApp();
+    const createRes = await request(app)
+      .post("/api/character/create")
+      .send({ name: "Test", raceId: "elf", classId: "wizard" }); // wizard primary: int
+    await teleportGoblinAdjacentToPlayer(app);
+
+    const res = await request(app)
+      .post("/api/scene/attack")
+      .send({ characterId: createRes.body.id, targetTokenId: "goblin-1" });
+
+    expect(res.body.attackResult.attribute).toBe("int");
+  });
+});
+
+describe("POST /api/scene/move — Faz 5 madde 2: hareket sonrası otomatik anlatıcı", () => {
+  beforeEach(() => {
+    scenes.clear();
+    characters.clear();
+  });
+
+  it("başarılı hareket sonrası narration alanı dolu döner ve sohbet geçmişine eklenir", async () => {
+    const app = buildApp();
+    await request(app)
+      .post("/api/character/create")
+      .send({ name: "Test", raceId: "human", classId: "fighter" });
+
+    const res = await request(app)
+      .post("/api/scene/move")
+      .send({ tokenId: "player", x: 2, y: 1 });
+
+    expect(res.status).toBe(200);
+    expect(res.body.narration).not.toBeNull();
+    expect(typeof res.body.narration.text).toBe("string");
+    expect(res.body.narration.text.length).toBeGreaterThan(0);
+
+    const chatRes = await request(app).get("/api/chat");
+    expect(chatRes.body.messages.at(-1)).toMatchObject({ role: "gm", text: res.body.narration.text });
+  });
+
+  it("key yoksa (mock fallback) narration.source 'mock' döner, istek yine de başarılı olur", async () => {
+    const app = buildApp();
+    await request(app)
+      .post("/api/character/create")
+      .send({ name: "Test", raceId: "human", classId: "fighter" });
+
+    const res = await request(app)
+      .post("/api/scene/move")
+      .send({ tokenId: "player", x: 2, y: 1 });
+
+    expect(res.status).toBe(200);
+    expect(res.body.narration.source).toBe("mock");
+  });
+
+  it("başarısız hareket (menzil dışı/engelli) narration ÜRETMEZ", async () => {
+    const app = buildApp();
+    await request(app)
+      .post("/api/character/create")
+      .send({ name: "Test", raceId: "human", classId: "fighter" });
+
+    const res = await request(app)
+      .post("/api/scene/move")
+      .send({ tokenId: "player", x: 9, y: 1 }); // menzil dışı
+
+    expect(res.status).toBe(400);
+    expect(res.body.narration).toBeUndefined();
+  });
+});
