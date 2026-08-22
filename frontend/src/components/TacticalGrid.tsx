@@ -6,10 +6,17 @@ interface Props {
   characterId: string;
   throwingItemId?: string | null;
   onThrowComplete?: (character: Character) => void;
+  onTurnResolved?: (enemyMessages: string[]) => void;
   refreshKey?: number;
 }
 
-export function TacticalGrid({ characterId, throwingItemId = null, onThrowComplete, refreshKey = 0 }: Props) {
+export function TacticalGrid({
+  characterId,
+  throwingItemId = null,
+  onThrowComplete,
+  onTurnResolved,
+  refreshKey = 0,
+}: Props) {
   const [scene, setScene] = useState<Scene | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -54,8 +61,9 @@ export function TacticalGrid({ characterId, throwingItemId = null, onThrowComple
   }
 
   async function handleEndTurn() {
-    const updated = await endTurn();
+    const { enemyMessages, ...updated } = await endTurn();
     setScene(updated);
+    onTurnResolved?.(enemyMessages);
   }
 
   if (!scene) return <div className="tactical-grid">Harita yükleniyor...</div>;

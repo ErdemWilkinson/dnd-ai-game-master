@@ -18,7 +18,11 @@ const OUTCOME_LABELS_TR: Record<ActionRoll['outcome'], string> = {
   'critical-failure': 'Büyük Başarısızlık',
 };
 
-export function ChatPanel() {
+interface Props {
+  refreshKey?: number;
+}
+
+export function ChatPanel({ refreshKey = 0 }: Props) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
   const [sending, setSending] = useState(false);
@@ -26,7 +30,7 @@ export function ChatPanel() {
 
   useEffect(() => {
     getChatHistory().then(({ messages }) => setMessages(messages));
-  }, []);
+  }, [refreshKey]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });

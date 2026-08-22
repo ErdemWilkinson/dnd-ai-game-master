@@ -4,6 +4,10 @@ function rollD20() {
   return Math.floor(Math.random() * 20) + 1;
 }
 
+function rollDie(sides) {
+  return Math.floor(Math.random() * sides) + 1;
+}
+
 function rollAttributes() {
   const rolls = {};
   for (const key of ATTRIBUTE_KEYS) {
@@ -12,4 +16,4 @@ function rollAttributes() {
   return rolls;
 }
 
-module.exports = { rollD20, rollAttributes };
+module.exports = { rollD20, rollDie, rollAttributes };

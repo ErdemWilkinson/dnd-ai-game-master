@@ -14,6 +14,7 @@ function App() {
   const [loading, setLoading] = useState(true);
   const [throwingItemId, setThrowingItemId] = useState<string | null>(null);
   const [sceneRefreshTick, setSceneRefreshTick] = useState(0);
+  const [chatRefreshTick, setChatRefreshTick] = useState(0);
 
   useEffect(() => {
     getCurrentCharacter()
@@ -34,6 +35,14 @@ function App() {
     // CharacterCard'daki eylemler (kullan/kuşan/at) sahnedeki Aksiyon/Bonus
     // göstergesini de etkileyebilir - TacticalGrid'i tazelemesi için tetikle.
     setSceneRefreshTick((tick) => tick + 1);
+  }
+
+  function handleTurnResolved(enemyMessages: string[]) {
+    if (enemyMessages.length === 0) return;
+    // Düşman turu otomatik saldırı içerebilir (HP değişmiş olabilir) ve
+    // sohbet geçmişine yeni mesajlar eklenmiş olabilir - ikisini de tazele.
+    getCurrentCharacter().then(setCharacter).catch(() => {});
+    setChatRefreshTick((tick) => tick + 1);
   }
 
   if (loading) {
@@ -85,8 +94,9 @@ function App() {
             setCharacter(updated);
             setThrowingItemId(null);
           }}
+          onTurnResolved={handleTurnResolved}
         />
-        <ChatPanel />
+        <ChatPanel refreshKey={chatRefreshTick} />
       </main>
     </div>
   );

@@ -1,56 +1,15 @@
 const express = require("express");
 const { nanoid } = require("nanoid");
-const { characters } = require("../data/store");
-const { getScene } = require("../services/sceneState");
+const { characters, chatHistories } = require("../data/store");
+const { getScene, isBlocked, isPathBlocked } = require("../services/sceneState");
+const { runEnemyTurn } = require("../services/enemyAI");
 
 const router = express.Router();
+const CHAT_SESSION_KEY = "default";
 
-function isBlocked(scene, x, y) {
-  if (x < 0 || y < 0 || x >= scene.width || y >= scene.height) return true;
-  if (scene.obstacles.some((o) => o.x === x && o.y === y)) return true;
-  if (scene.tokens.some((t) => t.x === x && t.y === y)) return true;
-  return false;
-}
-
-// Basit bir yol kontrolü (tam pathfinding değil): kaynaktan hedefe düz bir
-// çizgi (Bresenham) çizip aradaki karelerin bir engelle çakışıp çakışmadığına
-// bakar. Diyagonal/L-şekilli hareketlerde tam isabetli olmayabilir ama
-// "engelin üzerinden atlama" hatasını engellemek için yeterli.
-function bresenhamLine(x0, y0, x1, y1) {
-  const points = [];
-  const dx = Math.abs(x1 - x0);
-  const dy = Math.abs(y1 - y0);
-  const sx = x0 < x1 ? 1 : -1;
-  const sy = y0 < y1 ? 1 : -1;
-  let err = dx - dy;
-  let x = x0;
-  let y = y0;
-
-  while (true) {
-    points.push({ x, y });
-    if (x === x1 && y === y1) break;
-    const e2 = 2 * err;
-    if (e2 > -dy) {
-      err -= dy;
-      x += sx;
-    }
-    if (e2 < dx) {
-      err += dx;
-      y += sy;
-    }
-  }
-  return points;
-}
-
-function isPathBlocked(scene, x0, y0, x1, y1) {
-  const points = bresenhamLine(x0, y0, x1, y1);
-  // İlk nokta (mevcut konum) ve son nokta (hedef, ayrıca isBlocked ile
-  // kontrol ediliyor) hariç aradaki kareleri kontrol et.
-  for (let i = 1; i < points.length - 1; i++) {
-    const { x, y } = points[i];
-    if (scene.obstacles.some((o) => o.x === x && o.y === y)) return true;
-  }
-  return false;
+function getActiveCharacter() {
+  const all = Array.from(characters.values());
+  return all[all.length - 1] ?? null;
 }
 
 router.get("/", (_req, res) => {
@@ -95,8 +54,7 @@ router.post("/move", (req, res) => {
   res.json({ scene, collectedLoot: collected });
 });
 
-router.post("/end-turn", (req, res) => {
-  const scene = getScene();
+function advanceTurn(scene) {
   const order = scene.tokens.map((t) => t.id);
   const currentIndex = order.indexOf(scene.activeTokenId);
   const nextIndex = (currentIndex + 1) % order.length;
@@ -109,8 +67,37 @@ router.post("/end-turn", (req, res) => {
   nextToken.actionAvailable = true;
   nextToken.bonusActionAvailable = true;
   nextToken.movementLeft = nextToken.speed;
+  return nextToken;
+}
 
-  res.json(scene);
+router.post("/end-turn", (req, res) => {
+  const scene = getScene();
+  const enemyMessages = [];
+
+  let activeToken = advanceTurn(scene);
+  // Düşman token'ların sırası tamamen deterministik/scriptli işlenir (ek AI
+  // çağrısı yok), sonra sıra otomatik olarak oyuncuya geri döner.
+  while (activeToken.type === "enemy") {
+    const character = getActiveCharacter();
+    const message = runEnemyTurn(scene, activeToken, character);
+    if (message) enemyMessages.push(message);
+    activeToken = advanceTurn(scene);
+  }
+
+  if (enemyMessages.length) {
+    if (!chatHistories.has(CHAT_SESSION_KEY)) {
+      chatHistories.set(CHAT_SESSION_KEY, []);
+    }
+    const history = chatHistories.get(CHAT_SESSION_KEY);
+    for (const text of enemyMessages) {
+      history.push({ id: nanoid(), role: "gm", text, source: "mock", timestamp: Date.now() });
+    }
+  }
+
+  // Geriye dönük uyumluluk: end-turn geleneksel olarak sahneyi düz (top-level)
+  // döndürüyordu, mevcut testler/frontend `res.body.activeTokenId` gibi
+  // doğrudan erişiyor - sahneyi olduğu gibi yayıp üstüne enemyMessages ekliyoruz.
+  res.json({ ...scene, enemyMessages });
 });
 
 function requirePlayerAction(res) {

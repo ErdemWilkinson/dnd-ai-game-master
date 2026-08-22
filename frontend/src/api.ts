@@ -81,7 +81,7 @@ export function moveToken(tokenId: string, x: number, y: number) {
 }
 
 export function endTurn() {
-  return request<Scene>('/scene/end-turn', { method: 'POST' });
+  return request<Scene & { enemyMessages: string[] }>('/scene/end-turn', { method: 'POST' });
 }
 
 export function useItem(characterId: string, itemId: string) {
