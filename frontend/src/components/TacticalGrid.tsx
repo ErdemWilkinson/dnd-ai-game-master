@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { endTurn, getScene, moveToken, throwItem } from '../api';
+import { attackTarget, endTurn, getScene, moveToken, throwItem } from '../api';
 import type { Character, Scene } from '../types';
 
 interface Props {
@@ -7,6 +7,8 @@ interface Props {
   throwingItemId?: string | null;
   onThrowComplete?: (character: Character) => void;
   onTurnResolved?: (enemyMessages: string[]) => void;
+  onCharacterChange?: (character: Character) => void;
+  onChatActivity?: () => void;
   refreshKey?: number;
 }
 
@@ -15,6 +17,8 @@ export function TacticalGrid({
   throwingItemId = null,
   onThrowComplete,
   onTurnResolved,
+  onCharacterChange,
+  onChatActivity,
   refreshKey = 0,
 }: Props) {
   const [scene, setScene] = useState<Scene | null>(null);
@@ -45,8 +49,21 @@ export function TacticalGrid({
     }
     setError(null);
     try {
-      const { scene: updated } = await moveToken(scene.activeTokenId, x, y);
+      const { scene: updated, narration } = await moveToken(scene.activeTokenId, x, y);
       setScene(updated);
+      if (narration) onChatActivity?.();
+    } catch (e) {
+      setError((e as Error).message);
+    }
+  }
+
+  async function handleAttack(targetTokenId: string) {
+    setError(null);
+    try {
+      const { character, scene: updated } = await attackTarget(characterId, targetTokenId);
+      setScene(updated);
+      onCharacterChange?.(character);
+      onChatActivity?.();
     } catch (e) {
       setError((e as Error).message);
     }
@@ -55,9 +72,15 @@ export function TacticalGrid({
   function handleCellClick(x: number, y: number) {
     if (throwingItemId) {
       handleThrowTarget(x, y);
-    } else {
-      handleMoveTarget(x, y);
+      return;
     }
+    const key = `${x},${y}`;
+    const token = scene?.tokens.find((t) => `${t.x},${t.y}` === key);
+    if (token?.type === 'enemy') {
+      handleAttack(token.id);
+      return;
+    }
+    handleMoveTarget(x, y);
   }
 
   async function handleEndTurn() {
@@ -101,6 +124,9 @@ export function TacticalGrid({
         <button onClick={handleEndTurn}>Turu Bitir</button>
       </div>
 
+      {!throwingItemId && isPlayerTurn && (
+        <p className="throw-hint">Bitişik bir düşmana tıklayarak saldırabilirsin.</p>
+      )}
       {error && <p className="error">{error}</p>}
 
       <div
@@ -123,7 +149,11 @@ export function TacticalGrid({
                 key={key}
                 className={className}
                 onClick={() => handleCellClick(x, y)}
-                title={token?.name ?? loot?.name ?? ''}
+                title={
+                  token
+                    ? `${token.name}${token.hp !== undefined ? ` (${token.hp}/${token.maxHp} HP)` : ''}`
+                    : (loot?.name ?? '')
+                }
               >
                 {token ? token.name[0] : loot ? '◆' : ''}
               </button>

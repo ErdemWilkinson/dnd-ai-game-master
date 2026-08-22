@@ -45,6 +45,11 @@ function App() {
     setChatRefreshTick((tick) => tick + 1);
   }
 
+  function handleChatActivity() {
+    // Hareket/saldırı sonrası otomatik anlatım sohbet geçmişine eklenmiş olabilir.
+    setChatRefreshTick((tick) => tick + 1);
+  }
+
   if (loading) {
     return (
       <div className="app app-centered">
@@ -96,6 +101,8 @@ function App() {
             setThrowingItemId(null);
           }}
           onTurnResolved={handleTurnResolved}
+          onCharacterChange={setCharacter}
+          onChatActivity={handleChatActivity}
         />
       </main>
     </div>

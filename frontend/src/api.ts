@@ -1,4 +1,9 @@
-import type { AppearanceOption, Attributes, Character, ChatMessage, ClassOption, RaceOption, Scene } from './types';
+import type { ActionRoll, AppearanceOption, Attributes, Character, ChatMessage, ClassOption, RaceOption, Scene } from './types';
+
+export interface Narration {
+  text: string;
+  source: 'ai' | 'mock';
+}
 
 const BASE = '/api';
 
@@ -74,9 +79,23 @@ export function getScene() {
 }
 
 export function moveToken(tokenId: string, x: number, y: number) {
-  return request<{ scene: Scene; collectedLoot: unknown }>('/scene/move', {
+  return request<{ scene: Scene; collectedLoot: unknown; narration: Narration | null }>('/scene/move', {
     method: 'POST',
     body: JSON.stringify({ tokenId, x, y }),
+  });
+}
+
+export function attackTarget(characterId: string, targetTokenId: string) {
+  return request<{
+    character: Character;
+    scene: Scene;
+    attackResult: ActionRoll;
+    damage: number;
+    defeated: boolean;
+    narration: Narration;
+  }>('/scene/attack', {
+    method: 'POST',
+    body: JSON.stringify({ characterId, targetTokenId }),
   });
 }
 

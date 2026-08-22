@@ -78,6 +78,8 @@ export interface SceneToken {
   movementLeft: number;
   actionAvailable: boolean;
   bonusActionAvailable: boolean;
+  hp?: number;
+  maxHp?: number;
 }
 
 export interface SceneLoot {

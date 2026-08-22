@@ -44,6 +44,8 @@ function createDefaultScene() {
         movementLeft: 3,
         actionAvailable: true,
         bonusActionAvailable: true,
+        hp: 10,
+        maxHp: 10,
       },
     ],
   };
