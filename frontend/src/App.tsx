@@ -86,6 +86,7 @@ function App() {
           onStartThrow={setThrowingItemId}
           onCancelThrow={() => setThrowingItemId(null)}
         />
+        <ChatPanel refreshKey={chatRefreshTick} />
         <TacticalGrid
           characterId={character.id}
           throwingItemId={throwingItemId}
@@ -96,7 +97,6 @@ function App() {
           }}
           onTurnResolved={handleTurnResolved}
         />
-        <ChatPanel refreshKey={chatRefreshTick} />
       </main>
     </div>
   );

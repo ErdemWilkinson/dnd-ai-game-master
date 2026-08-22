@@ -28,7 +28,8 @@
 
 .app-main {
   display: grid;
-  grid-template-columns: 280px 1fr 320px;
+  /* sol: karakter, orta: sohbet/gunluk (genis), sag: taktik harita */
+  grid-template-columns: 280px 1fr 380px;
   gap: 1rem;
   padding: 1rem;
   align-items: start;
