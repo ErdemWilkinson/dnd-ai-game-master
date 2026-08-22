@@ -248,6 +248,29 @@ Kullanıcının el çizimi diyagram + ekran görüntüsü ile verdiği geri bild
 
 **Bilinen test kırılmaları (kasıtlı slot sistemi değişikliği, tester güncellemeli):** `backend/tests/itemSlots.test.js` + `character.test.js`'teki 2 test eski "chest"/"arms" slot adlarını bekliyor (artık "suit"/"back"). `frontend/CharacterCard.test.tsx`'teki 3 test eski "Göğüs" slot etiketini ve "(boş)" metnini bekliyor (artık ikon/emoji gösteriliyor, metin yok).
 
+## Faz 6 — Çoklu Kullanıcı Altyapısı + Kalıcılık + Oyun Döngüsü
+
+PM'in kendi değerlendirmesi (kullanıcı onayladı): Proje şu ana kadar tek kişilik bir demo gibi çalışıyor — backend'de TEK bir global karakter/sahne/sohbet state'i var, herkes aynı state'i paylaşıyor, ve her şey RAM'de (server restart'ta her şey siliniyor). "Kullanıcılara açma" hedefi için bunlar olmadan ilerlemek anlamsız. Kullanıcı kararı: önce A+B (altyapı), sonra C (oyun döngüsü).
+
+### A) Oturum izolasyonu (öncelik 1, en kritik)
+- [ ] Frontend: ilk ziyarette `crypto.randomUUID()` ile bir session ID üretilip `localStorage`'a kaydedilsin, her API isteğinde bir header (örn. `X-Session-Id`) olarak gönderilsin
+- [ ] Backend: `data/store.js`'teki tüm global state (character, messages/chat, mapState/scene) sessionId'ye göre anahtarlanan Map'lere geçirilsin — her route handler artık "hangi session" sorusuna göre doğru veriyi okumalı/yazmalı
+- [ ] Rate limiter: şimdilik GLOBAL kalabilir (toplam API maliyetini korumak için tek bir uygulama-geneli saatlik limit) — session-başına ayrı kota Faz 6 kapsamı dışı, ileride değerlendirilebilir, TASKS.md'ye not düşülsün
+- [ ] Var olmayan/eskimiş bir sessionId ile gelen istekler için makul bir davranış (örn. otomatik yeni state oluşturma, karakter yoksa 404 zaten mevcut davranışla tutarlı)
+
+### B) Kalıcılık (öncelik 2)
+- [ ] SQLite tabanlı kalıcı depolama eklensin (örn. `better-sqlite3` — ayrı bir DB sunucusu gerektirmez, tek dosya, bu ölçek için yeterli). Character/scene/chat state'i sessionId'ye göre DB'ye yazılsın, backend yeniden başlayınca kaybolmasın
+- [ ] Mevcut in-memory Map yapısı bir "repository" katmanına sarmalanabilir ki ileride DB değişirse route'lar etkilenmesin
+
+### C) Oyun döngüsü tamamlama (öncelik 3, A+B'den sonra)
+- [ ] **Oyuncu ölümü**: HP 0'a inince bir "Game Over" durumu — savaş sona ersin, oyuncuya net bir mesaj/ekran gösterilsin (yeniden başlama seçeneğiyle)
+- [ ] **Seviye/XP sistemi**: düşman yenilince XP kazanılsın, eşik aşılınca seviye atlasın (HP/mana/attribute artışı — basit bir formül yeterli, 5e'nin tam XP tablosu şart değil)
+- [ ] **Büyü/yetenek seçimi**: Büyücü/Rahip gibi mana kullanan sınıflar için genel "saldır"dan ayrı, seçilebilir 2-3 basit büyü (örn. "Ateş Topu" — hasar, "İyileştir" — HP yenileme) eklensin, her biri mana harcasın
+
+### Not (düşük öncelik, bu fazda ele alınmayacak)
+- Silah ikonları eksik (asset setinde yoktu, emoji fallback kullanılıyor) — ayrı bir asset kaynağı gerekir
+- Proje henüz hiçbir yerde deploy edilmedi, sadece localhost'ta çalışıyor — deploy/hosting kararı ayrı bir konuşma konusu
+
 ## Notlar
 - FRP (`C:\Users\erdem\OneDrive\Masaüstü\FRP`) yalnızca konsept referansıdır, kod kopyalanmayacak. Kök `.gitignore` ile git takibi dışında.
 - Değişiklik/karar gerektiren konularda PM'e (bu session) danışın, kullanıcıya sormadan büyük mimari karar almayın.
