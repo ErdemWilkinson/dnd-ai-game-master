@@ -93,8 +93,12 @@ export function TacticalGrid({
     }
     const key = `${x},${y}`;
     const token = scene?.tokens.find((t) => `${t.x},${t.y}` === key);
-    if (castingSpellId && token?.type === 'enemy') {
-      handleCastTarget(token.id);
+    if (castingSpellId) {
+      if (token?.type === 'enemy') {
+        handleCastTarget(token.id);
+      }
+      // Büyü hedef-seç modundayken düşman olmayan bir hücreye tıklamak
+      // no-op olmalı - yanlışlıkla hareket ettirmemeli.
       return;
     }
     if (token?.type === 'enemy') {
