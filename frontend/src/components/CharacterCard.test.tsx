@@ -1,8 +1,14 @@
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen, within } from '@testing-library/react';
+import { render, screen, within, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { CharacterCard } from './CharacterCard';
+import * as api from '../api';
 import type { Character } from '../types';
+
+// CharacterCard, use/equip/drop için '../api'yi doğrudan çağırıyor (prop
+// olarak enjekte edilmiyor). Slota tıklayınca çıkarma akışını test etmek
+// için gerçek fetch'e gitmesini engellemek adına burada mock'luyoruz.
+vi.mock('../api');
 
 const character: Character = {
   id: 'c1',
@@ -15,9 +21,9 @@ const character: Character = {
   mana: { current: 0, max: 0 },
   attributes: { str: 11, dex: 10, con: 12, int: 10, wis: 10, cha: 10 },
   inventory: [
-    { id: 'i1', name: 'Kısa Kılıç', equipped: false, slot: 'hand' },
-    { id: 'i2', name: 'Deri Zırh', equipped: true, slot: 'chest' },
-    { id: 'i3', name: 'İksir (Küçük İyileştirme)', equipped: false, slot: null },
+    { id: 'i1', name: 'Kısa Kılıç', equipped: false, slot: 'hand', icon: null },
+    { id: 'i2', name: 'Deri Zırh', equipped: true, slot: 'suit', icon: '/icons/suit.png' },
+    { id: 'i3', name: 'İksir (Küçük İyileştirme)', equipped: false, slot: null, icon: null },
   ],
 };
 
@@ -78,30 +84,85 @@ describe('CharacterCard — Faz 3-E: fırlatma tetikleme', () => {
   });
 });
 
-describe('CharacterCard — Faz 4-C: ekipman paper-doll', () => {
-  it('6 slotu da etiketleriyle render eder', () => {
+describe('CharacterCard — Faz 5-3: SS13 tarzı ikonlu paper-doll', () => {
+  const ALL_SLOT_LABELS = [
+    'Baş', 'Maske', 'Gözlük', 'Kulak', 'Boyun', 'Sırt',
+    'Zırh', 'Üst Giysi', 'Eldiven', 'Kemer', 'Ayakkabı', 'Aksesuar', 'El',
+  ];
+
+  it('13 SS13 slotunun hepsini etiketleriyle render eder', () => {
     render(<CharacterCard character={character} />);
-    for (const label of ['Baş', 'Göğüs', 'Kollar', 'El', 'Bacaklar', 'Ayaklar']) {
+    for (const label of ALL_SLOT_LABELS) {
       expect(screen.getByText(label)).toBeInTheDocument();
     }
   });
 
-  it('kuşanılmış eşyayı doğru slotta gösterir, boş slotlar "(boş)" yazar', () => {
+  it('kuşanılmış eşyayı doğru slotta ikonuyla gösterir ("filled" class)', () => {
     render(<CharacterCard character={character} />);
-    const chestSlot = screen.getByText('Göğüs').closest('.paper-doll-slot') as HTMLElement;
-    expect(within(chestSlot).getByText('Deri Zırh')).toBeInTheDocument();
-    expect(chestSlot).toHaveClass('filled');
-
-    const headSlot = screen.getByText('Baş').closest('.paper-doll-slot') as HTMLElement;
-    expect(within(headSlot).getByText('(boş)')).toBeInTheDocument();
-    expect(headSlot).not.toHaveClass('filled');
+    const suitSlot = screen.getByText('Zırh').closest('.paper-doll-slot') as HTMLElement;
+    expect(suitSlot).toHaveClass('filled');
+    const img = within(suitSlot).getByRole('img', { name: 'Deri Zırh' });
+    expect(img).toHaveAttribute('src', '/icons/suit.png');
   });
 
-  it('kuşanılmamış (equipped: false) bir eşya paper-doll\'da gösterilmez, sadece slot boş kalır', () => {
+  it('boş bir slot (ikonu olan türden) "filled" class almaz, yer tutucu "·" gösterir', () => {
     render(<CharacterCard character={character} />);
-    // Kısa Kılıç equipped:false, "El" slotu boş görünmeli
+    const headSlot = screen.getByText('Baş').closest('.paper-doll-slot') as HTMLElement;
+    expect(headSlot).not.toHaveClass('filled');
+    expect(within(headSlot).getByText('·')).toBeInTheDocument();
+  });
+
+  it('kuşanılmamış (equipped: false) bir eşya paper-doll\'da gösterilmez, slot boş kalır', () => {
+    render(<CharacterCard character={character} />);
+    // Kısa Kılıç equipped:false, "El" slotu boş görünmeli (glyph fallback ⚔ değil, boş hâli)
     const handSlot = screen.getByText('El').closest('.paper-doll-slot') as HTMLElement;
-    expect(within(handSlot).getByText('(boş)')).toBeInTheDocument();
+    expect(handSlot).not.toHaveClass('filled');
+  });
+
+  it('"hand" slotu (asset setinde ikonu yok) boşken bile ⚔ emoji fallback\'i gösterir', () => {
+    // Not: SLOT_FALLBACK_GLYPH sadece 'hand' için tanımlı ve equippedItem'dan
+    // bağımsız render ediliyor (bkz. CharacterCard.tsx: glyph ?? '·') — yani
+    // "El" slotu boşken de ⚔ görünüyor, dolu olduğunda ikon varsa ikon
+    // gösteriliyor. Bu, tester tarafından bilinçli belgelenen bir davranış.
+    render(<CharacterCard character={character} />);
+    const handSlot = screen.getByText('El').closest('.paper-doll-slot') as HTMLElement;
+    expect(within(handSlot).getByText('⚔')).toBeInTheDocument();
+  });
+
+  it('dolu bir slota tıklamak eşyayı çıkarır (equipItem çağrılır), boş slot tıklanamaz (disabled)', async () => {
+    vi.mocked(api.equipItem).mockResolvedValue({
+      character: { ...character, inventory: character.inventory.map((i) => (i.id === 'i2' ? { ...i, equipped: false } : i)) },
+    });
+    const onCharacterChange = vi.fn();
+    const user = userEvent.setup();
+    render(<CharacterCard character={character} onCharacterChange={onCharacterChange} />);
+
+    const suitSlot = screen.getByText('Zırh').closest('.paper-doll-slot') as HTMLElement;
+    expect(suitSlot).not.toBeDisabled();
+    await user.click(suitSlot);
+    await waitFor(() => expect(onCharacterChange).toHaveBeenCalled());
+    expect(api.equipItem).toHaveBeenCalledWith('c1', 'i2');
+
+    const headSlot = screen.getByText('Baş').closest('.paper-doll-slot') as HTMLElement;
+    expect(headSlot).toBeDisabled();
+  });
+
+  it('envanter listesindeki eşya ikonu varsa küçük bir thumbnail gösterir', () => {
+    // Not: thumbnail'de alt="" kullanılıyor (isim zaten yanında yazılı olduğu
+    // için dekoratif kabul ediliyor) — bu da erişilebilirlik ağacında "img"
+    // rolünü kaldırıyor, o yüzden CSS class ile sorguluyoruz, getByRole ile değil.
+    render(<CharacterCard character={character} />);
+    const inventoryList = document.querySelector('.inventory-list') as HTMLElement;
+    const zirhRow = within(inventoryList).getByText(/Deri Zırh/).closest('li')!;
+    const thumb = zirhRow.querySelector('img.inventory-icon');
+    expect(thumb).toHaveAttribute('src', '/icons/suit.png');
+  });
+
+  it('envanterdeki ikonu olmayan eşya (Kısa Kılıç, hand) thumbnail göstermez', () => {
+    render(<CharacterCard character={character} />);
+    const inventoryList = document.querySelector('.inventory-list') as HTMLElement;
+    const kilicRow = within(inventoryList).getByText(/Kısa Kılıç/).closest('li')!;
+    expect(kilicRow.querySelector('img.inventory-icon')).not.toBeInTheDocument();
   });
 
   it('slotu olmayan eşyada (İksir) Kuşan/Çıkar butonu gösterilmez', () => {

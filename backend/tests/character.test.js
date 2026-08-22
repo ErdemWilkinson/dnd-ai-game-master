@@ -97,7 +97,7 @@ describe("POST /api/character/create", () => {
     expect(res.body.inventory.length).toBeGreaterThan(0);
   });
 
-  it("Faz 4-C: her envanter eşyasına doğru ekipman slotu atanır", async () => {
+  it("Faz 4-C: her envanter eşyasına doğru ekipman slotu atanır (Faz 5-3: SS13 slot adları)", async () => {
     const app = buildApp();
     const res = await request(app)
       .post("/api/character/create")
@@ -108,12 +108,27 @@ describe("POST /api/character/create", () => {
     const potion = res.body.inventory.find((i) => i.name.includes("ksir"));
 
     expect(sword.slot).toBe("hand");
-    expect(armor.slot).toBe("chest");
+    expect(armor.slot).toBe("suit");
     expect(potion.slot).toBeNull();
     // Her eşyanın slot alanı var (undefined değil, açıkça null ya da bir string)
     for (const item of res.body.inventory) {
       expect(item).toHaveProperty("slot");
     }
+  });
+
+  it("Faz 5-3: her envanter eşyasına slotuna göre icon alanı atanır (hand hariç, ikon yok)", async () => {
+    const app = buildApp();
+    const res = await request(app)
+      .post("/api/character/create")
+      .send({ name: "Aragorn", raceId: "human", classId: "fighter" });
+
+    const armor = res.body.inventory.find((i) => i.name === "Deri Zırh");
+    const sword = res.body.inventory.find((i) => i.name === "Kısa Kılıç");
+    const potion = res.body.inventory.find((i) => i.name.includes("ksir"));
+
+    expect(armor.icon).toBe("/icons/suit.png");
+    expect(sword.icon).toBeNull(); // hand slotu için asset setinde ikon yok
+    expect(potion.icon).toBeNull(); // slotu yok, ikonu da yok
   });
 
   it("attributes gönderilmeden istek atılırsa sunucu kendi D20 zarını atar ve ırk bonusunu uygular", async () => {

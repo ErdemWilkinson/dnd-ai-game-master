@@ -234,9 +234,17 @@ Kullanıcının el çizimi diyagram + ekran görüntüsü ile verdiği geri bild
 - [x] Frontend: `TacticalGrid.test.tsx`'e bitişik-düşmana-tıkla-saldır testleri (attackTarget çağrılıyor/moveToken çağrılmıyor, onCharacterChange/onChatActivity tetikleniyor, boş hücre hâlâ hareket ediyor, ipucu metni doğru koşullarda görünüyor, tooltip HP gösteriyor)
 - [x] Tarayıcıda (Playwright) uçtan uca canlı doğrulama: hareket sonrası anlatım sohbete düştü ("Bir an için sessizlik çöküyor, sonra uzaktan boğuk bir kükreme duyuluyor."), düşman birkaç turda yaklaşıp bitişik olunca oyuncuya saldırdı (4 hasar, HP 12→8, doğru mesaj formatı: "Goblin sana vuruyor! 4 hasar aldın. (18+2=20 vs 12, HP: 8/12)"), oyuncu karşı saldırdı (Aksiyon ✗'e döndü, "Saldırın hedefi buluyor, ama karşı taraf henüz düşmedi." sohbete düştü). Konsol/sayfa hatası yok.
 - [x] Test durumu: backend **159/159**, frontend **44/44**, tsc+vite build temiz.
-- [ ] İkon envanteri asset entegre edildi (commit 3550ebe) — görsel QA (Playwright screenshot) bekleniyor
+- [x] İkon envanteri (commit 3550ebe) test + görsel QA'sı tamamlandı — bkz. aşağı
 
-**Faz 5 madde 1-2 KAPANDI.** Madde 3 (ikon envanteri) coder tarafı bitti, tester QA'sı bekleniyor.
+**Faz 5 madde 1-2 KAPANDI.**
+
+**Faz 5 madde 3 (ikon envanteri) test/QA sonucu:**
+- Backend testleri SS13 slot adlarına (chest→suit, arms→back) güncellendi + yeni testler eklendi: `itemSlots.test.js`'e `getIconForSlot` testleri (bilinen slot→doğru yol, "hand"→null, bilinmeyen slot→null, tüm SLOTS'un SLOT_ICONS'ta karşılığı var) ve 13 slotun tam listesi; `character.test.js`'e create-time icon ataması testi (armor→`/icons/suit.png`, hand-slotlu silah→null çünkü asset setinde silah ikonu yok, slotsuz eşya→null).
+- Frontend `CharacterCard.test.tsx` Faz 5-3'e göre baştan yazıldı: 13 slotun etiketleriyle render edilmesi, dolu slotun ikonuyla+`filled` class'ıyla gösterilmesi, boş slotun "·" yer tutucusu, "hand" slotunun boşken bile ⚔ emoji fallback göstermesi (equippedItem'dan bağımsız render — bilinçli belgelendi), dolu bir slota tıklamanın eşyayı çıkarması (`equipItem` çağrısı, mock'landı) ve boş slotun disabled olması, envanter listesindeki ikon thumbnail'lerinin doğru/yanlış eşyalarda görünüp görünmemesi.
+- Test durumu: backend **165/165**, frontend **49/49**, tsc+vite build temiz.
+- **Tarayıcıda (Playwright) görsel QA — kritik, çünkü coder screenshot alamamıştı:** 13 slotlu paper-doll doğru render edildi (3 sütun), tüm ikonlar gerçekten yüklendi (`naturalWidth: 32`, `complete: true` — DOM'da kırık/placeholder img yok), "Zırh" slotundaki ikon zoom'lanmış ekran görüntüsünde net bir zırh/yelek sprite'ı olarak tanındı (ERROR/bozuk görüntü YOK), "El" slotu ⚔ emoji fallback'i doğru gösterdi, boş slotlar "·" gösterdi, dolu slota tıklayınca eşya başarıyla çıkarıldı (paper-doll güncellendi). **CC BY-SA 3.0 atıf notu sayfanın altında gerçekten görünüyor**: "İkonlar /tg/station projesinden, CC BY-SA 3.0 lisansı altında alınmıştır (github.com/tgstation/tgstation)." Konsol/sayfa hatası yok (sadece beklenen başlangıç 404'ü).
+
+**Faz 5 (madde 1, 2, 3) TAMAMEN KAPANDI.** Bilinen açık bug yok.
 
 **Bilinen test kırılmaları (kasıtlı slot sistemi değişikliği, tester güncellemeli):** `backend/tests/itemSlots.test.js` + `character.test.js`'teki 2 test eski "chest"/"arms" slot adlarını bekliyor (artık "suit"/"back"). `frontend/CharacterCard.test.tsx`'teki 3 test eski "Göğüs" slot etiketini ve "(boş)" metnini bekliyor (artık ikon/emoji gösteriliyor, metin yok).
 

@@ -124,9 +124,25 @@ Otomatik testlerle doğrulanan davranış: backend **159/159**, frontend **44/44
 
 **Tarayıcıda uçtan uca canlı doğrulama (Playwright, 2026-08-22):** Karakter oluştur → hareket et (anlatım sohbete düştü: "Bir an için sessizlik çöküyor, sonra uzaktan boğuk bir kükreme duyuluyor.") → birkaç "Turu Bitir" ile düşmanın yaklaşmasını bekle → bitişik olunca düşman otomatik saldırdı (4 hasar, HP 12→8, "Goblin sana vuruyor! 4 hasar aldın. (18+2=20 vs 12, HP: 8/12)") → bitişik düşmana tıklayıp karşı saldırdım (Aksiyon ✗'e döndü, sonuç sohbete düştü). Konsol/sayfa hatası yok.
 
-**Faz 5 madde 1-2 KAPANDI** — bilinen açık bug yok. **Madde 3 (ikon tabanlı envanter/ekipman, SS13 HUD referansı) asset bekliyor — henüz başlanmadı.**
+**Faz 5 madde 1-2 KAPANDI** — bilinen açık bug yok.
+
+## Faz 5 madde 3 — SS13 tarzı ikonlu envanter/ekipman
+
+Otomatik testlerle doğrulanan davranış: backend **165/165**, frontend **49/49**, tsc+vite build temiz.
+
+- [x] 13 SS13 slotu (baş/maske/gözlük/kulak/boyun/sırt/zırh/üst giysi/eldiven/kemer/ayakkabı/aksesuar/el) doğru etiketleriyle render ediliyor
+- [x] Her eşyaya karakter oluşturulurken slotuna göre doğru `icon` alanı atanıyor (`/icons/<slot>.png`); "el" slotundaki silahlar için asset setinde ikon yok, `icon: null` dönüyor (frontend emoji fallback ⚔ kullanıyor)
+- [x] Dolu slot ikonuyla + altın "filled" çerçeveyle gösteriliyor, boş slot "·" yer tutucusu gösteriyor
+- [x] Dolu bir slota tıklamak eşyayı çıkarıyor (aynı `equipItem`/toggle mantığı — swap, aynı slotta yeni eşya kuşanılınca eskisinin otomatik çıkması sayesinde zaten sağlanıyor), boş slot tıklanamıyor (disabled)
+- [x] Envanter listesindeki her eşya (ikonu varsa) küçük bir thumbnail gösteriyor
+
+**Tarayıcıda (Playwright) görsel QA — TAMAMLANDI (2026-08-22), kritik çünkü coder hiç canlı render görmemişti:** 13 slotlu paper-doll 3 sütunlu düzende doğru render edildi, tüm ikonlar gerçekten yüklendi (DOM'da `naturalWidth: 32`, `complete: true` — kırık/placeholder img yok), "Zırh" slotundaki ikon yakın çekim ekran görüntüsünde net bir zırh/yelek sprite'ı olarak tanındı (ERROR/bozuk görüntü YOK), "El" slotu ⚔ emoji fallback'i doğru gösterdi, dolu slota tıklayınca eşya başarıyla çıkarıldı. **CC BY-SA 3.0 atıf notu sayfa altında gerçekten görünüyor**: "İkonlar /tg/station projesinden, CC BY-SA 3.0 lisansı altında alınmıştır (github.com/tgstation/tgstation)." Konsol/sayfa hatası yok.
+
+**Faz 5 (madde 1, 2, 3) TAMAMEN KAPANDI** — bilinen açık bug yok.
 
 ## Bilinen kısıtlar (bug değil, kayıt altında)
+- SS13 slot listesinde ayrı bir "kalkan" slotu yok — Kalkan eşyası en yakın karşılık olan "back" (sırt) slotuna atanmış, PM/coder kararı, tutarlı davranıyor.
+- Silahlar (hand slotu) için tgstation asset setinde ikon yok — frontend metin/emoji fallback (⚔) kullanıyor, kapsam dışı değil ama görsel olarak diğer slotlardan farklı.
 - `frontend/src/data/dndNames.ts`, backend `data/dnd.js` ile elle senkron tutulması gereken statik bir kopya — ırk/sınıf listesi değişirse ikisi de güncellenmeli.
 - Aksiyon ekonomisi kontrolü backend'de `/scene/item/use` ve `/scene/item/throw`'da uygulanıyor; grid hareketi (`/scene/move`) ayrı bir kaynaktan (movementLeft) yönetiliyor — PM onaylı kapsam, bug değil.
 - Düşman AI tamamen scriptli/deterministik (greedy hareket + basit D20 saldırı) — karmaşık strateji, kapak/yükseklik mekaniği ve AI görsel üretimi Faz 4 kapsamı dışında bırakıldı (kullanıcı kararı).
