@@ -8,7 +8,7 @@ vi.mock('../api');
 
 function sceneWith(
   activeTokenId: string,
-  tokenOverrides: { actionAvailable?: boolean; bonusActionAvailable?: boolean } = {},
+  tokenOverrides: { actionAvailable?: boolean; bonusActionAvailable?: boolean; movementLeft?: number } = {},
 ) {
   return {
     id: 's1',
@@ -27,6 +27,7 @@ function sceneWith(
         x: 0,
         y: 0,
         speed: 3,
+        movementLeft: 3,
         actionAvailable: true,
         bonusActionAvailable: true,
         ...tokenOverrides,
@@ -38,6 +39,7 @@ function sceneWith(
         x: 1,
         y: 0,
         speed: 3,
+        movementLeft: 3,
         actionAvailable: true,
         bonusActionAvailable: true,
       },
@@ -163,5 +165,21 @@ describe('TacticalGrid — Faz 3-C: Aksiyon ekonomisi göstergesi', () => {
     render(<TacticalGrid characterId="char-1" />);
     await waitFor(() => expect(screen.getByText(/Aksiyon:/)).toBeInTheDocument());
     expect(screen.getByText('Aksiyon: ✗ · Bonus: ✓')).toBeInTheDocument();
+  });
+});
+
+describe('TacticalGrid — Faz 4 Bug B: hareket ekonomisi göstergesi', () => {
+  it('oyuncunun kalan/maks hareket hakkını gösterir', async () => {
+    vi.mocked(api.getScene).mockResolvedValue(sceneWith('player', { movementLeft: 2 }));
+    render(<TacticalGrid characterId="char-1" />);
+    await waitFor(() => expect(screen.getByText(/Hareket:/)).toBeInTheDocument());
+    expect(screen.getByText('Hareket: 2/3')).toBeInTheDocument();
+  });
+
+  it('hareket hakkı tükenince 0/max gösterir', async () => {
+    vi.mocked(api.getScene).mockResolvedValue(sceneWith('player', { movementLeft: 0 }));
+    render(<TacticalGrid characterId="char-1" />);
+    await waitFor(() => expect(screen.getByText(/Hareket:/)).toBeInTheDocument());
+    expect(screen.getByText('Hareket: 0/3')).toBeInTheDocument();
   });
 });

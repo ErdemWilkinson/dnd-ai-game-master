@@ -122,10 +122,77 @@ describe("POST /api/scene/move", () => {
 
   it("başka bir token'ın üzerine hareket engellenir", async () => {
     const app = buildApp();
-    // goblin-1 varsayılan (8,2)'de duruyor; player speed 4 ile oraya ulaşamaz zaten (mesafe 8),
+    // goblin-1 varsayılan (8,2)'de duruyor; player speed 5 ile oraya ulaşamaz zaten (mesafe 8),
     // bu yüzden doğrudan blocked-by-token davranışını token'ları birbirine yaklaştırarak test edemiyoruz
     // Faz 1'de bunu manuel QA'e not düştüm (bkz. QA_NOTES.md).
     expect(true).toBe(true);
+  });
+
+  it("Faz 4 Bug A: hedef kare boş olsa bile yol arada bir engelden geçiyorsa hareket reddedilir", async () => {
+    const app = buildApp();
+    // player (1,1) -> (4,2): mesafe 4 (menzil içi), düz çizgi (Bresenham) (3,2)
+    // engelinden geçiyor. (4,2)'nin kendisi boş bir kare.
+    const res = await request(app)
+      .post("/api/scene/move")
+      .send({ tokenId: "player", x: 4, y: 2 });
+    expect(res.status).toBe(400);
+    expect(res.body.error).toMatch(/yol.*engel/i);
+
+    // Token gerçekten hareket etmemiş olmalı
+    const scene = await request(app).get("/api/scene");
+    const playerToken = scene.body.tokens.find((t) => t.id === "player");
+    expect(playerToken.x).toBe(1);
+    expect(playerToken.y).toBe(1);
+  });
+
+  it("Faz 4 Bug A: yol açıksa (engelsiz) menzil içi hareket normal çalışmaya devam eder (regresyon)", async () => {
+    const app = buildApp();
+    const res = await request(app)
+      .post("/api/scene/move")
+      .send({ tokenId: "player", x: 2, y: 1 }); // düz, engelsiz bir çizgi
+    expect(res.status).toBe(200);
+  });
+
+  it("Faz 4 Bug B: aynı turda ardışık hareketlerin toplam mesafesi movementLeft'i aşarsa reddedilir", async () => {
+    const app = buildApp();
+    // player speed 5. Önce 3 kare hareket (kalan: 2), sonra 3 kare daha istenirse
+    // toplam kümülatif mesafe (3+3=6) budget'i (5) aştığı için reddedilmeli.
+    const first = await request(app)
+      .post("/api/scene/move")
+      .send({ tokenId: "player", x: 4, y: 1 }); // mesafe 3, engelsiz düz çizgi
+    expect(first.status).toBe(200);
+    expect(first.body.scene.tokens.find((t) => t.id === "player").movementLeft).toBe(2);
+
+    const second = await request(app)
+      .post("/api/scene/move")
+      .send({ tokenId: "player", x: 4, y: 4 }); // mesafe 3, ama kalan sadece 2
+    expect(second.status).toBe(400);
+    expect(second.body.error).toMatch(/menzil/i);
+  });
+
+  it("Faz 4 Bug B: kalan hareket hakkı dahilindeki ikinci hareket kabul edilir", async () => {
+    const app = buildApp();
+    const first = await request(app)
+      .post("/api/scene/move")
+      .send({ tokenId: "player", x: 3, y: 1 }); // mesafe 2, kalan: 3
+    expect(first.status).toBe(200);
+
+    const second = await request(app)
+      .post("/api/scene/move")
+      .send({ tokenId: "player", x: 5, y: 1 }); // mesafe 2, kalan (3) dahilinde
+    expect(second.status).toBe(200);
+    expect(second.body.scene.tokens.find((t) => t.id === "player").movementLeft).toBe(1);
+  });
+
+  it("Faz 4 Bug B: end-turn ile sıra tekrar oyuncuya gelince movementLeft speed'e sıfırlanır", async () => {
+    const app = buildApp();
+    await request(app).post("/api/scene/move").send({ tokenId: "player", x: 4, y: 1 }); // mesafeyi tüket
+
+    await request(app).post("/api/scene/end-turn").send({}); // goblin'e geç
+    const res = await request(app).post("/api/scene/end-turn").send({}); // tekrar oyuncuya
+
+    const playerToken = res.body.tokens.find((t) => t.id === "player");
+    expect(playerToken.movementLeft).toBe(playerToken.speed);
   });
 });
 
