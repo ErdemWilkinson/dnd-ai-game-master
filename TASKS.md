@@ -212,6 +212,8 @@ Kullanıcının elle test edip verdiği geri bildirim. Kullanıcı kararları: d
 
 **⚠️ Bulgu — panel yerleşimi onaylanan spesifikasyona ters:** Hem Faz 3-B ("Macera günlüğü (sohbet) merkezde, taktik kare kenarda... kullanıcı onayladı") hem Faz 4-B ("sol=karakter bilgisi, orta=günlük/sohbet, sağ=taktik harita") açıkça **sohbetin ORTADA** olmasını istiyor. Ama gerçek render'da (`App.css:31` — `grid-template-columns: 280px 1fr 320px`, DOM sırası `CharacterCard → TacticalGrid → ChatPanel`) **taktik harita ortada (1fr, en geniş sütun), sohbet sağda** görünüyor — iki fazdır tam tersi. Bu Faz 4'ün yeni bir regresyonu değil (DOM/CSS sırası muhtemelen Faz 1'den beri hiç değişmedi), ama iki ayrı kullanıcı onayına rağmen hiç düzeltilmemiş. Ekran görüntüsüyle doğrulandı. Düzeltme küçük: `App.tsx`'te `<TacticalGrid>` ve `<ChatPanel>`'in DOM sırasını değiştirmek yeterli olabilir (grid-template-columns'un orta sütunu zaten `1fr` genişlikte, sohbete daha uygun).
 
+**[x] Düzeltildi (commit 673f7f0, coder):** `App.tsx`'te `ChatPanel`/`TacticalGrid` DOM sırası değiştirildi (artık orta sütun sohbet, sağ sütun harita). `App.css`'te sağ sütun genişliği 320px→380px yapıldı (10 genişlikli taktik grid'in daha rahat sığması için). tsc+build temiz, frontend 38/38 yeşil. Görsel olarak tekrar doğrulama (screenshot) tester'da.
+
 ## Notlar
 - FRP (`C:\Users\erdem\OneDrive\Masaüstü\FRP`) yalnızca konsept referansıdır, kod kopyalanmayacak. Kök `.gitignore` ile git takibi dışında.
 - Değişiklik/karar gerektiren konularda PM'e (bu session) danışın, kullanıcıya sormadan büyük mimari karar almayın.
