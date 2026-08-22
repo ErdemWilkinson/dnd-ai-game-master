@@ -1,2 +1,6 @@
 # Eski FRP prototipi - sadece konsept referansı, projeye dahil degil, git'e girmez
 FRP/
+
+# tgstation kaynak zip'i (193MB) - sadece assets/tgstation-icons/ altina cikarilan
+# ikonlari kullaniyoruz, tam repo git'e girmesin
+tgstation-master.zip
