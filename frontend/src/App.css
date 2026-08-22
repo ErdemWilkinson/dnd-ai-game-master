@@ -26,6 +26,13 @@
   letter-spacing: 0.12em;
 }
 
+.app-footer {
+  padding: 0.5rem 1.5rem 1rem;
+  font-size: 0.65rem;
+  color: var(--parchment-dim);
+  opacity: 0.6;
+}
+
 .app-main {
   display: grid;
   /* sol: karakter, orta: sohbet/gunluk (genis), sag: taktik harita */
@@ -230,18 +237,31 @@
 
 .paper-doll {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 0.4rem;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.35rem;
   margin: 0.75rem 0;
 }
 
 .paper-doll-slot {
   display: flex;
   flex-direction: column;
+  align-items: center;
+  gap: 0.2rem;
   background: var(--bg-inset);
   border: 1px solid rgba(201, 163, 92, 0.15);
   border-radius: 4px;
-  padding: 0.4rem;
+  padding: 0.35rem 0.2rem;
+  cursor: default;
+  font-family: var(--font-body);
+}
+
+.paper-doll-slot:not(:disabled) {
+  cursor: pointer;
+}
+
+.paper-doll-slot:not(:disabled):hover {
+  border-color: #e07a5f;
+  box-shadow: 0 0 8px rgba(224, 122, 95, 0.3);
 }
 
 .paper-doll-slot.filled {
@@ -249,18 +269,31 @@
   box-shadow: inset 0 0 6px rgba(242, 193, 78, 0.15);
 }
 
+.slot-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  font-size: 1rem;
+  color: var(--parchment-dim);
+}
+
+.slot-icon img {
+  image-rendering: pixelated;
+  width: 28px;
+  height: 28px;
+}
+
 .slot-label {
-  font-size: 0.6rem;
+  font-size: 0.55rem;
   text-transform: uppercase;
   color: var(--parchment-dim);
-  letter-spacing: 0.05em;
+  letter-spacing: 0.03em;
+  text-align: center;
 }
 
-.slot-item {
-  font-size: 0.75rem;
-}
-
-.paper-doll-slot.filled .slot-item {
+.paper-doll-slot.filled .slot-label {
   color: var(--gold);
 }
 
@@ -301,6 +334,17 @@
   display: flex;
   flex-direction: column;
   gap: 0.35rem;
+}
+
+.inventory-item-name {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.inventory-icon {
+  image-rendering: pixelated;
+  border-radius: 2px;
 }
 
 .inventory-actions {

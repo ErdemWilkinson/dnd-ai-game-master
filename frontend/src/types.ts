@@ -7,13 +7,27 @@ export interface Attributes {
   cha: number;
 }
 
-export type EquipmentSlot = 'head' | 'chest' | 'arms' | 'legs' | 'feet' | 'hand';
+export type EquipmentSlot =
+  | 'head'
+  | 'mask'
+  | 'glasses'
+  | 'ears'
+  | 'neck'
+  | 'back'
+  | 'suit'
+  | 'under'
+  | 'gloves'
+  | 'belt'
+  | 'shoes'
+  | 'accessories'
+  | 'hand';
 
 export interface InventoryItem {
   id: string;
   name: string;
   equipped: boolean;
   slot: EquipmentSlot | null;
+  icon: string | null;
 }
 
 export interface Character {

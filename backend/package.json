@@ -20,6 +20,7 @@
     "nanoid": "^3.3.11"
   },
   "devDependencies": {
+    "pngjs": "^7.0.0",
     "supertest": "^7.2.2",
     "vitest": "^4.1.11"
   }

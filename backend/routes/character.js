@@ -2,7 +2,7 @@ const express = require("express");
 const { nanoid } = require("nanoid");
 const { RACES, CLASSES, BASE_ATTRIBUTES, ATTRIBUTE_KEYS } = require("../data/dnd");
 const { APPEARANCES } = require("../data/appearances");
-const { getSlotForItem } = require("../data/itemSlots");
+const { getSlotForItem, getIconForSlot } = require("../data/itemSlots");
 const { characters, chatHistories } = require("../data/store");
 const { rollAttributes } = require("../services/dice");
 const { generateOpeningStory, isConfigured } = require("../services/aiGm");
@@ -85,12 +85,16 @@ router.post("/create", (req, res) => {
     hp: { current: cls.baseHp, max: cls.baseHp },
     mana: { current: cls.baseMana, max: cls.baseMana },
     attributes,
-    inventory: cls.startingInventory.map((itemName) => ({
-      id: nanoid(),
-      name: itemName,
-      equipped: false,
-      slot: getSlotForItem(itemName),
-    })),
+    inventory: cls.startingInventory.map((itemName) => {
+      const slot = getSlotForItem(itemName);
+      return {
+        id: nanoid(),
+        name: itemName,
+        equipped: false,
+        slot,
+        icon: getIconForSlot(slot),
+      };
+    }),
   };
 
   characters.set(id, character);

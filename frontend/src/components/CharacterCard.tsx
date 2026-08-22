@@ -3,15 +3,42 @@ import { dropItem, equipItem, useItem } from '../api';
 import { CLASS_NAMES, RACE_NAMES } from '../data/dndNames';
 import type { Character, EquipmentSlot } from '../types';
 
-const SLOT_ORDER: EquipmentSlot[] = ['head', 'chest', 'arms', 'hand', 'legs', 'feet'];
+// SS13 (tgstation ikon seti) tarzı genişletilmiş paper-doll slot düzeni.
+const SLOT_ORDER: EquipmentSlot[] = [
+  'head',
+  'mask',
+  'glasses',
+  'ears',
+  'neck',
+  'back',
+  'suit',
+  'under',
+  'gloves',
+  'belt',
+  'shoes',
+  'accessories',
+  'hand',
+];
 
 const SLOT_LABELS: Record<EquipmentSlot, string> = {
   head: 'Baş',
-  chest: 'Göğüs',
-  arms: 'Kollar',
+  mask: 'Maske',
+  glasses: 'Gözlük',
+  ears: 'Kulak',
+  neck: 'Boyun',
+  back: 'Sırt',
+  suit: 'Zırh',
+  under: 'Üst Giysi',
+  gloves: 'Eldiven',
+  belt: 'Kemer',
+  shoes: 'Ayakkabı',
+  accessories: 'Aksesuar',
   hand: 'El',
-  legs: 'Bacaklar',
-  feet: 'Ayaklar',
+};
+
+// tgstation ikon setinde silah ikonu yok - "hand" slotu için emoji fallback.
+const SLOT_FALLBACK_GLYPH: Partial<Record<EquipmentSlot, string>> = {
+  hand: '⚔',
 };
 
 interface Props {
@@ -128,11 +155,25 @@ export function CharacterCard({
       <div className="paper-doll">
         {SLOT_ORDER.map((slot) => {
           const equippedItem = character.inventory.find((i) => i.slot === slot && i.equipped);
+          const glyph = SLOT_FALLBACK_GLYPH[slot];
           return (
-            <div key={slot} className={`paper-doll-slot ${equippedItem ? 'filled' : ''}`}>
+            <button
+              key={slot}
+              type="button"
+              className={`paper-doll-slot ${equippedItem ? 'filled' : ''}`}
+              onClick={() => equippedItem && handleEquip(equippedItem.id)}
+              disabled={!equippedItem}
+              title={equippedItem ? `${equippedItem.name} (çıkarmak için tıkla)` : SLOT_LABELS[slot]}
+            >
+              <span className="slot-icon">
+                {equippedItem?.icon ? (
+                  <img src={equippedItem.icon} alt={equippedItem.name} width={28} height={28} />
+                ) : (
+                  glyph ?? '·'
+                )}
+              </span>
               <span className="slot-label">{SLOT_LABELS[slot]}</span>
-              <span className="slot-item">{equippedItem?.name ?? '(boş)'}</span>
-            </div>
+            </button>
           );
         })}
       </div>
@@ -146,7 +187,8 @@ export function CharacterCard({
         {character.inventory.map((item) => (
           <li key={item.id} className={item.equipped ? 'equipped' : ''}>
             <div className="inventory-item-row">
-              <span>
+              <span className="inventory-item-name">
+                {item.icon && <img className="inventory-icon" src={item.icon} alt="" width={20} height={20} />}
                 {item.name} {item.equipped && <span className="tag">kuşanıldı</span>}
               </span>
               <div className="inventory-actions">

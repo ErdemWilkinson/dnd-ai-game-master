@@ -105,6 +105,9 @@ function App() {
           onChatActivity={handleChatActivity}
         />
       </main>
+      <footer className="app-footer">
+        İkonlar /tg/station projesinden, CC BY-SA 3.0 lisansı altında alınmıştır (github.com/tgstation/tgstation).
+      </footer>
     </div>
   );
 }
