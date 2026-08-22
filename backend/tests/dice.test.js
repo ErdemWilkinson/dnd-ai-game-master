@@ -2,7 +2,7 @@ import { describe, it, expect, vi, afterEach } from "vitest";
 import { createRequire } from "module";
 
 const require = createRequire(import.meta.url);
-const { rollD20, rollAttributes } = require("../services/dice.js");
+const { rollD20, rollDie, rollAttributes } = require("../services/dice.js");
 const { ATTRIBUTE_KEYS } = require("../data/dnd.js");
 
 afterEach(() => {
@@ -27,6 +27,29 @@ describe("rollD20", () => {
   it("Math.random 0.999... iken maksimum değer 20 döner", () => {
     vi.spyOn(Math, "random").mockReturnValue(0.999999);
     expect(rollD20()).toBe(20);
+  });
+});
+
+describe("rollDie (Faz 4-D: düşman hasarı için genel zar)", () => {
+  it("verilen kenar sayısı (sides) aralığında bir tam sayı döner", () => {
+    for (let i = 0; i < 100; i++) {
+      const value = rollDie(6);
+      expect(Number.isInteger(value)).toBe(true);
+      expect(value).toBeGreaterThanOrEqual(1);
+      expect(value).toBeLessThanOrEqual(6);
+    }
+  });
+
+  it("Math.random 0 iken minimum değer 1 döner", () => {
+    vi.spyOn(Math, "random").mockReturnValue(0);
+    expect(rollDie(6)).toBe(1);
+    expect(rollDie(20)).toBe(1);
+  });
+
+  it("Math.random 0.999... iken maksimum değer (sides) döner", () => {
+    vi.spyOn(Math, "random").mockReturnValue(0.999999);
+    expect(rollDie(6)).toBe(6);
+    expect(rollDie(10)).toBe(10);
   });
 });
 
