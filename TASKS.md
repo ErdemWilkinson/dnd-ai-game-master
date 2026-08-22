@@ -316,6 +316,29 @@ PM'in kendi değerlendirmesi (kullanıcı onayladı): Proje şu ana kadar tek ki
 - Silah ikonları eksik (asset setinde yoktu, emoji fallback kullanılıyor) — ayrı bir asset kaynağı gerekir
 - Proje henüz hiçbir yerde deploy edilmedi, sadece localhost'ta çalışıyor — deploy/hosting kararı ayrı bir konuşma konusu
 
+## Faz 7 — İçerik Çeşitliliği + Deploy Hazırlığı (Postgres geçişi)
+
+Kullanıcı kararı: "inovasyonlara devam et". PM değerlendirmesi: tek sabit sahne/karşılaşma var (kazanınca hiçbir yere ilerlenmiyor), ve proje hâlâ sadece localhost'ta çalışıyor. Deploy için araştırma yapıldı: Render kart istemeyen gerçek bir ücretsiz katman sunuyor ama ücretsiz web servislerinde kalıcı disk YOK (SQLite dosyası silinebilir) — kullanıcı kararı: Render + ücretsiz Postgres'e geçilecek, gerçek kalıcılık korunacak.
+
+### A) İçerik çeşitliliği (coder, hemen başlanabilir)
+- [ ] Tek sabit sahne/düşman kümesi yerine, mevcut karşılaşma temizlenince (tüm düşmanlar yenilince) bir "sonraki alan/karşılaşma"ya geçiş — yeni bir `scenes` veri seti (birkaç farklı oda/düşman kombinasyonu tanımı, D&D temasına uygun) ve bir "encounter cleared → next scene" mantığı
+- [ ] Basit bir ilerleme göstergesi (örn. "1. Karşılaşma / 2. Karşılaşma") — kalıcılığa (Faz 6-B) uygun şekilde DB'ye yazılmalı
+
+### B) Postgres'e geçiş (coder, A'dan bağımsız paralel yapılabilir)
+- [ ] `backend/services/persistence.js`'i hem SQLite (yerel geliştirme/test — mevcut davranış korunur) hem Postgres (üretim) destekleyecek şekilde soyutla: `DATABASE_URL` ortam değişkeni varsa (`pg` paketiyle) Postgres kullan, yoksa mevcut `better-sqlite3`'e düş. Test ortamı (`VITEST=true`) davranışı değişmeyecek.
+- [ ] Postgres için eşdeğer tablo şeması (characters/scenes/chat_histories/sessions) + migration/init script'i
+
+### C) Render deploy hazırlığı (coder, kod/config seviyesinde)
+- [ ] Backend'i tek bir Render Web Service olarak deploy edilebilir hale getir: `PORT` ortam değişkenini Render'ın verdiği porta uysun şekilde kullanmaya devam et (zaten `process.env.PORT` var), `GEMINI_API_KEY`/`DATABASE_URL` gibi secret'ların `.env` dosyası olmadan sadece ortam değişkeninden okunduğunu doğrula
+- [ ] Frontend için `vite build` çıktısının bir Render Static Site olarak deploy edilebilirliğini doğrula, API base URL'i (`localhost:3001` yerine) bir build-time ortam değişkeninden (`VITE_API_BASE`) okuyacak şekilde güncelle
+- [ ] `render.yaml` (Infrastructure-as-Code) dosyası hazırla ki PM/kullanıcı Render'da tek tıkla servisleri tanımlayabilsin
+
+**ÖNEMLİ — coder/tester DIKKAT:** Gerçek Render/GitHub hesabı açma, repo'yu GitHub'a push'lama, ve Render dashboard'unda servisleri kurma adımları PM ile kullanıcı arasında ayrıca yürütülecek (dış hesap işlemleri, sizin yetkinizde değil). Sizin işiniz sadece kodun/config'in deploy'a HAZIR olmasını sağlamak.
+
+### Tester
+- [ ] Yeni sahne geçişi için testler (karşılaşma temizlenince doğru geçiş, ilerlemenin DB'ye yazılıp restart sonrası korunduğu)
+- [ ] Postgres soyutlamasının SQLite davranışını bozmadığını doğrula (mevcut testler hâlâ geçmeli, `DATABASE_URL` yokken SQLite'a düştüğü açıkça test edilsin). Gerçek bir Postgres instance'ı yoksa bu kısmı mock'la/dokümante et, gerçek Postgres bağlantı testi PM ile birlikte deploy aşamasında yapılacak.
+
 ## Notlar
 - FRP (`C:\Users\erdem\OneDrive\Masaüstü\FRP`) yalnızca konsept referansıdır, kod kopyalanmayacak. Kök `.gitignore` ile git takibi dışında.
 - Değişiklik/karar gerektiren konularda PM'e (bu session) danışın, kullanıcıya sormadan büyük mimari karar almayın.
