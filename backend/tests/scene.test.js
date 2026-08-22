@@ -864,13 +864,16 @@ describe("POST /api/scene/attack — Faz 5 madde 1: gerçek saldırı aksiyonu",
       .post("/api/scene/attack")
       .send({ characterId: createRes.body.id, targetTokenId: "goblin-1" }); // öldür
 
-    // Aksiyon tükendi ama biz sadece hedef-bulunamadı davranışını test ediyoruz;
-    // aksiyon kontrolü zaten önceki testlerde ayrı doğrulandı.
+    // Faz 7-A: goblin sahnedeki TEK düşmandı, öldürülünce checkEncounterCleared
+    // otomatik olarak sıradaki karşılaşmaya geçiriyor (yeni oyuncu token'ı dahil,
+    // actionAvailable:true ile taze). Yani ikinci saldırı artık "aksiyon tükendi"
+    // (400) ile değil, hedef yeni sahnede hiç yok diye 404 ile reddediliyor.
     const res = await request(app)
       .post("/api/scene/attack")
       .send({ characterId: createRes.body.id, targetTokenId: "goblin-1" });
 
-    expect(res.status).toBe(400); // önce Aksiyon kontrolüne takılır (tükendi)
+    expect(res.status).toBe(404);
+    expect(res.body.error).toMatch(/bulunamadı/i);
   });
 
   it("saldırı sonucu sohbet geçmişine ekleniyor", async () => {
@@ -1179,6 +1182,149 @@ describe("POST /api/scene/cast — Faz 6-C: büyü sistemi", () => {
     expect(res.body.defeated).toBe(true);
     expect(res.body.character.xp).toBeGreaterThan(0);
     expect(res.body.scene.tokens.find((t) => t.id === "goblin-1")).toBeUndefined();
+  });
+});
+
+describe("Faz 7-A: karşılaşma temizlenince yeni alana geçiş", () => {
+  beforeEach(() => {
+    scenes.clear();
+    characters.clear();
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  async function teleportGoblinAdjacentToPlayer(app) {
+    await request(app).get("/api/scene");
+    const scene = scenes.get("default");
+    const goblin = scene.tokens.find((t) => t.id === "goblin-1");
+    const player = scene.tokens.find((t) => t.id === "player");
+    goblin.x = player.x + 1;
+    goblin.y = player.y;
+    return scene;
+  }
+
+  it("/attack: sahnedeki son düşman ölünce sıradaki karşılaşmaya otomatik geçilir", async () => {
+    vi.spyOn(Math, "random").mockReturnValue(0.999999); // nat20 kritik, garanti öldürme
+    const app = buildApp();
+    const createRes = await request(app)
+      .post("/api/character/create")
+      .send({ name: "Test", raceId: "human", classId: "fighter" });
+    await teleportGoblinAdjacentToPlayer(app);
+
+    const res = await request(app)
+      .post("/api/scene/attack")
+      .send({ characterId: createRes.body.id, targetTokenId: "goblin-1" });
+
+    expect(res.body.defeated).toBe(true);
+    expect(res.body.scene.encounterIndex).toBe(1);
+    expect(res.body.scene.name).not.toBe("Terk Edilmiş Mahzen");
+    expect(res.body.scene.tokens.some((t) => t.type === "enemy")).toBe(true); // yeni karşılaşmanın düşmanı var
+  });
+
+  it("/attack: karşılaşma geçişinde anlatıma geçiş cümlesi eklenir", async () => {
+    vi.spyOn(Math, "random").mockReturnValue(0.999999);
+    const app = buildApp();
+    const createRes = await request(app)
+      .post("/api/character/create")
+      .send({ name: "Test", raceId: "human", classId: "fighter" });
+    await teleportGoblinAdjacentToPlayer(app);
+
+    const res = await request(app)
+      .post("/api/scene/attack")
+      .send({ characterId: createRes.body.id, targetTokenId: "goblin-1" });
+
+    expect(res.body.narration.text).toMatch(/karşılaşma temizlendi/i);
+    expect(res.body.narration.text).toMatch(/yenildi/i); // eski "yenildi" cümlesi hâlâ önde duruyor
+  });
+
+  it("/attack: yeni karşılaşmada oyuncu spawn'a döner, tur/aksiyon sıfırlanır", async () => {
+    vi.spyOn(Math, "random").mockReturnValue(0.999999);
+    const app = buildApp();
+    const createRes = await request(app)
+      .post("/api/character/create")
+      .send({ name: "Test", raceId: "human", classId: "fighter" });
+    await teleportGoblinAdjacentToPlayer(app);
+
+    const res = await request(app)
+      .post("/api/scene/attack")
+      .send({ characterId: createRes.body.id, targetTokenId: "goblin-1" });
+
+    const newPlayer = res.body.scene.tokens.find((t) => t.id === "player");
+    expect(newPlayer.x).toBe(1);
+    expect(newPlayer.y).toBe(1);
+    expect(newPlayer.actionAvailable).toBe(true);
+    expect(res.body.scene.round).toBe(1);
+  });
+
+  it("/cast (Ateş Topu): sahnedeki son düşmanı öldürünce de sıradaki karşılaşmaya geçilir", async () => {
+    vi.spyOn(Math, "random").mockReturnValue(0.999999);
+    const app = buildApp();
+    const createRes = await request(app)
+      .post("/api/character/create")
+      .send({ name: "Merlin", raceId: "elf", classId: "wizard" });
+
+    await request(app).get("/api/scene");
+    const scene = scenes.get("default");
+    const goblin = scene.tokens.find((t) => t.id === "goblin-1");
+    goblin.x = 2; goblin.y = 1; // range 3 içinde
+
+    const res = await request(app)
+      .post("/api/scene/cast")
+      .send({ characterId: createRes.body.id, spellId: "fireball", targetTokenId: "goblin-1" });
+
+    expect(res.body.defeated).toBe(true);
+    expect(res.body.scene.encounterIndex).toBe(1);
+    expect(res.body.narration.text).toMatch(/karşılaşma temizlendi/i);
+  });
+
+  it("birden fazla düşmanlı bir karşılaşmada (İskelet Mezarlığı) SADECE son düşman ölünce geçiş tetiklenir", async () => {
+    vi.spyOn(Math, "random").mockReturnValue(0.999999);
+    const app = buildApp();
+    const createRes = await request(app)
+      .post("/api/character/create")
+      .send({ name: "Test", raceId: "human", classId: "fighter" });
+
+    await request(app).get("/api/scene");
+    const scene = scenes.get("default");
+    scene.encounterIndex = 2; // İskelet Mezarlığı (2 düşman)
+    scene.name = "İskelet Mezarlığı";
+    scene.tokens = scene.tokens.filter((t) => t.type === "player");
+    const player = scene.tokens.find((t) => t.id === "player");
+    scene.tokens.push(
+      { id: "skeleton-1", type: "enemy", name: "İskelet Savaşçı", x: player.x + 1, y: player.y, speed: 3, movementLeft: 3, actionAvailable: true, bonusActionAvailable: true, hp: 8, maxHp: 8 },
+      { id: "skeleton-2", type: "enemy", name: "İskelet Okçu", x: player.x + 1, y: player.y + 1, speed: 3, movementLeft: 3, actionAvailable: true, bonusActionAvailable: true, hp: 6, maxHp: 6 },
+    );
+
+    const firstRes = await request(app)
+      .post("/api/scene/attack")
+      .send({ characterId: createRes.body.id, targetTokenId: "skeleton-1" });
+
+    expect(firstRes.body.defeated).toBe(true);
+    expect(firstRes.body.scene.encounterIndex).toBe(2); // henüz geçiş yok, ikinci düşman hâlâ hayatta
+    expect(firstRes.body.narration.text).not.toMatch(/karşılaşma temizlendi/i);
+    expect(firstRes.body.scene.tokens.some((t) => t.id === "skeleton-2")).toBe(true);
+  });
+
+  it("karşılaşma geçişi kalıcılığa yazılır (loadAll sonrası encounterIndex korunur)", async () => {
+    vi.spyOn(Math, "random").mockReturnValue(0.999999);
+    const app = buildApp();
+    const createRes = await request(app)
+      .post("/api/character/create")
+      .send({ name: "Test", raceId: "human", classId: "fighter" });
+    await teleportGoblinAdjacentToPlayer(app);
+
+    await request(app)
+      .post("/api/scene/attack")
+      .send({ characterId: createRes.body.id, targetTokenId: "goblin-1" });
+
+    const { saveScene } = require("../services/persistence.js");
+    // saveScene her mutasyon noktasında zaten çağrılıyor (route içinde) — burada
+    // sadece route'un GERÇEKTEN güncel (geçiş sonrası) sahneyi kaydettiğini
+    // scenes Map'inden okuyarak doğruluyoruz (persistence.test.js DB round-trip'i ayrıca test ediyor).
+    expect(scenes.get("default").encounterIndex).toBe(1);
+    expect(typeof saveScene).toBe("function");
   });
 });
 

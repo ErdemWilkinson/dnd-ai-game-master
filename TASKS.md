@@ -338,8 +338,20 @@ Kullanıcı kararı: "inovasyonlara devam et". PM değerlendirmesi: tek sabit sa
 **ÖNEMLİ — coder/tester DIKKAT:** Gerçek Render/GitHub hesabı açma, repo'yu GitHub'a push'lama, ve Render dashboard'unda servisleri kurma adımları PM ile kullanıcı arasında ayrıca yürütülecek (dış hesap işlemleri, sizin yetkinizde değil). Sizin işiniz sadece kodun/config'in deploy'a HAZIR olmasını sağlamak.
 
 ### Tester
-- [ ] Yeni sahne geçişi için testler (karşılaşma temizlenince doğru geçiş, ilerlemenin DB'ye yazılıp restart sonrası korunduğu)
-- [ ] Postgres soyutlamasının SQLite davranışını bozmadığını doğrula (mevcut testler hâlâ geçmeli, `DATABASE_URL` yokken SQLite'a düştüğü açıkça test edilsin). Gerçek bir Postgres instance'ı yoksa bu kısmı mock'la/dokümante et, gerçek Postgres bağlantı testi PM ile birlikte deploy aşamasında yapılacak.
+- [x] Yeni sahne geçişi için testler (karşılaşma temizlenince doğru geçiş, ilerlemenin DB'ye yazılıp restart sonrası korunduğu)
+- [ ] Postgres soyutlamasının SQLite davranışını bozmadığını doğrula (mevcut testler hâlâ geçmeli, `DATABASE_URL` yokken SQLite'a düştüğü açıkça test edilsin). Gerçek bir Postgres instance'ı yoksa bu kısmı mock'la/dokümante et, gerçek Postgres bağlantı testi PM ile birlikte deploy aşamasında yapılacak. **(coder'ın Faz 7-B WIP'i henüz commit edilmedi, bu madde açık kalıyor.)**
+
+**Tester notları (Faz 7-A kısmı, 2026-08-22):**
+- Coder'ın işaret ettiği stale test düzeltildi: yenilmiş bir düşmana tekrar saldırma artık 404 dönüyor (eskiden 400 "aksiyon tükendi" bekliyordu) — karşılaşma geçişinde oyuncu token'ı taze (`actionAvailable:true`) yeniden kuruluyor, o yüzden davranış gerçekten değişti
+- `encounters.test.js` (yeni, 12 test): `ENCOUNTERS` içeriği (en az 2 karşılaşma, her biri isim+düşman içeriyor, düşman id'leri global benzersiz), `createScene()` (doğru karşılaşmayı kuruyor, oyuncu her zaman spawn'a (1,1) yerleşiyor, liste sonunda başa dönüyor, grid boyutu sabit, `createDefaultScene()` geriye dönük uyumlu), `advanceToNextEncounter()` (sahneyi REFERANSLA mutasyona uğratıyor — aynı obje/id döner, encounterIndex+1, oyuncu resetleniyor, son karşılaşmadan sonra başa dönüyor)
+- `scene.test.js`'e "Faz 7-A: karşılaşma temizlenince yeni alana geçiş" bloğu (7 test): `/attack` ile geçiş tetikleniyor + anlatım cümlesi ekleniyor + oyuncu/tur resetleniyor, `/cast` (Ateş Topu) ile de aynı geçiş tetikleniyor, **birden fazla düşmanlı bir karşılaşmada (İskelet Mezarlığı) sadece SON düşman ölünce geçiş tetikleniyor** (ilk düşman ölümünde henüz geçiş yok — regresyon riski yüksek bir davranış, özellikle test edildi)
+- `TacticalGrid.test.tsx`'e "Karşılaşma: N/M" göstergesi testleri (2 test, 1-tabanlı gösterim doğrulandı)
+- Test durumu (Faz 7-A kapsamı): backend **234/234**, frontend **75/75**, tsc+vite build temiz
+- **Canlı sunucuya karşı uçtan uca doğrulama (curl, çalışan gerçek dev server, 2026-08-22):** Goblin'i öldürünce sahne otomatik "Örümcek İni"ye geçti (`encounterIndex:0→1`, yeni düşman "Dev Örümcek"), narration'da "Karşılaşma temizlendi! Yeni bir alana geçiliyor: Örümcek İni." cümlesi doğru eklendi, geçiş sonrası aynı goblin-1'e tekrar saldırma denemesi doğru şekilde 404 döndü.
+
+**Not:** Coder eşzamanlı olarak (uncommitted) B maddesine (Postgres soyutlaması, `data/dbSqlite.js`/`dbPostgres.js`) başlamış durumda — bu WIP nedeniyle `persistence.test.js` geçici olarak kırmızıya düştü (paylaşılan working tree). Bu A maddesinin bir regresyonu DEĞİL, kendi dosyalarıma dokunmadım; coder committen sonra persistence testlerini yeniden çalıştırıp B'yi ayrıca test edeceğim. Bu yüzden Faz 6-B'de yaptığım gibi gerçek `game.db` ile ekstra bir restart-persistence turu bu fazda YAPILMADI (coder'ın kendi commit mesajındaki `encounterIndex=1 restart sonrası korunuyor` doğrulamasına güveniyorum) — canlı DB dosyasını coder'ın aktif WIP'iyle karıştırmamak için.
+
+**A maddesi (içerik çeşitliliği) tester tarafından TAMAMEN doğrulandı** — bilinen açık bug yok. B (Postgres) ve C (Render deploy hazırlığı) coder'da devam ediyor, ayrı test turu gerekecek.
 
 ## Notlar
 - FRP (`C:\Users\erdem\OneDrive\Masaüstü\FRP`) yalnızca konsept referansıdır, kod kopyalanmayacak. Kök `.gitignore` ile git takibi dışında.

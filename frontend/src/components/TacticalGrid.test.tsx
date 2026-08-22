@@ -17,6 +17,8 @@ function sceneWith(
     height: 1,
     round: 1,
     activeTokenId,
+    encounterIndex: 0,
+    totalEncounters: 4,
     obstacles: [],
     loot: [],
     tokens: [
@@ -357,6 +359,26 @@ describe('TacticalGrid — Faz 6-C: büyü hedefi grid üzerinden seçiliyor', (
 
     expect(api.attackTarget).toHaveBeenCalledWith('char-1', 'goblin-1');
     expect(api.castSpell).not.toHaveBeenCalled();
+  });
+});
+
+describe('TacticalGrid — Faz 7-A: karşılaşma ilerleme göstergesi', () => {
+  it('"Karşılaşma: N/M" 1 tabanlı (encounterIndex+1) olarak gösterilir', async () => {
+    const scene = sceneWith('player');
+    scene.encounterIndex = 0;
+    scene.totalEncounters = 4;
+    vi.mocked(api.getScene).mockResolvedValue(scene);
+    render(<TacticalGrid characterId="char-1" />);
+    await waitFor(() => expect(screen.getByText('Karşılaşma: 1/4')).toBeInTheDocument());
+  });
+
+  it('ikinci karşılaşmadayken göstergeyi doğru günceller', async () => {
+    const scene = sceneWith('player');
+    scene.encounterIndex = 1;
+    scene.totalEncounters = 4;
+    vi.mocked(api.getScene).mockResolvedValue(scene);
+    render(<TacticalGrid characterId="char-1" />);
+    await waitFor(() => expect(screen.getByText('Karşılaşma: 2/4')).toBeInTheDocument());
   });
 });
 
