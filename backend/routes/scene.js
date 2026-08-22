@@ -8,6 +8,8 @@ const { abilityModifier, DIFFICULTY_CLASS } = require("../services/actionResolve
 const { generateNarration } = require("../services/narrationService");
 const { getSessionId } = require("../services/sessionId");
 const { saveScene, saveChatHistory, saveCharacter } = require("../services/persistence");
+const { awardXp } = require("../services/leveling");
+const { SPELLS } = require("../data/spells");
 const { CLASSES } = require("../data/dnd");
 
 const router = express.Router();
@@ -33,6 +35,10 @@ function requireOwnedCharacter(req, res, characterId) {
   const sessionId = getSessionId(req);
   if (activeCharacterIdBySession.get(sessionId) !== characterId) {
     res.status(403).json({ error: "Bu karaktere erişim yetkin yok." });
+    return null;
+  }
+  if (character.hp.current <= 0) {
+    res.status(400).json({ error: "Karakter ölü, oyun bitti." });
     return null;
   }
   return character;
@@ -209,6 +215,12 @@ router.post("/attack", async (req, res) => {
     }
   }
 
+  let levelsGained = 0;
+  if (defeated) {
+    levelsGained = awardXp(character, primaryAttribute);
+    saveCharacter(character);
+  }
+
   const attackResult = { attribute: primaryAttribute, roll, modifier, total, dc: DIFFICULTY_CLASS, outcome };
   const history = getChatHistoryList(sessionId);
   const { text, source } = await generateNarration({
@@ -218,7 +230,10 @@ router.post("/attack", async (req, res) => {
     playerMessage: `${character.name}, ${target.name}'e saldırıyor!`,
     actionResult: attackResult,
   });
-  const narrationText = defeated ? `${text} ${target.name} yenildi!` : text;
+  let narrationText = defeated ? `${text} ${target.name} yenildi!` : text;
+  if (levelsGained > 0) {
+    narrationText += ` ${character.name} seviye ${character.level}'e ulaştı!`;
+  }
   pushGmMessage(sessionId, narrationText, source);
   saveScene(sessionId, scene);
 
@@ -228,6 +243,123 @@ router.post("/attack", async (req, res) => {
     attackResult,
     damage,
     defeated,
+    levelsGained,
+    narration: { text: narrationText, source },
+  });
+});
+
+router.post("/cast", async (req, res) => {
+  const { characterId, spellId, targetTokenId } = req.body || {};
+  const character = requireOwnedCharacter(req, res, characterId);
+  if (!character) return;
+
+  if (!character.mana || character.mana.max <= 0) {
+    return res.status(400).json({ error: "Bu sınıf büyü kullanamaz." });
+  }
+
+  const spell = SPELLS[spellId];
+  if (!spell) return res.status(400).json({ error: "Geçersiz büyü." });
+
+  if (character.mana.current < spell.manaCost) {
+    return res.status(400).json({ error: "Yetersiz mana." });
+  }
+
+  const sessionId = getSessionId(req);
+  const playerToken = requirePlayerAction(sessionId, res);
+  if (!playerToken) return;
+
+  const scene = getScene(sessionId);
+  const history = getChatHistoryList(sessionId);
+
+  if (spell.type === "heal") {
+    character.mana.current -= spell.manaCost;
+    character.hp.current = Math.min(character.hp.max, character.hp.current + spell.healAmount);
+    playerToken.actionAvailable = false;
+
+    const { text, source } = await generateNarration({
+      character,
+      scene,
+      recentMessages: history.slice(-6),
+      playerMessage: `${character.name}, ${spell.name} büyüsünü kendine uyguluyor.`,
+    });
+    pushGmMessage(sessionId, text, source);
+    saveCharacter(character);
+    saveScene(sessionId, scene);
+
+    return res.json({
+      character,
+      scene,
+      spell: spell.id,
+      healed: spell.healAmount,
+      narration: { text, source },
+    });
+  }
+
+  // Menzilli saldırı büyüsü (örn. Ateş Topu) - bitişik olmak zorunda değil.
+  if (!targetTokenId) return res.status(400).json({ error: "Hedef gerekli." });
+  const target = scene.tokens.find((t) => t.id === targetTokenId && t.type === "enemy");
+  if (!target) return res.status(404).json({ error: "Hedef bulunamadı." });
+
+  const distance = Math.abs(target.x - playerToken.x) + Math.abs(target.y - playerToken.y);
+  if (distance > spell.range) {
+    return res.status(400).json({ error: "Hedef büyü menzili dışında." });
+  }
+
+  character.mana.current -= spell.manaCost;
+  playerToken.actionAvailable = false;
+
+  const primaryAttribute = CLASSES[character.class]?.primaryAttribute ?? "int";
+  const modifier = abilityModifier(character.attributes[primaryAttribute]);
+  const roll = rollD20();
+  const total = roll + modifier;
+
+  let outcome;
+  if (roll === 20) outcome = "critical-success";
+  else if (roll === 1) outcome = "critical-failure";
+  else if (total >= DIFFICULTY_CLASS) outcome = "success";
+  else outcome = "failure";
+
+  let damage = 0;
+  let defeated = false;
+  if (outcome === "success" || outcome === "critical-success") {
+    damage = rollDie(spell.damageDie) + (outcome === "critical-success" ? rollDie(spell.damageDie) : 0);
+    target.hp = Math.max(0, (target.hp ?? 0) - damage);
+    if (target.hp <= 0) {
+      defeated = true;
+      scene.tokens = scene.tokens.filter((t) => t.id !== target.id);
+    }
+  }
+
+  let levelsGained = 0;
+  if (defeated) {
+    levelsGained = awardXp(character, primaryAttribute);
+  }
+
+  const castResult = { attribute: primaryAttribute, roll, modifier, total, dc: DIFFICULTY_CLASS, outcome };
+  const { text, source } = await generateNarration({
+    character,
+    scene,
+    recentMessages: history.slice(-6),
+    playerMessage: `${character.name}, ${target.name}'e ${spell.name} büyüsü fırlatıyor!`,
+    actionResult: castResult,
+  });
+  let narrationText = defeated ? `${text} ${target.name} yenildi!` : text;
+  if (levelsGained > 0) {
+    narrationText += ` ${character.name} seviye ${character.level}'e ulaştı!`;
+  }
+  pushGmMessage(sessionId, narrationText, source);
+
+  saveCharacter(character);
+  saveScene(sessionId, scene);
+
+  res.json({
+    character,
+    scene,
+    spell: spell.id,
+    castResult,
+    damage,
+    defeated,
+    levelsGained,
     narration: { text: narrationText, source },
   });
 });

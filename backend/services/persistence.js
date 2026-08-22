@@ -28,6 +28,9 @@ const selectAllSessions = db.prepare("SELECT session_id, active_character_id FRO
 const upsertSession = db.prepare(
   "INSERT INTO sessions (session_id, active_character_id) VALUES (?, ?) ON CONFLICT(session_id) DO UPDATE SET active_character_id = excluded.active_character_id",
 );
+const deleteSession = db.prepare("DELETE FROM sessions WHERE session_id = ?");
+const deleteScene = db.prepare("DELETE FROM scenes WHERE session_id = ?");
+const deleteChatHistory = db.prepare("DELETE FROM chat_histories WHERE session_id = ?");
 
 function saveCharacter(character) {
   upsertCharacter.run(character.id, JSON.stringify(character));
@@ -43,6 +46,15 @@ function saveChatHistory(sessionId, messages) {
 
 function saveActiveCharacterId(sessionId, characterId) {
   upsertSession.run(sessionId, characterId);
+}
+
+// Faz 6-C: oyuncu öldüğünde "yeniden başla" akışı - session'ın karakter/
+// sahne/sohbet state'ini temizler (karakter kaydı DB'de kalır, sadece
+// session'ın ona işaret etmesi kesilir - geçmiş karakterleri silmeye gerek yok).
+function clearSession(sessionId) {
+  deleteSession.run(sessionId);
+  deleteScene.run(sessionId);
+  deleteChatHistory.run(sessionId);
 }
 
 // Sunucu açılışında bir kere çağrılır: DB'deki her şeyi ilgili in-memory
@@ -64,4 +76,4 @@ function loadAll() {
   }
 }
 
-module.exports = { loadAll, saveCharacter, saveScene, saveChatHistory, saveActiveCharacterId };
+module.exports = { loadAll, saveCharacter, saveScene, saveChatHistory, saveActiveCharacterId, clearSession };

@@ -3,13 +3,13 @@ const { nanoid } = require("nanoid");
 const { RACES, CLASSES, BASE_ATTRIBUTES, ATTRIBUTE_KEYS } = require("../data/dnd");
 const { APPEARANCES } = require("../data/appearances");
 const { getSlotForItem, getIconForSlot } = require("../data/itemSlots");
-const { characters, chatHistories, activeCharacterIdBySession } = require("../data/store");
+const { characters, chatHistories, scenes, activeCharacterIdBySession } = require("../data/store");
 const { rollAttributes } = require("../services/dice");
 const { generateOpeningStory, isConfigured } = require("../services/aiGm");
 const { generateOpeningMock } = require("../data/openingFlavor");
 const { allowRequest } = require("../services/rateLimiter");
 const { getSessionId } = require("../services/sessionId");
-const { saveCharacter, saveChatHistory, saveActiveCharacterId } = require("../services/persistence");
+const { saveCharacter, saveChatHistory, saveActiveCharacterId, clearSession } = require("../services/persistence");
 
 const router = express.Router();
 
@@ -79,6 +79,7 @@ router.post("/create", (req, res) => {
     class: cls.id,
     appearance: appearance?.id ?? null,
     level: 1,
+    xp: 0,
     hp: { current: cls.baseHp, max: cls.baseHp },
     mana: { current: cls.baseMana, max: cls.baseMana },
     attributes,
@@ -166,6 +167,17 @@ router.post("/", (req, res) => {
   characters.set(character.id, character);
   saveCharacter(character);
   res.json(character);
+});
+
+// Faz 6-C: oyuncu öldükten sonra "yeniden başla" - session'ın karakter/sahne/
+// sohbet bağını temizler, frontend karakter oluşturma ekranına döner.
+router.post("/reset", (req, res) => {
+  const sessionId = getSessionId(req);
+  activeCharacterIdBySession.delete(sessionId);
+  chatHistories.delete(sessionId);
+  scenes.delete(sessionId);
+  clearSession(sessionId);
+  res.json({ ok: true });
 });
 
 router.get("/:id", (req, res) => {
