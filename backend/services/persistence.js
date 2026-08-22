@@ -1,75 +1,67 @@
-// Faz 6-B: repository katmanı. Route'lar hâlâ `data/store.js`'teki sıradan
-// in-memory Map'leri okuyup referans üzerinden mutasyona uğratıyor (Faz 1'den
-// beri kullanılan desen, ölçek için yeterince basit) - bu katman sadece bu
-// Map'leri sunucu açılışında SQLite'tan doldurur (loadAll) ve route'lar bir
-// mutasyon sonrası state'i kalıcı hale getirmek istediğinde çağırdığı
-// save* fonksiyonlarını sağlar. DB motoru ileride değişirse (örn. Postgres'e
-// geçilirse) sadece bu dosya değişir, route'lar etkilenmez.
+// Faz 6-B / 7-B: repository katmanı. Route'lar hâlâ `data/store.js`'teki
+// sıradan in-memory Map'leri okuyup referans üzerinden mutasyona uğratıyor
+// (Faz 1'den beri kullanılan desen) - bu katman sadece bu Map'leri sunucu
+// açılışında DB'den doldurur (loadAll) ve route'lar bir mutasyon sonrası
+// state'i kalıcı hale getirmek istediğinde çağırdığı save* fonksiyonlarını
+// sağlar.
+//
+// `data/db.js`, DATABASE_URL varsa Postgres'e (asenkron/Promise), yoksa
+// SQLite'a (senkron) çözülür. save* fonksiyonları her iki durumda da aynı
+// senkron-görünümlü çağrı şeklini koruyor: SQLite'ta gerçekten senkron/
+// bloklayıcı, Postgres'te ise "fire and forget" (yanıtı beklemeden yazılır,
+// hata olursa loglanır) - in-memory Map zaten çalışma-zamanı otoritesi
+// olduğundan bu kabul edilebilir bir tasarım (Faz 6-B'deki karardan devam).
 
-const { db } = require("../data/db");
+const db = require("../data/db");
 const { characters, scenes, chatHistories, activeCharacterIdBySession } = require("../data/store");
 
-const selectAllCharacters = db.prepare("SELECT id, data FROM characters");
-const upsertCharacter = db.prepare(
-  "INSERT INTO characters (id, data) VALUES (?, ?) ON CONFLICT(id) DO UPDATE SET data = excluded.data",
-);
-
-const selectAllScenes = db.prepare("SELECT session_id, data FROM scenes");
-const upsertScene = db.prepare(
-  "INSERT INTO scenes (session_id, data) VALUES (?, ?) ON CONFLICT(session_id) DO UPDATE SET data = excluded.data",
-);
-
-const selectAllChatHistories = db.prepare("SELECT session_id, data FROM chat_histories");
-const upsertChatHistory = db.prepare(
-  "INSERT INTO chat_histories (session_id, data) VALUES (?, ?) ON CONFLICT(session_id) DO UPDATE SET data = excluded.data",
-);
-
-const selectAllSessions = db.prepare("SELECT session_id, active_character_id FROM sessions");
-const upsertSession = db.prepare(
-  "INSERT INTO sessions (session_id, active_character_id) VALUES (?, ?) ON CONFLICT(session_id) DO UPDATE SET active_character_id = excluded.active_character_id",
-);
-const deleteSession = db.prepare("DELETE FROM sessions WHERE session_id = ?");
-const deleteScene = db.prepare("DELETE FROM scenes WHERE session_id = ?");
-const deleteChatHistory = db.prepare("DELETE FROM chat_histories WHERE session_id = ?");
+function fireAndForget(maybePromise) {
+  Promise.resolve(maybePromise).catch((err) => {
+    console.error("Kalıcılık yazması başarısız (in-memory state etkilenmedi):", err.message);
+  });
+}
 
 function saveCharacter(character) {
-  upsertCharacter.run(character.id, JSON.stringify(character));
+  fireAndForget(db.upsertCharacter(character.id, JSON.stringify(character)));
 }
 
 function saveScene(sessionId, scene) {
-  upsertScene.run(sessionId, JSON.stringify(scene));
+  fireAndForget(db.upsertScene(sessionId, JSON.stringify(scene)));
 }
 
 function saveChatHistory(sessionId, messages) {
-  upsertChatHistory.run(sessionId, JSON.stringify(messages));
+  fireAndForget(db.upsertChatHistory(sessionId, JSON.stringify(messages)));
 }
 
 function saveActiveCharacterId(sessionId, characterId) {
-  upsertSession.run(sessionId, characterId);
+  fireAndForget(db.upsertSession(sessionId, characterId));
 }
 
 // Faz 6-C: oyuncu öldüğünde "yeniden başla" akışı - session'ın karakter/
 // sahne/sohbet state'ini temizler (karakter kaydı DB'de kalır, sadece
 // session'ın ona işaret etmesi kesilir - geçmiş karakterleri silmeye gerek yok).
 function clearSession(sessionId) {
-  deleteSession.run(sessionId);
-  deleteScene.run(sessionId);
-  deleteChatHistory.run(sessionId);
+  fireAndForget(db.deleteSession(sessionId));
+  fireAndForget(db.deleteScene(sessionId));
+  fireAndForget(db.deleteChatHistory(sessionId));
 }
 
-// Sunucu açılışında bir kere çağrılır: DB'deki her şeyi ilgili in-memory
-// Map'e yükler ki route'lar restart öncesi kaldığı yerden devam etsin.
-function loadAll() {
-  for (const row of selectAllCharacters.all()) {
+// Sunucu açılışında bir kere çağrılır (await edilir - bu tek noktada
+// bloklamak sorun değil): DB'deki her şeyi ilgili in-memory Map'e yükler ki
+// route'lar restart öncesi kaldığı yerden devam etsin.
+async function loadAll() {
+  await db.init();
+
+  for (const row of await db.getAllCharacters()) {
     characters.set(row.id, JSON.parse(row.data));
   }
-  for (const row of selectAllScenes.all()) {
+  for (const row of await db.getAllScenes()) {
     scenes.set(row.session_id, JSON.parse(row.data));
   }
-  for (const row of selectAllChatHistories.all()) {
+  for (const row of await db.getAllChatHistories()) {
     chatHistories.set(row.session_id, JSON.parse(row.data));
   }
-  for (const row of selectAllSessions.all()) {
+  for (const row of await db.getAllSessions()) {
     if (row.active_character_id) {
       activeCharacterIdBySession.set(row.session_id, row.active_character_id);
     }

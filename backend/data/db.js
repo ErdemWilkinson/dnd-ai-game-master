@@ -1,39 +1,8 @@
-// Faz 6-B: SQLite tabanlı kalıcılık. Ayrı bir DB sunucusu gerekmez, tek dosya.
+// Faz 7-B: DATABASE_URL varsa Postgres (üretim), yoksa SQLite (yerel/test)
+// kullan. Testler (VITEST=true) DATABASE_URL ayarlanmış olsa bile HER ZAMAN
+// SQLite'a (:memory:) düşer - test ortamı gerçek bir Postgres instance'ı
+// gerektirmesin ve davranış deterministik kalsın diye.
 
-const path = require("path");
-const Database = require("better-sqlite3");
+const usePostgres = Boolean(process.env.DATABASE_URL) && !process.env.VITEST;
 
-// Testler (vitest) paylaşılan game.db dosyasını kilitleyip ayrı oturumlar/CI
-// koşumlarıyla çakışmasın diye bellek-içi bir DB kullanır - test asertleri zaten
-// data/store.js'teki in-memory Map'lere bakıyor, DB sadece yazma tarafı test
-// ediliyor olsa da dosya sistemine dokunmadan çalışabilir.
-const DB_PATH = process.env.DB_PATH || (process.env.VITEST ? ":memory:" : path.join(__dirname, "..", "game.db"));
-const db = new Database(DB_PATH);
-
-if (DB_PATH !== ":memory:") {
-  db.pragma("journal_mode = WAL");
-}
-
-db.exec(`
-  CREATE TABLE IF NOT EXISTS characters (
-    id TEXT PRIMARY KEY,
-    data TEXT NOT NULL
-  );
-
-  CREATE TABLE IF NOT EXISTS scenes (
-    session_id TEXT PRIMARY KEY,
-    data TEXT NOT NULL
-  );
-
-  CREATE TABLE IF NOT EXISTS chat_histories (
-    session_id TEXT PRIMARY KEY,
-    data TEXT NOT NULL
-  );
-
-  CREATE TABLE IF NOT EXISTS sessions (
-    session_id TEXT PRIMARY KEY,
-    active_character_id TEXT
-  );
-`);
-
-module.exports = { db };
+module.exports = usePostgres ? require("./dbPostgres") : require("./dbSqlite");
