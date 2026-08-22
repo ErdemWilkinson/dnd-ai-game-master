@@ -177,6 +177,7 @@ describe('TacticalGrid — Faz 5 madde 1: bitişik düşmana tıkla-saldır', ()
       attackResult: { attribute: 'str', roll: 15, modifier: 2, total: 17, dc: 12, outcome: 'success' },
       damage: 5,
       defeated: false,
+      levelsGained: 0,
       narration: { text: 'Vurdun!', source: 'mock' },
     });
 
@@ -200,6 +201,7 @@ describe('TacticalGrid — Faz 5 madde 1: bitişik düşmana tıkla-saldır', ()
       attackResult: { attribute: 'str', roll: 15, modifier: 2, total: 17, dc: 12, outcome: 'success' },
       damage: 5,
       defeated: false,
+      levelsGained: 0,
       narration: { text: 'Vurdun!', source: 'mock' },
     });
     const onCharacterChange = vi.fn();
@@ -259,6 +261,102 @@ describe('TacticalGrid — Faz 5 madde 1: bitişik düşmana tıkla-saldır', ()
     const cells = document.querySelectorAll('.grid .cell');
     // sceneWith() varsayılan token'larda hp/maxHp içermiyor, bu durumda tooltip sade isim olmalı
     expect(cells[1].getAttribute('title')).toBe('Goblin');
+  });
+});
+
+describe('TacticalGrid — Faz 6-C: büyü hedefi grid üzerinden seçiliyor', () => {
+  it('castingSpellId varken düşman token\'ına tıklamak attackTarget değil castSpell çağırır', async () => {
+    vi.mocked(api.getScene).mockResolvedValue(sceneWith('player'));
+    vi.mocked(api.castSpell).mockResolvedValue({
+      character: { id: 'char-1' } as never,
+      scene: sceneWith('player'),
+      spell: 'fireball',
+      narration: { text: 'Ateş!', source: 'mock' },
+    });
+
+    const user = userEvent.setup();
+    render(<TacticalGrid characterId="char-1" castingSpellId="fireball" />);
+    await waitFor(() => expect(screen.getByText('Büyü hedefi seç')).toBeInTheDocument());
+
+    const cells = document.querySelectorAll('.grid .cell');
+    await user.click(cells[1]); // goblin'in bulunduğu (1,0) hücresi
+
+    expect(api.castSpell).toHaveBeenCalledWith('char-1', 'fireball', 'goblin-1');
+    expect(api.attackTarget).not.toHaveBeenCalled();
+  });
+
+  it('büyü modunda boş bir hücreye tıklamak castSpell\'i ÇAĞIRMAZ (sadece düşman hücreleri hedeflenebilir)', async () => {
+    vi.mocked(api.getScene).mockResolvedValue(sceneWith('player'));
+
+    const user = userEvent.setup();
+    render(<TacticalGrid characterId="char-1" castingSpellId="fireball" />);
+    await waitFor(() => expect(screen.getByText('Büyü hedefi seç')).toBeInTheDocument());
+
+    const cells = document.querySelectorAll('.grid .cell');
+    await user.click(cells[0]); // player'ın kendi hücresi, boş/düşman değil
+
+    expect(api.castSpell).not.toHaveBeenCalled();
+    expect(api.moveToken).not.toHaveBeenCalled();
+  });
+
+  it('büyü modunda grid, sıra düşmanda olsa bile devre dışı bırakılmaz', async () => {
+    vi.mocked(api.getScene).mockResolvedValue(sceneWith('goblin-1'));
+    render(<TacticalGrid characterId="char-1" castingSpellId="fireball" />);
+    await waitFor(() => expect(document.querySelector('.grid')).toBeInTheDocument());
+    expect(document.querySelector('.grid')).not.toHaveClass('grid-disabled');
+  });
+
+  it('büyü başarılı olunca onCastComplete ve onChatActivity çağrılır', async () => {
+    vi.mocked(api.getScene).mockResolvedValue(sceneWith('player'));
+    const updatedCharacter = { id: 'char-1', name: 'Güncellendi' } as never;
+    vi.mocked(api.castSpell).mockResolvedValue({
+      character: updatedCharacter,
+      scene: sceneWith('player'),
+      spell: 'fireball',
+      narration: { text: 'Ateş!', source: 'mock' },
+    });
+    const onCastComplete = vi.fn();
+    const onChatActivity = vi.fn();
+
+    const user = userEvent.setup();
+    render(
+      <TacticalGrid
+        characterId="char-1"
+        castingSpellId="fireball"
+        onCastComplete={onCastComplete}
+        onChatActivity={onChatActivity}
+      />,
+    );
+    await waitFor(() => expect(screen.getByText('Büyü hedefi seç')).toBeInTheDocument());
+
+    const cells = document.querySelectorAll('.grid .cell');
+    await user.click(cells[1]);
+
+    await waitFor(() => expect(onCastComplete).toHaveBeenCalledWith(updatedCharacter));
+    expect(onChatActivity).toHaveBeenCalledTimes(1);
+  });
+
+  it('castingSpellId yokken normal saldırı/hareket akışı çalışmaya devam eder (regresyon)', async () => {
+    vi.mocked(api.getScene).mockResolvedValue(sceneWith('player'));
+    vi.mocked(api.attackTarget).mockResolvedValue({
+      character: { id: 'char-1' } as never,
+      scene: sceneWith('player'),
+      attackResult: { attribute: 'str', roll: 15, modifier: 2, total: 17, dc: 12, outcome: 'success' },
+      damage: 5,
+      defeated: false,
+      levelsGained: 0,
+      narration: { text: 'Vurdun!', source: 'mock' },
+    });
+
+    const user = userEvent.setup();
+    render(<TacticalGrid characterId="char-1" castingSpellId={null} />);
+    await waitFor(() => expect(screen.getByText('Test Sahnesi')).toBeInTheDocument());
+
+    const cells = document.querySelectorAll('.grid .cell');
+    await user.click(cells[1]);
+
+    expect(api.attackTarget).toHaveBeenCalledWith('char-1', 'goblin-1');
+    expect(api.castSpell).not.toHaveBeenCalled();
   });
 });
 

@@ -174,6 +174,30 @@ Otomatik testlerle doğrulanan davranış: backend **184/184** (test koşumları
 - Aksiyon ekonomisi kontrolü backend'de `/scene/item/use` ve `/scene/item/throw`'da uygulanıyor; grid hareketi (`/scene/move`) ayrı bir kaynaktan (movementLeft) yönetiliyor — PM onaylı kapsam, bug değil.
 - Düşman AI tamamen scriptli/deterministik (greedy hareket + basit D20 saldırı) — karmaşık strateji, kapak/yükseklik mekaniği ve AI görsel üretimi Faz 4 kapsamı dışında bırakıldı (kullanıcı kararı).
 
+## Faz 6-C — Oyun döngüsü (ölüm/seviye/büyü), backend+frontend
+
+Otomatik testlerle doğrulanan davranış: backend **216/216**, frontend **73/73**, tsc+vite build temiz.
+
+- [x] Öldürme başına 20 XP, eşik level×50, seviye atlayınca HP.max/mana.max +2 (tam dolum) + primary attribute +1
+- [x] "İyileştir" (hedefsiz, kendine) ve "Ateş Topu" (menzilli, hedef-seç modu) büyüleri doğru mana/menzil/hasar mantığıyla çalışıyor
+- [x] Mana yetersizken büyü butonları disabled; `mana.max===0` sınıflarda "Büyüler" bölümü hiç görünmüyor
+- [x] `hp.current<=0` olunca GameOverScreen gösteriliyor, savaş fiilen duruyor (attack/cast/item 400 ile reddediliyor)
+- [x] "Yeniden Başla" → `/character/reset` → karakter oluşturma ekranına dönülüyor, eski karakter kaydı DB'de kalıyor (sadece session bağı kopuyor)
+
+**Bulunan bug (coder tarafından anında düzeltildi, commit `a2d6bab`):** Büyü hedef-seç modundayken düşman olmayan bir hücreye tıklamak sessizce oyuncuyu hareket ettiriyordu (`castSpell` yerine `moveToken` çağrılıyordu). Regresyon testiyle yakalandı, aynı oturumda düzeltildi ve doğrulandı.
+
+**Kritik süreç bulgusu (kod bug'ı değil):** QA'ya başlarken çalışan backend dev server'ı (`node server.js`, watch'sız) coder'ın Faz 6-C route'larını (`/scene/cast`, `/character/reset`) hiç yüklememişti — eski bir process'ti, restart edilmemişti. `/scene/cast` ve `/character/reset` 404 "Cannot POST" dönüyordu, halbuki backend test suite'i (kendi Express app instance'ını kuran) 216/216 yeşildi. `taskkill`+`npm run dev` ile restart edince düzeldi. **Büyük bir faz kapanışından önce dev server'ın gerçekten yeniden başlatıldığını doğrulamak gerekiyor — "testler yeşil" tek başına yeterli değil.**
+
+**Tarayıcıda uçtan uca canlı QA (Playwright, restart edilmiş backend'e karşı, 2026-08-22) — TAMAMLANDI:** Büyücü oluştur → İyileştir'i cast et (mana 12→8, HP güncellendi, sohbete anlatım düştü) → Ateş Topu hedef-seç moduna gir (grid'de "Büyü hedefi seç" göstergesi doğru) → tur döngüsüyle HP'yi 0'a düşür → **GameOverScreen doğru render edildi** → "Yeniden Başla" ile **Karakter Oluştur formuna başarıyla dönüldü**. Konsol hatalarının hepsi beklenen (400 = menzil-dışı/HP-0 sonrası reddedilen istekler, birkaç başlangıç 404'ü) — gerçek hata yok.
+
+**İki ayrı session ile Faz 6-A rejeksiyon testi (restart edilmiş backend'e karşı) — TAMAMLANDI:** iki bağımsız browser context tamamen izole kaldı, farklı `X-Session-Id`'ler doğrulandı.
+
+**"Biri ölüp reset atarken diğeri etkilenmemeli" senaryosu (curl, gerçek `game.db`) — TAMAMLANDI:** A `/character/reset` ile sıfırlandı, B'nin karakteri (isim/HP/envanter) hiç etkilenmeden erişilebilir kaldı.
+
+**Gerçek dosya DB'siyle son restart doğrulaması (`:memory:` değil, gerçek `game.db`) — TAMAMLANDI:** Karakter oluşturuldu, backend `taskkill` ile gerçekten sonlandırılıp yeniden başlatıldı, karakter (isim/HP/envanter) birebir geri geldi.
+
+**Faz 6 (A+B+C) TAMAMEN KAPANDI** — bilinen açık bug yok. QA sırasında oluşturulan test verileri gerçek `game.db`'den temizlendi.
+
 ## Kapsam dışı (bilerek yok, "bug" olarak raporlamayın)
 - Gerçek LLM tabanlı GM (Gemini varsa kullanılıyor, yoksa kural tabanlı/şablon metin — bkz. Faz 2)
 - Login/hesap sistemi (oturum izolasyonu var — Faz 6-A — ve kalıcılık var — Faz 6-B, SQLite — ama kullanıcı hesabı/parola/login akışı yok, sessionId localStorage tabanlı anonim kimlik)

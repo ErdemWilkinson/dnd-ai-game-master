@@ -3,21 +3,23 @@ import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import App from './App';
 import * as api from './api';
+import type { Character } from './types';
 
 vi.mock('./api');
 
-const CHARACTER = {
+const CHARACTER: Character = {
   id: 'c1',
   name: 'Kalıcı Kahraman',
   race: 'human',
   class: 'fighter',
   appearance: null,
   level: 1,
+  xp: 0,
   hp: { current: 12, max: 12 },
   mana: { current: 0, max: 0 },
   attributes: { str: 11, dex: 11, con: 11, int: 11, wis: 11, cha: 11 },
   inventory: [],
-} as never;
+};
 
 beforeEach(() => {
   vi.resetAllMocks();
@@ -82,5 +84,36 @@ describe('App — Faz 3-A: oluşturma -> açılış hikayesi -> oyun akışı', 
 
     await waitFor(() => expect(screen.getByText('Kalıcı Kahraman')).toBeInTheDocument());
     expect(screen.queryByText('Macera Başlıyor')).not.toBeInTheDocument();
+  });
+});
+
+describe('App — Faz 6-C: Game Over ve Yeniden Başla', () => {
+  it('character.hp.current<=0 olunca oyun ekranı yerine GameOverScreen gösterilir', async () => {
+    vi.mocked(api.getCurrentCharacter).mockResolvedValue({ ...CHARACTER, hp: { current: 0, max: 12 } });
+    render(<App />);
+
+    await waitFor(() => expect(screen.getByText('Oyun Bitti')).toBeInTheDocument());
+    expect(screen.queryByText('D&D AI Game Master')).not.toBeInTheDocument();
+  });
+
+  it('"Yeniden Başla" resetSession\'ı çağırır ve karakter oluşturma ekranına döner', async () => {
+    vi.mocked(api.getCurrentCharacter).mockResolvedValue({ ...CHARACTER, hp: { current: 0, max: 12 } });
+    vi.mocked(api.resetSession).mockResolvedValue({ ok: true });
+    const user = userEvent.setup();
+    render(<App />);
+
+    await waitFor(() => expect(screen.getByText('Oyun Bitti')).toBeInTheDocument());
+    await user.click(screen.getByRole('button', { name: 'Yeniden Başla' }));
+
+    expect(api.resetSession).toHaveBeenCalledTimes(1);
+    await waitFor(() => expect(screen.getByText('Karakter Oluştur')).toBeInTheDocument());
+  });
+
+  it('character.hp.current>0 iken GameOverScreen gösterilmez, normal oyun ekranı çalışmaya devam eder (regresyon)', async () => {
+    vi.mocked(api.getCurrentCharacter).mockResolvedValue(CHARACTER);
+    render(<App />);
+
+    await waitFor(() => expect(screen.getByText('Kalıcı Kahraman')).toBeInTheDocument());
+    expect(screen.queryByText('Oyun Bitti')).not.toBeInTheDocument();
   });
 });

@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, within, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { CharacterCard } from './CharacterCard';
@@ -17,6 +17,7 @@ const character: Character = {
   class: 'fighter',
   appearance: null,
   level: 1,
+  xp: 0,
   hp: { current: 6, max: 12 },
   mana: { current: 0, max: 0 },
   attributes: { str: 11, dex: 10, con: 12, int: 10, wis: 10, cha: 10 },
@@ -177,5 +178,87 @@ describe('CharacterCard — Faz 5-3: SS13 tarzı ikonlu paper-doll', () => {
     render(<CharacterCard character={character} />);
     const kilicRow = screen.getByText(/Kısa Kılıç/).closest('li')!;
     expect(within(kilicRow).getByRole('button', { name: 'Kuşan' })).toBeInTheDocument();
+  });
+});
+
+describe('CharacterCard — Faz 6-C: büyü listesi', () => {
+  const wizard: Character = {
+    ...character,
+    mana: { current: 6, max: 10 },
+  };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('mana.max 0 olan bir karakterde (büyü kullanmayan sınıf) "Büyüler" bölümü gösterilmez', () => {
+    render(<CharacterCard character={character} />);
+    expect(screen.queryByText('Büyüler')).not.toBeInTheDocument();
+  });
+
+  it('mana kullanan bir karakterde büyü butonları mana maliyetiyle gösterilir', () => {
+    render(<CharacterCard character={wizard} />);
+    expect(screen.getByText('Büyüler')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /İyileştir \(4 mana\)/ })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Ateş Topu \(4 mana\)/ })).toBeInTheDocument();
+  });
+
+  it('mana yetersizse büyü butonu devre dışı kalır', () => {
+    const lowMana: Character = { ...character, mana: { current: 1, max: 10 } };
+    render(<CharacterCard character={lowMana} />);
+    expect(screen.getByRole('button', { name: /İyileştir/ })).toBeDisabled();
+    expect(screen.getByRole('button', { name: /Ateş Topu/ })).toBeDisabled();
+  });
+
+  it('İyileştir (hedefsiz büyü) tıklanınca doğrudan castSpell çağrılır, hedef seçim moduna girmez', async () => {
+    vi.mocked(api.castSpell).mockResolvedValue({
+      character: { ...wizard, hp: { current: wizard.hp.max, max: wizard.hp.max } },
+      scene: {} as never,
+      spell: 'heal',
+      healed: 8,
+      narration: { text: 'İyileştin.', source: 'mock' },
+    });
+    const onCharacterChange = vi.fn();
+    const onChatActivity = vi.fn();
+    const onStartCast = vi.fn();
+    const user = userEvent.setup();
+    render(
+      <CharacterCard
+        character={wizard}
+        onCharacterChange={onCharacterChange}
+        onChatActivity={onChatActivity}
+        onStartCast={onStartCast}
+      />,
+    );
+
+    await user.click(screen.getByRole('button', { name: /İyileştir/ }));
+
+    expect(api.castSpell).toHaveBeenCalledWith('c1', 'heal');
+    expect(onStartCast).not.toHaveBeenCalled();
+    await waitFor(() => expect(onCharacterChange).toHaveBeenCalled());
+    expect(onChatActivity).toHaveBeenCalledTimes(1);
+  });
+
+  it('Ateş Topu (hedefli büyü) tıklanınca castSpell ÇAĞRILMAZ, onStartCast ile hedef seçim moduna girilir', async () => {
+    const onStartCast = vi.fn();
+    const user = userEvent.setup();
+    render(<CharacterCard character={wizard} onStartCast={onStartCast} />);
+
+    await user.click(screen.getByRole('button', { name: /Ateş Topu/ }));
+
+    expect(onStartCast).toHaveBeenCalledWith('fireball');
+    expect(api.castSpell).not.toHaveBeenCalled();
+  });
+
+  it('castingSpellId ilgili büyünün id\'sine eşitse buton "Hedef Seçiliyor..." olur ve tekrar tıklayınca onCancelCast çağrılır', async () => {
+    const onCancelCast = vi.fn();
+    const user = userEvent.setup();
+    render(<CharacterCard character={wizard} castingSpellId="fireball" onCancelCast={onCancelCast} />);
+
+    const activeButton = screen.getByRole('button', { name: 'Hedef Seçiliyor...' });
+    expect(activeButton).toHaveClass('active');
+
+    await user.click(activeButton);
+    expect(onCancelCast).toHaveBeenCalledTimes(1);
   });
 });
