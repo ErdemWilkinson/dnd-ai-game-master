@@ -275,6 +275,15 @@ PM'in kendi değerlendirmesi (kullanıcı onayladı): Proje şu ana kadar tek ki
 
 **Doğrulama:** izole bir `DB_PATH` ile karakter oluşturdum, hareket ettim, sohbet ettim, sunucuyu tamamen kapatıp yeniden başlattım — karakter/pozisyon/sohbet geçmişi birebir korundu. backend 175/175, frontend 57/57 yeşil, tsc+build temiz.
 
+#### Tester (B — kalıcılık)
+- [x] `persistence.test.js` (yeni, 9 test): `saveCharacter`/`saveScene`/`saveChatHistory`/`saveActiveCharacterId` DB'ye doğru yazıyor (upsert — aynı id ikinci kez yazılınca satır çoğalmıyor, günceller); `loadAll()` DB doluyken Map'leri doğru dolduruyor, DB boşken hata vermeden çalışıyor, `active_character_id` NULL olan bir session satırını atlıyor; **uçtan uca "restart" testi**: gerçek route çağrılarıyla (create+move+chat) state oluşturup in-memory Map'leri elle temizleyip `loadAll()` çağırdım, YENİ bir app/request ile aynı sessionId üzerinden karakter/pozisyon/sohbet geçmişinin birebir geri geldiğini doğruladım
+- [x] **Gerçek dosya DB'siyle canlı doğrulama (test suite'inin kullandığı `:memory:` değil) — PM'in istediği gibi:** backend'i gerçek `game.db` ile başlattım, karakter oluşturdum, grid'de hareket ettim (x:2,y:1), sohbet ettim, PID'i `taskkill` ile GERÇEKTEN sonlandırıp backend'i yeniden başlattım. Restart sonrası: karakter adı/HP/envanter birebir aynı, oyuncu token'ı tam x:2,y:1'de (movementLeft:4, hareketin doğru düşürüldüğü de korunmuş), sohbet geçmişindeki 3 mesaj (açılış + oyuncu mesajı + GM cevabı) eksiksiz geri geldi.
+- [x] Test durumu: backend **184/184**, tsc/build gerekmiyor (backend-only), frontend değişmedi (57/57 hâlâ geçiyor)
+
+**Faz 6-B TAMAMEN KAPANDI** — bilinen açık bug yok.
+
+**[x] Ek düzeltme (commit 309cb89, coder):** Tester'ın Faz 6-A'da bulduğu "characterId sahiplik doğrulaması yok" mimari notu PM onayıyla giderildi. `routes/scene.js`'e `requireOwnedCharacter()` helper'ı eklendi (karakter yoksa 404, session'ın aktif karakteri değilse 403) — `attack`, `item/use`, `item/equip`, `item/drop`, `item/throw` ve `character.js`'teki `/intro` endpoint'lerine uygulandı. İzole portta doğrulandı: session B, session A'nın characterId'siyle işlem yapmaya çalışınca 403 aldı. `sessionIsolation.test.js`'teki bu davranışı belgeleyen test (eski davranışı `200` bekliyordu) artık kasıtlı olarak kırmızı — tester assertion'ı `403`'e çevirince yeşile dönecek.
+
 ### C) Oyun döngüsü tamamlama (öncelik 3, A+B'den sonra)
 - [ ] **Oyuncu ölümü**: HP 0'a inince bir "Game Over" durumu — savaş sona ersin, oyuncuya net bir mesaj/ekran gösterilsin (yeniden başlama seçeneğiyle)
 - [ ] **Seviye/XP sistemi**: düşman yenilince XP kazanılsın, eşik aşılınca seviye atlasın (HP/mana/attribute artışı — basit bir formül yeterli, 5e'nin tam XP tablosu şart değil)
