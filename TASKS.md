@@ -228,9 +228,14 @@ Kullanıcının el çizimi diyagram + ekran görüntüsü ile verdiği geri bild
 - [ ] **İkon tabanlı envanter/ekipman** (ASSET BEKLENİYOR): Kullanıcı gerçek piksel-art ikonlar sağlayacak (dosya yolu gelecek). Grid tabanlı, ikonlu, "SWAP" (yer değiştirme) özellikli bir envanter/ekipman arayüzüne geçilecek. **Slot düzeni referansı: SS13 (Space Station 13) HUD'u** — karakter etrafına dizilmiş ikon slotları (baş, gözlük, maske, kulak, boyun, üst giysi, zırh/suit, eldiven, ayakkabı, kemer, kimlik, cep, sırt çantası vb.), mevcut basit 6 slotlu (baş/göğüs/kol/bacak/ayak/el) sistemden daha zengin bir slot yapısına genişletilecek. Asset dosyası gelmeden bu maddeye BAŞLAMA, PM'den asset yolu bekleyin.
 
 ### Tester
-- [ ] Vurma mekaniği için testler (hedef seçimi, menzil kontrolü, Aksiyon tüketimi, zar/hasar doğruluğu)
-- [ ] Hareket sonrası otomatik anlatıcı için testler (başarılı move sonrası chat'e yeni mesaj eklendiğini doğrula, fallback senaryosu)
+- [x] Vurma mekaniği için testler — `scene.test.js`'e 16 test (hedef/karakter bulunamadı, sıra/Aksiyon kontrolü, menzil dışı red, isabetli saldırı+hasar+HP düşüşü, nat1 ıskalama, nat20 kritik çift zar, hedef ölünce sahneden kalkması + "yenildi" anlatımı, ölü hedefe tekrar saldırının reddi, sohbete ekleniyor, sınıfın primary attribute'ünü kullanması) — Math.random mock ile deterministik
+- [x] Hareket sonrası otomatik anlatıcı için testler — `scene.test.js`'e 3 test (narration alanı dolu + sohbete ekleniyor, mock fallback, başarısız harekette narration üretilmiyor); `narrationService.test.js` (yeni, 6 test) ile paylaşılan fallback servisi doğrudan test edildi
+- [x] Frontend: `TacticalGrid.test.tsx`'e bitişik-düşmana-tıkla-saldır testleri (attackTarget çağrılıyor/moveToken çağrılmıyor, onCharacterChange/onChatActivity tetikleniyor, boş hücre hâlâ hareket ediyor, ipucu metni doğru koşullarda görünüyor, tooltip HP gösteriyor)
+- [x] Tarayıcıda (Playwright) uçtan uca canlı doğrulama: hareket sonrası anlatım sohbete düştü ("Bir an için sessizlik çöküyor, sonra uzaktan boğuk bir kükreme duyuluyor."), düşman birkaç turda yaklaşıp bitişik olunca oyuncuya saldırdı (4 hasar, HP 12→8, doğru mesaj formatı: "Goblin sana vuruyor! 4 hasar aldın. (18+2=20 vs 12, HP: 8/12)"), oyuncu karşı saldırdı (Aksiyon ✗'e döndü, "Saldırın hedefi buluyor, ama karşı taraf henüz düşmedi." sohbete düştü). Konsol/sayfa hatası yok.
+- [x] Test durumu: backend **159/159**, frontend **44/44**, tsc+vite build temiz.
 - [ ] İkon envanteri asset entegre edilince görsel QA (asset gelene kadar bekle)
+
+**Faz 5 madde 1-2 KAPANDI.** Bilinen açık bug yok. Madde 3 (ikon envanteri) asset bekliyor.
 
 ## Notlar
 - FRP (`C:\Users\erdem\OneDrive\Masaüstü\FRP`) yalnızca konsept referansıdır, kod kopyalanmayacak. Kök `.gitignore` ile git takibi dışında.

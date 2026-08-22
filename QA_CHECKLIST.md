@@ -1,4 +1,4 @@
-# Manuel QA Checklist — Faz 1 / Faz 1.5 / Faz 2 / Faz 3 / Faz 3.5 / Faz 4
+# Manuel QA Checklist — Faz 1 / Faz 1.5 / Faz 2 / Faz 3 / Faz 3.5 / Faz 4 / Faz 5
 
 Kullanım: backend (`cd backend && npm start`, :3001) ve frontend (`cd frontend && npm run dev`, :5173) ayrı terminallerde çalışırken, tarayıcıda `http://localhost:5173` açılarak sırayla kontrol edilir.
 
@@ -108,6 +108,23 @@ Otomatik testlerle doğrulanan davranış: backend **138/138**, frontend **38/38
 - [x] **Panel yerleşimi düzeltildi (commit 673f7f0) ve doğrulandı:** Sol=karakter, orta=Macera Günlüğü (sohbet, geniş sütun), sağ=taktik harita (380px) — Faz 3-B/4-B'de onaylanan yerleşim artık tarayıcıda (Playwright DOM sırası + ekran görüntüsü) doğrulandı.
 
 **Faz 4 TAMAMEN KAPANDI** — bilinen açık madde yok (mock+outcome ton çelişkisi notu düşük öncelikli, blocker değil).
+
+## Faz 5 (madde 1-2) — Vurma mekaniği + hareket sonrası otomatik anlatıcı
+
+Otomatik testlerle doğrulanan davranış: backend **159/159**, frontend **44/44**, tsc+vite build temiz.
+
+- [x] Bitişik bir düşman token'ına tıklamak saldırıyor (BG3 tarzı, ayrı buton yok); menzil dışıysa (bitişik değilse) 400
+- [x] Saldırı sırası/Aksiyon hakkı kontrolü: sıra oyuncuda değilken veya Aksiyon tükenmişken 400
+- [x] D20 + karakterin sınıfına göre primary attribute modifier'i (fighter→GÜÇ, wizard→ZEKA vb.) vs DC 12; nat1 her zaman ıska, nat20 kritik (iki d6 zarının toplamı hasar veriyor)
+- [x] İsabetli saldırı hedefin HP'sini düşürüyor, Aksiyon hakkını tüketiyor; HP 0'a inince hedef sahneden kalkıyor, "yenildi" anlatımı ekleniyor, ölü hedefe tekrar saldırı reddediliyor
+- [x] Saldırı sonucu (AI/mock) sohbete ekleniyor; karakter/sahne state'i frontend'de güncelleniyor
+- [x] Grid'de token tooltip'i artık HP bilgisi gösteriyor; sıra oyuncudayken "Bitişik bir düşmana tıklayarak saldırabilirsin." ipucu görünüyor (fırlatma modunda gizli)
+- [x] Başarılı her hareket sonrası otomatik olarak kısa bir AI/mock anlatım üretilip sohbete ekleniyor; başarısız hareket (menzil dışı/engelli) anlatım ÜRETMİYOR
+- [x] Fallback ilkesi korunuyor (`services/narrationService.js` — chat/attack/move üçü paylaşıyor): key yok/hata/rate-limit → sessizce mock'a düşüyor
+
+**Tarayıcıda uçtan uca canlı doğrulama (Playwright, 2026-08-22):** Karakter oluştur → hareket et (anlatım sohbete düştü: "Bir an için sessizlik çöküyor, sonra uzaktan boğuk bir kükreme duyuluyor.") → birkaç "Turu Bitir" ile düşmanın yaklaşmasını bekle → bitişik olunca düşman otomatik saldırdı (4 hasar, HP 12→8, "Goblin sana vuruyor! 4 hasar aldın. (18+2=20 vs 12, HP: 8/12)") → bitişik düşmana tıklayıp karşı saldırdım (Aksiyon ✗'e döndü, sonuç sohbete düştü). Konsol/sayfa hatası yok.
+
+**Faz 5 madde 1-2 KAPANDI** — bilinen açık bug yok. **Madde 3 (ikon tabanlı envanter/ekipman, SS13 HUD referansı) asset bekliyor — henüz başlanmadı.**
 
 ## Bilinen kısıtlar (bug değil, kayıt altında)
 - `frontend/src/data/dndNames.ts`, backend `data/dnd.js` ile elle senkron tutulması gereken statik bir kopya — ırk/sınıf listesi değişirse ikisi de güncellenmeli.
