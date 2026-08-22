@@ -105,9 +105,9 @@ Otomatik testlerle doğrulanan davranış: backend **138/138**, frontend **38/38
 - [x] Düşman mesajları sohbet geçmişine `source:"mock"` ile ekleniyor, ChatPanel'de görünüyor
 - [x] BG3 görsel teması: Cinzel/Spectral fontları doğru yükleniyor, bronz/altın vurgulu paneller, iyi kontrast, okunabilirlik sorunu yok, bozuk layout yok — tarayıcıda (Playwright) görsel olarak doğrulandı
 
-**⚠️ Açık bulgu (Faz 4.5'e alınabilir, blocker değil):** Panel yerleşimi Faz 3-B ve Faz 4-B'de iki kez açıkça "sohbet ORTADA, taktik harita kenarda" olarak onaylanmıştı, ama gerçek render'da taktik harita ortada (geniş sütun), sohbet sağda görünüyor — hiç düzeltilmemiş bir tutarsızlık (Faz 4 regresyonu değil, muhtemelen Faz 1'den beri böyle). Detaylar TASKS.md'de, öneri: `App.tsx`'te `TacticalGrid`/`ChatPanel` DOM sırasını değiştirmek.
+- [x] **Panel yerleşimi düzeltildi (commit 673f7f0) ve doğrulandı:** Sol=karakter, orta=Macera Günlüğü (sohbet, geniş sütun), sağ=taktik harita (380px) — Faz 3-B/4-B'de onaylanan yerleşim artık tarayıcıda (Playwright DOM sırası + ekran görüntüsü) doğrulandı.
 
-**Faz 4 KAPANDI** — yukarıdaki panel-sırası bulgusu ve daha önceki düşük öncelikli notlar (mock+outcome ton çelişkisi) dışında açık madde yok.
+**Faz 4 TAMAMEN KAPANDI** — bilinen açık madde yok (mock+outcome ton çelişkisi notu düşük öncelikli, blocker değil).
 
 ## Bilinen kısıtlar (bug değil, kayıt altında)
 - `frontend/src/data/dndNames.ts`, backend `data/dnd.js` ile elle senkron tutulması gereken statik bir kopya — ırk/sınıf listesi değişirse ikisi de güncellenmeli.
