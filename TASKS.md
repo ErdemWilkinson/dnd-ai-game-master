@@ -218,6 +218,20 @@ Kullanıcının elle test edip verdiği geri bildirim. Kullanıcı kararları: d
 
 **Faz 4 TAMAMEN kapandı — bilinen açık madde yok** (mock+outcome ton notu ve daha önceki düşük öncelikli notlar hariç, blocker değil).
 
+## Faz 5 — Vurma Mekaniği, Hareket Sonrası Otomatik Anlatıcı, İkon Tabanlı Envanter
+
+Kullanıcının el çizimi diyagram + ekran görüntüsü ile verdiği geri bildirim (2026-08-22). Üç madde:
+
+### Coder
+- [ ] **Vurma/saldırı mekaniği**: Chat'e yazı yazıp `actionResolver`'ın tahmin etmesi yerine, gerçek bir "Saldır" aksiyonu eklensin — hedef (bitişik/menzildeki düşman token) seçilip bir "Saldır" butonuna basılınca zar+hasar hesaplansın (mevcut `dice.js`/`actionResolver.js` mantığı yeniden kullanılabilir), Aksiyon hakkı tüketsin, sonuç hem HP'ye hem chat'e (AI/mock anlatımla) yansısın. `enemyAI.js`'in düşman saldırısı için kullandığı mantıkla simetrik olabilir (oyuncu versiyonu).
+- [ ] **Hareket sonrası otomatik anlatıcı**: Şu an AI/mock anlatım sadece chat mesajı gönderildiğinde tetikleniyor. Oyuncu grid'de hareket ettiğinde (`/scene/move` başarılı olduğunda) da otomatik olarak kısa bir AI/mock anlatım üretilip chat'e eklensin (örn. kullanıcının verdiği örnek: "geriye doğru bir sıçrama hareketi yapıyorsun, bacağından kan sızıyor..."). Fallback ilkesi korunmalı (key yoksa/hata olursa kısa mock hareket şablonu).
+- [ ] **İkon tabanlı envanter/ekipman** (ASSET BEKLENİYOR): Kullanıcı gerçek piksel-art ikonlar sağlayacak (dosya yolu gelecek). Grid tabanlı, ikonlu, "SWAP" (yer değiştirme) özellikli bir envanter/ekipman arayüzüne geçilecek — referans görsel kullanıcıdan geldi (klasik RPG/Diablo tarzı ikon grid + paper-doll slotları). Asset dosyası gelmeden bu maddeye BAŞLAMA, PM'den asset yolu bekleyin.
+
+### Tester
+- [ ] Vurma mekaniği için testler (hedef seçimi, menzil kontrolü, Aksiyon tüketimi, zar/hasar doğruluğu)
+- [ ] Hareket sonrası otomatik anlatıcı için testler (başarılı move sonrası chat'e yeni mesaj eklendiğini doğrula, fallback senaryosu)
+- [ ] İkon envanteri asset entegre edilince görsel QA (asset gelene kadar bekle)
+
 ## Notlar
 - FRP (`C:\Users\erdem\OneDrive\Masaüstü\FRP`) yalnızca konsept referansıdır, kod kopyalanmayacak. Kök `.gitignore` ile git takibi dışında.
 - Değişiklik/karar gerektiren konularda PM'e (bu session) danışın, kullanıcıya sormadan büyük mimari karar almayın.
