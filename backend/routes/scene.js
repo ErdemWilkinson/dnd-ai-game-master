@@ -155,7 +155,22 @@ router.post("/item/equip", (req, res) => {
   const item = character.inventory.find((i) => i.id === itemId);
   if (!item) return res.status(404).json({ error: "Eşya bulunamadı." });
 
-  item.equipped = !item.equipped;
+  if (!item.slot) {
+    return res.status(400).json({ error: "Bu eşya kuşanılamaz." });
+  }
+
+  if (item.equipped) {
+    item.equipped = false;
+  } else {
+    // Aynı slotta zaten kuşanılmış başka bir eşya varsa önce onu çıkar (paper-doll).
+    for (const other of character.inventory) {
+      if (other.id !== item.id && other.slot === item.slot && other.equipped) {
+        other.equipped = false;
+      }
+    }
+    item.equipped = true;
+  }
+
   res.json({ character, item });
 });
 

@@ -1,7 +1,18 @@
 import { useState } from 'react';
 import { dropItem, equipItem, useItem } from '../api';
 import { CLASS_NAMES, RACE_NAMES } from '../data/dndNames';
-import type { Character } from '../types';
+import type { Character, EquipmentSlot } from '../types';
+
+const SLOT_ORDER: EquipmentSlot[] = ['head', 'chest', 'arms', 'hand', 'legs', 'feet'];
+
+const SLOT_LABELS: Record<EquipmentSlot, string> = {
+  head: 'Baş',
+  chest: 'Göğüs',
+  arms: 'Kollar',
+  hand: 'El',
+  legs: 'Bacaklar',
+  feet: 'Ayaklar',
+};
 
 interface Props {
   character: Character;
@@ -113,6 +124,19 @@ export function CharacterCard({
         ))}
       </div>
 
+      <h4>Ekipman</h4>
+      <div className="paper-doll">
+        {SLOT_ORDER.map((slot) => {
+          const equippedItem = character.inventory.find((i) => i.slot === slot && i.equipped);
+          return (
+            <div key={slot} className={`paper-doll-slot ${equippedItem ? 'filled' : ''}`}>
+              <span className="slot-label">{SLOT_LABELS[slot]}</span>
+              <span className="slot-item">{equippedItem?.name ?? '(boş)'}</span>
+            </div>
+          );
+        })}
+      </div>
+
       <h4>Envanter</h4>
       {error && <p className="error">{error}</p>}
       {throwingItemId && (
@@ -129,9 +153,11 @@ export function CharacterCard({
                 <button type="button" onClick={() => handleUse(item.id)}>
                   Kullan
                 </button>
-                <button type="button" onClick={() => handleEquip(item.id)}>
-                  {item.equipped ? 'Çıkar' : 'Kuşan'}
-                </button>
+                {item.slot && (
+                  <button type="button" onClick={() => handleEquip(item.id)}>
+                    {item.equipped ? 'Çıkar' : 'Kuşan'}
+                  </button>
+                )}
                 <button type="button" onClick={() => handleDrop(item.id)}>
                   At
                 </button>

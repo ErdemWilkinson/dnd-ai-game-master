@@ -2,6 +2,7 @@ const express = require("express");
 const { nanoid } = require("nanoid");
 const { RACES, CLASSES, BASE_ATTRIBUTES, ATTRIBUTE_KEYS } = require("../data/dnd");
 const { APPEARANCES } = require("../data/appearances");
+const { getSlotForItem } = require("../data/itemSlots");
 const { characters, chatHistories } = require("../data/store");
 const { rollAttributes } = require("../services/dice");
 const { generateOpeningStory, isConfigured } = require("../services/aiGm");
@@ -88,6 +89,7 @@ router.post("/create", (req, res) => {
       id: nanoid(),
       name: itemName,
       equipped: false,
+      slot: getSlotForItem(itemName),
     })),
   };
 

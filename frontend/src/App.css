@@ -187,6 +187,40 @@
   color: #b8ae9c;
 }
 
+.paper-doll {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.4rem;
+  margin: 0.75rem 0;
+}
+
+.paper-doll-slot {
+  display: flex;
+  flex-direction: column;
+  background: #14110f;
+  border: 1px solid #2a241d;
+  border-radius: 4px;
+  padding: 0.4rem;
+}
+
+.paper-doll-slot.filled {
+  border-color: #7a3b2e;
+}
+
+.slot-label {
+  font-size: 0.6rem;
+  text-transform: uppercase;
+  color: #b8ae9c;
+}
+
+.slot-item {
+  font-size: 0.75rem;
+}
+
+.paper-doll-slot.filled .slot-item {
+  color: #f2c14e;
+}
+
 .attribute-value {
   font-size: 1.1rem;
   font-weight: 700;
