@@ -1,7 +1,9 @@
 .app {
   min-height: 100vh;
-  color: #e8e4d8;
-  background: #14110f;
+  color: var(--parchment);
+  background:
+    radial-gradient(ellipse at top, rgba(138, 106, 58, 0.08), transparent 60%),
+    var(--bg-void);
 }
 
 .app-centered {
@@ -12,13 +14,16 @@
 
 .app-header {
   padding: 1rem 1.5rem;
-  border-bottom: 1px solid #3a332a;
+  border-bottom: 1px solid var(--bronze);
+  box-shadow: 0 1px 0 rgba(201, 163, 92, 0.15);
+  background: linear-gradient(180deg, rgba(138, 106, 58, 0.12), transparent);
 }
 
 .app-header h1 {
   margin: 0;
-  font-size: 1.25rem;
-  letter-spacing: 0.02em;
+  font-size: 1.35rem;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
 }
 
 .app-main {
@@ -29,6 +34,20 @@
   align-items: start;
 }
 
+/* Ortak "ornate" panel görünümü */
+.character-creation,
+.intro-screen,
+.character-card,
+.tactical-grid,
+.chat-panel {
+  background: linear-gradient(180deg, var(--bg-panel), var(--bg-inset));
+  border: 1px solid var(--bronze);
+  border-radius: 6px;
+  box-shadow:
+    inset 0 0 0 1px rgba(201, 163, 92, 0.12),
+    0 4px 14px rgba(0, 0, 0, 0.45);
+}
+
 /* Character creation */
 .character-creation {
   display: flex;
@@ -36,9 +55,6 @@
   gap: 0.75rem;
   width: 360px;
   padding: 1.5rem;
-  background: #1e1a15;
-  border: 1px solid #3a332a;
-  border-radius: 8px;
 }
 
 .dice-roll-section {
@@ -46,16 +62,18 @@
   flex-direction: column;
   gap: 0.6rem;
   padding: 0.75rem;
-  background: #14110f;
-  border-radius: 6px;
+  background: var(--bg-inset);
+  border: 1px solid rgba(201, 163, 92, 0.2);
+  border-radius: 4px;
 }
 
 .dice-roll-section > button {
-  background: #3a332a;
+  background: linear-gradient(180deg, #3a332a, #2a241d);
 }
 
 .attribute.rolling .attribute-value {
-  color: #f2c14e;
+  color: var(--gold);
+  text-shadow: 0 0 8px rgba(242, 193, 78, 0.5);
 }
 
 .intro-screen {
@@ -64,25 +82,16 @@
   gap: 1rem;
   width: 420px;
   padding: 2rem;
-  background: #1e1a15;
-  border: 1px solid #3a332a;
-  border-radius: 8px;
 }
 
 .intro-text {
-  line-height: 1.6;
-  color: #e8e4d8;
+  line-height: 1.7;
+  color: var(--parchment);
+  font-style: italic;
 }
 
 .intro-screen button {
   align-self: flex-start;
-  padding: 0.6rem 1.2rem;
-  background: #7a3b2e;
-  border: none;
-  border-radius: 4px;
-  color: white;
-  cursor: pointer;
-  font-weight: 600;
 }
 
 .character-creation label {
@@ -90,32 +99,56 @@
   flex-direction: column;
   gap: 0.25rem;
   font-size: 0.85rem;
-  color: #b8ae9c;
+  color: var(--parchment-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
 }
 
 .character-creation input,
 .character-creation select {
   padding: 0.5rem;
-  background: #14110f;
-  border: 1px solid #3a332a;
+  background: var(--bg-inset);
+  border: 1px solid var(--bronze);
   border-radius: 4px;
-  color: #e8e4d8;
+  color: var(--parchment);
 }
 
-.character-creation button {
-  margin-top: 0.5rem;
-  padding: 0.6rem;
-  background: #7a3b2e;
-  border: none;
+/* Ortak buton stili - BG3 tarzı altın/bronz vurgulu */
+.character-creation button,
+.intro-screen button,
+.chat-input-row button,
+.scene-header button {
+  padding: 0.6rem 1rem;
+  background: linear-gradient(180deg, var(--blood), #5a2a20);
+  border: 1px solid var(--bronze-bright);
   border-radius: 4px;
-  color: white;
+  color: var(--parchment);
   cursor: pointer;
   font-weight: 600;
+  text-transform: uppercase;
+  font-size: 0.8rem;
+  letter-spacing: 0.05em;
+  transition: box-shadow 0.15s ease, transform 0.05s ease;
+}
+
+.character-creation button:hover,
+.intro-screen button:hover,
+.chat-input-row button:hover,
+.scene-header button:hover {
+  box-shadow: 0 0 10px rgba(242, 193, 78, 0.35);
+}
+
+.character-creation button:active,
+.intro-screen button:active,
+.chat-input-row button:active,
+.scene-header button:active {
+  transform: translateY(1px);
 }
 
 .character-creation button:disabled {
-  opacity: 0.6;
+  opacity: 0.5;
   cursor: default;
+  box-shadow: none;
 }
 
 .error {
@@ -125,17 +158,21 @@
 
 /* Character card */
 .character-card {
-  background: #1e1a15;
-  border: 1px solid #3a332a;
-  border-radius: 8px;
   padding: 1rem;
 }
 
+.character-card h3 {
+  margin: 0 0 0.25rem;
+  border-bottom: 1px solid rgba(201, 163, 92, 0.25);
+  padding-bottom: 0.4rem;
+}
+
 .character-subtitle {
-  color: #b8ae9c;
+  color: var(--parchment-dim);
   font-size: 0.85rem;
-  margin-top: -0.5rem;
+  margin-top: 0.25rem;
   text-transform: capitalize;
+  font-style: italic;
 }
 
 .bar-row {
@@ -149,7 +186,8 @@
 
 .bar {
   height: 8px;
-  background: #14110f;
+  background: var(--bg-inset);
+  border: 1px solid rgba(201, 163, 92, 0.2);
   border-radius: 4px;
   overflow: hidden;
 }
@@ -159,11 +197,11 @@
 }
 
 .bar-fill.hp {
-  background: #c0433a;
+  background: linear-gradient(90deg, #8f2a1f, #c0433a);
 }
 
 .bar-fill.mana {
-  background: #3a6ea5;
+  background: linear-gradient(90deg, #24507a, var(--arcane-blue));
 }
 
 .attributes-grid {
@@ -177,14 +215,16 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  background: #14110f;
+  background: var(--bg-inset);
+  border: 1px solid rgba(201, 163, 92, 0.15);
   border-radius: 4px;
   padding: 0.4rem;
 }
 
 .attribute-label {
   font-size: 0.65rem;
-  color: #b8ae9c;
+  color: var(--parchment-dim);
+  letter-spacing: 0.04em;
 }
 
 .paper-doll {
@@ -197,20 +237,22 @@
 .paper-doll-slot {
   display: flex;
   flex-direction: column;
-  background: #14110f;
-  border: 1px solid #2a241d;
+  background: var(--bg-inset);
+  border: 1px solid rgba(201, 163, 92, 0.15);
   border-radius: 4px;
   padding: 0.4rem;
 }
 
 .paper-doll-slot.filled {
-  border-color: #7a3b2e;
+  border-color: var(--bronze-bright);
+  box-shadow: inset 0 0 6px rgba(242, 193, 78, 0.15);
 }
 
 .slot-label {
   font-size: 0.6rem;
   text-transform: uppercase;
-  color: #b8ae9c;
+  color: var(--parchment-dim);
+  letter-spacing: 0.05em;
 }
 
 .slot-item {
@@ -218,12 +260,13 @@
 }
 
 .paper-doll-slot.filled .slot-item {
-  color: #f2c14e;
+  color: var(--gold);
 }
 
 .attribute-value {
-  font-size: 1.1rem;
+  font-size: 1.15rem;
   font-weight: 700;
+  font-family: var(--font-heading);
 }
 
 .inventory-list {
@@ -238,7 +281,8 @@
 
 .inventory-list li {
   padding: 0.4rem;
-  background: #14110f;
+  background: var(--bg-inset);
+  border: 1px solid rgba(201, 163, 92, 0.12);
   border-radius: 4px;
 }
 
@@ -248,7 +292,7 @@
 }
 
 .inventory-list .empty {
-  color: #b8ae9c;
+  color: var(--parchment-dim);
   font-size: 0.8rem;
 }
 
@@ -265,36 +309,37 @@
 }
 
 .inventory-actions button {
-  font-size: 0.7rem;
-  padding: 0.25rem 0.5rem;
-  background: #3a332a;
-  border: none;
+  font-size: 0.68rem;
+  padding: 0.3rem 0.55rem;
+  background: #2a241d;
+  border: 1px solid rgba(201, 163, 92, 0.3);
   border-radius: 4px;
-  color: #e8e4d8;
+  color: var(--parchment);
   cursor: pointer;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
 }
 
 .inventory-actions button:hover {
-  background: #4a4034;
+  background: #3a332a;
+  border-color: var(--bronze-bright);
 }
 
 .inventory-actions button.active {
-  background: #f2c14e;
-  color: #14110f;
-  font-weight: 600;
+  background: var(--gold);
+  border-color: var(--gold);
+  color: var(--bg-void);
+  font-weight: 700;
 }
 
 .throw-hint {
   font-size: 0.8rem;
-  color: #f2c14e;
+  color: var(--gold);
   margin: 0 0 0.5rem;
 }
 
 /* Tactical grid */
 .tactical-grid {
-  background: #1e1a15;
-  border: 1px solid #3a332a;
-  border-radius: 8px;
   padding: 1rem;
 }
 
@@ -304,6 +349,7 @@
   gap: 1rem;
   margin-bottom: 0.75rem;
   font-size: 0.85rem;
+  flex-wrap: wrap;
 }
 
 .scene-header h3 {
@@ -313,22 +359,21 @@
 .action-economy,
 .movement-economy {
   font-size: 0.75rem;
-  color: #b8ae9c;
+  color: var(--parchment-dim);
 }
 
 .scene-header button {
   margin-left: auto;
   padding: 0.4rem 0.8rem;
-  background: #3a332a;
-  border: none;
-  border-radius: 4px;
-  color: #e8e4d8;
-  cursor: pointer;
 }
 
 .grid {
   display: grid;
   gap: 2px;
+  padding: 0.4rem;
+  background: var(--bg-void);
+  border: 1px solid rgba(201, 163, 92, 0.15);
+  border-radius: 4px;
 }
 
 .grid-disabled .cell {
@@ -342,17 +387,17 @@
 
 .grid-throw-mode .cell:hover {
   background: #4a4034;
-  outline: 2px solid #f2c14e;
+  outline: 2px solid var(--gold);
 }
 
 .cell {
   aspect-ratio: 1;
   min-width: 32px;
-  background: #14110f;
+  background: var(--bg-inset);
   border: 1px solid #2a241d;
   border-radius: 2px;
   cursor: pointer;
-  color: #e8e4d8;
+  color: var(--parchment);
   font-size: 0.75rem;
   padding: 0;
 }
@@ -364,27 +409,34 @@
 .cell.obstacle {
   background: #3a332a;
   cursor: not-allowed;
+  background-image: repeating-linear-gradient(
+    45deg,
+    rgba(0, 0, 0, 0.3),
+    rgba(0, 0, 0, 0.3) 3px,
+    transparent 3px,
+    transparent 6px
+  );
 }
 
 .cell.player-token {
-  background: #3a6ea5;
+  background: linear-gradient(180deg, #4a86c0, var(--arcane-blue));
   font-weight: 700;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.2);
 }
 
 .cell.enemy-token {
-  background: #7a3b2e;
+  background: linear-gradient(180deg, #9a4a3a, var(--blood));
   font-weight: 700;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.15);
 }
 
 .cell.loot {
-  color: #f2c14e;
+  color: var(--gold);
+  text-shadow: 0 0 6px rgba(242, 193, 78, 0.6);
 }
 
 /* Chat panel */
 .chat-panel {
-  background: #1e1a15;
-  border: 1px solid #3a332a;
-  border-radius: 8px;
   padding: 1rem;
   display: flex;
   flex-direction: column;
@@ -393,6 +445,8 @@
 
 .chat-panel h3 {
   margin-top: 0;
+  border-bottom: 1px solid rgba(201, 163, 92, 0.25);
+  padding-bottom: 0.4rem;
 }
 
 .chat-messages {
@@ -405,18 +459,18 @@
 }
 
 .chat-message {
-  padding: 0.5rem;
-  border-radius: 6px;
-  background: #14110f;
+  padding: 0.5rem 0.6rem;
+  border-radius: 4px;
+  background: var(--bg-inset);
   font-size: 0.85rem;
 }
 
 .chat-message.gm {
-  border-left: 3px solid #3a6ea5;
+  border-left: 3px solid var(--arcane-blue);
 }
 
 .chat-message.player {
-  border-left: 3px solid #7a3b2e;
+  border-left: 3px solid var(--blood);
 }
 
 .chat-message p {
@@ -426,7 +480,8 @@
 .chat-role {
   font-size: 0.7rem;
   text-transform: uppercase;
-  color: #b8ae9c;
+  color: var(--parchment-dim);
+  letter-spacing: 0.05em;
 }
 
 .chat-source-tag {
@@ -449,17 +504,8 @@
 .chat-input-row input {
   flex: 1;
   padding: 0.5rem;
-  background: #14110f;
-  border: 1px solid #3a332a;
+  background: var(--bg-inset);
+  border: 1px solid var(--bronze);
   border-radius: 4px;
-  color: #e8e4d8;
-}
-
-.chat-input-row button {
-  padding: 0.5rem 1rem;
-  background: #7a3b2e;
-  border: none;
-  border-radius: 4px;
-  color: white;
-  cursor: pointer;
+  color: var(--parchment);
 }
