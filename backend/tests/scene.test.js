@@ -958,3 +958,327 @@ describe("POST /api/scene/move — Faz 5 madde 2: hareket sonrası otomatik anla
     expect(res.body.narration).toBeUndefined();
   });
 });
+
+describe("POST /api/scene/attack — Faz 6-C: XP/seviye entegrasyonu", () => {
+  beforeEach(() => {
+    scenes.clear();
+    characters.clear();
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  async function teleportGoblinAdjacentToPlayer(app) {
+    await request(app).get("/api/scene");
+    const scene = scenes.get("default");
+    const goblin = scene.tokens.find((t) => t.id === "goblin-1");
+    const player = scene.tokens.find((t) => t.id === "player");
+    goblin.x = player.x + 1;
+    goblin.y = player.y;
+  }
+
+  it("düşman öldürülünce XP kazanılır, response'da levelsGained alanı var (yetersiz XP'de 0)", async () => {
+    vi.spyOn(Math, "random").mockReturnValue(0.71); // isabetli ama düşük hasar (goblin HP 10'u tek vuruşta bitirmez)
+    const app = buildApp();
+    const createRes = await request(app)
+      .post("/api/character/create")
+      .send({ name: "Test", raceId: "human", classId: "fighter" });
+    await teleportGoblinAdjacentToPlayer(app);
+
+    const res = await request(app)
+      .post("/api/scene/attack")
+      .send({ characterId: createRes.body.id, targetTokenId: "goblin-1" });
+
+    expect(res.body).toHaveProperty("levelsGained");
+    if (!res.body.defeated) {
+      expect(res.body.levelsGained).toBe(0);
+    }
+  });
+
+  it("düşman öldürülünce (kritik vuruş) karakterin xp'si artar ve response'a yansır", async () => {
+    vi.spyOn(Math, "random").mockReturnValue(0.999999); // nat20 kritik, garanti öldürme
+    const app = buildApp();
+    const createRes = await request(app)
+      .post("/api/character/create")
+      .send({ name: "Test", raceId: "human", classId: "fighter" });
+    await teleportGoblinAdjacentToPlayer(app);
+
+    const res = await request(app)
+      .post("/api/scene/attack")
+      .send({ characterId: createRes.body.id, targetTokenId: "goblin-1" });
+
+    expect(res.body.defeated).toBe(true);
+    expect(res.body.character.xp).toBe(20); // XP_PER_KILL, henüz seviye atlamaya yetmiyor (eşik 50)
+    expect(res.body.levelsGained).toBe(0);
+  });
+
+  it("seviye atlandığında narration'a seviye mesajı eklenir", async () => {
+    vi.spyOn(Math, "random").mockReturnValue(0.999999);
+    const app = buildApp();
+    const createRes = await request(app)
+      .post("/api/character/create")
+      .send({ name: "Test", raceId: "human", classId: "fighter" });
+    // Karakterin xp'sini manuel olarak eşiğe yakın ayarla (3 öldürme yerine kısayol)
+    const character = characters.get(createRes.body.id);
+    character.xp = 40; // +20 = 60 >= 50, seviye atlayacak
+
+    await teleportGoblinAdjacentToPlayer(app);
+
+    const res = await request(app)
+      .post("/api/scene/attack")
+      .send({ characterId: createRes.body.id, targetTokenId: "goblin-1" });
+
+    expect(res.body.defeated).toBe(true);
+    expect(res.body.levelsGained).toBe(1);
+    expect(res.body.character.level).toBe(2);
+    expect(res.body.narration.text).toMatch(/seviye 2/i);
+  });
+});
+
+describe("POST /api/scene/cast — Faz 6-C: büyü sistemi", () => {
+  beforeEach(() => {
+    scenes.clear();
+    characters.clear();
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  async function createWizard(app) {
+    return request(app)
+      .post("/api/character/create")
+      .send({ name: "Merlin", raceId: "elf", classId: "wizard" }); // mana.max > 0
+  }
+
+  it("mana kullanamayan bir sınıf (fighter) büyü çağırmaya çalışırsa 400 döner", async () => {
+    const app = buildApp();
+    const createRes = await request(app)
+      .post("/api/character/create")
+      .send({ name: "Test", raceId: "human", classId: "fighter" });
+
+    const res = await request(app)
+      .post("/api/scene/cast")
+      .send({ characterId: createRes.body.id, spellId: "heal" });
+
+    expect(res.status).toBe(400);
+    expect(res.body.error).toMatch(/büyü kullanamaz/i);
+  });
+
+  it("geçersiz spellId için 400 döner", async () => {
+    const app = buildApp();
+    const createRes = await createWizard(app);
+
+    const res = await request(app)
+      .post("/api/scene/cast")
+      .send({ characterId: createRes.body.id, spellId: "uydurma-buyu" });
+
+    expect(res.status).toBe(400);
+    expect(res.body.error).toMatch(/geçersiz büyü/i);
+  });
+
+  it("yetersiz mana varsa 400 döner", async () => {
+    const app = buildApp();
+    const createRes = await createWizard(app);
+    const character = characters.get(createRes.body.id);
+    character.mana.current = 1; // heal 4 mana istiyor
+
+    const res = await request(app)
+      .post("/api/scene/cast")
+      .send({ characterId: createRes.body.id, spellId: "heal" });
+
+    expect(res.status).toBe(400);
+    expect(res.body.error).toMatch(/yetersiz mana/i);
+  });
+
+  it("İyileştir: HP'yi artırır (max'ı aşmaz), mana düşürür, Aksiyon tüketir", async () => {
+    const app = buildApp();
+    const createRes = await createWizard(app);
+    const character = characters.get(createRes.body.id);
+    const maxHp = character.hp.max; // wizard baseHp düşük (7), 1+8 max'ı aşabilir
+    character.hp.current = 1;
+    const manaBefore = character.mana.current;
+
+    const res = await request(app)
+      .post("/api/scene/cast")
+      .send({ characterId: createRes.body.id, spellId: "heal" });
+
+    expect(res.status).toBe(200);
+    expect(res.body.healed).toBe(8);
+    expect(res.body.character.hp.current).toBe(Math.min(maxHp, 1 + 8));
+    expect(res.body.character.mana.current).toBe(manaBefore - 4);
+
+    const scene = await request(app).get("/api/scene");
+    expect(scene.body.tokens.find((t) => t.id === "player").actionAvailable).toBe(false);
+  });
+
+  it("İyileştir HP'yi max'ın üzerine çıkarmaz", async () => {
+    const app = buildApp();
+    const createRes = await createWizard(app);
+    // hp zaten max (createWizard sonrası dokunulmadı)
+
+    const res = await request(app)
+      .post("/api/scene/cast")
+      .send({ characterId: createRes.body.id, spellId: "heal" });
+
+    expect(res.body.character.hp.current).toBe(res.body.character.hp.max);
+  });
+
+  it("Ateş Topu: hedef menzil dışındaysa 400 döner VE mana harcanmaz", async () => {
+    const app = buildApp();
+    const createRes = await createWizard(app);
+    const manaBefore = characters.get(createRes.body.id).mana.current;
+    // varsayılan goblin (8,2), player (1,1) - mesafe 8, range 3'ün çok dışında
+
+    const res = await request(app)
+      .post("/api/scene/cast")
+      .send({ characterId: createRes.body.id, spellId: "fireball", targetTokenId: "goblin-1" });
+
+    expect(res.status).toBe(400);
+    expect(res.body.error).toMatch(/menzil/i);
+    const charAfter = await request(app).get("/api/character");
+    expect(charAfter.body.mana.current).toBe(manaBefore); // mana HARCANMADI
+  });
+
+  it("Ateş Topu: menzil içindeyse mana harcanır (başarısız atışta bile)", async () => {
+    vi.spyOn(Math, "random").mockReturnValue(0); // nat1, garanti ıska
+    const app = buildApp();
+    const createRes = await createWizard(app);
+    const manaBefore = characters.get(createRes.body.id).mana.current;
+
+    // goblin'i menzile taşı
+    await request(app).get("/api/scene");
+    const scene = scenes.get("default");
+    const goblin = scene.tokens.find((t) => t.id === "goblin-1");
+    goblin.x = 2; goblin.y = 1; // player (1,1)'e mesafe 1, range 3 içinde
+
+    const res = await request(app)
+      .post("/api/scene/cast")
+      .send({ characterId: createRes.body.id, spellId: "fireball", targetTokenId: "goblin-1" });
+
+    expect(res.status).toBe(200);
+    expect(res.body.damage).toBe(0); // ıska
+    expect(res.body.character.mana.current).toBe(manaBefore - 4); // yine de harcandı (5e mantığı)
+  });
+
+  it("Ateş Topu: isabetli atış menzildeki düşmana hasar verir ve öldürürse XP kazandırır", async () => {
+    vi.spyOn(Math, "random").mockReturnValue(0.999999); // kritik, garanti öldürme
+    const app = buildApp();
+    const createRes = await createWizard(app);
+
+    await request(app).get("/api/scene");
+    const scene = scenes.get("default");
+    const goblin = scene.tokens.find((t) => t.id === "goblin-1");
+    goblin.x = 2; goblin.y = 1;
+
+    const res = await request(app)
+      .post("/api/scene/cast")
+      .send({ characterId: createRes.body.id, spellId: "fireball", targetTokenId: "goblin-1" });
+
+    expect(res.body.defeated).toBe(true);
+    expect(res.body.character.xp).toBeGreaterThan(0);
+    expect(res.body.scene.tokens.find((t) => t.id === "goblin-1")).toBeUndefined();
+  });
+});
+
+describe("Faz 6-C: oyuncu ölümü — HP<=0 iken aksiyon endpoint'leri reddediliyor", () => {
+  beforeEach(() => {
+    scenes.clear();
+    characters.clear();
+  });
+
+  it("HP 0 olan bir karakterle /attack, /cast, /item/use çağrıları 400 ile reddedilir", async () => {
+    const app = buildApp();
+    const createRes = await request(app)
+      .post("/api/character/create")
+      .send({ name: "Test", raceId: "human", classId: "fighter" });
+    const character = characters.get(createRes.body.id);
+    character.hp.current = 0;
+
+    const attackRes = await request(app)
+      .post("/api/scene/attack")
+      .send({ characterId: createRes.body.id, targetTokenId: "goblin-1" });
+    expect(attackRes.status).toBe(400);
+    expect(attackRes.body.error).toMatch(/ölü/i);
+
+    const item = createRes.body.inventory[0];
+    const useRes = await request(app)
+      .post("/api/scene/item/use")
+      .send({ characterId: createRes.body.id, itemId: item.id });
+    expect(useRes.status).toBe(400);
+    expect(useRes.body.error).toMatch(/ölü/i);
+  });
+});
+
+describe("POST /api/character/reset — Faz 6-C: yeniden başlama akışı", () => {
+  beforeEach(() => {
+    scenes.clear();
+    characters.clear();
+  });
+
+  it("reset sonrası GET /character 404 döner (aktif karakter bağı kesildi)", async () => {
+    const app = buildApp();
+    await request(app)
+      .post("/api/character/create")
+      .send({ name: "Test", raceId: "human", classId: "fighter" });
+
+    const resetRes = await request(app).post("/api/character/reset").send({});
+    expect(resetRes.status).toBe(200);
+
+    const getRes = await request(app).get("/api/character");
+    expect(getRes.status).toBe(404);
+  });
+
+  it("reset sonrası yeni bir karakter oluşturulunca sahne SIFIRDAN gelir (eski hasar/pozisyon kalmaz)", async () => {
+    const app = buildApp();
+    const firstChar = await request(app)
+      .post("/api/character/create")
+      .send({ name: "İlkKarakter", raceId: "human", classId: "fighter" });
+    // sahneyi kirlet: goblin'e hasar ver, oyuncuyu hareket ettir
+    await request(app).get("/api/scene");
+    const dirtyScene = scenes.get("default");
+    const goblin = dirtyScene.tokens.find((t) => t.id === "goblin-1");
+    goblin.hp = 1;
+    dirtyScene.tokens.find((t) => t.id === "player").x = 5;
+
+    await request(app).post("/api/character/reset").send({});
+
+    const secondChar = await request(app)
+      .post("/api/character/create")
+      .send({ name: "İkinciKarakter", raceId: "human", classId: "fighter" });
+    expect(secondChar.body.id).not.toBe(firstChar.body.id);
+
+    const sceneRes = await request(app).get("/api/scene");
+    const freshGoblin = sceneRes.body.tokens.find((t) => t.id === "goblin-1");
+    const freshPlayer = sceneRes.body.tokens.find((t) => t.id === "player");
+    expect(freshGoblin.hp).toBe(10); // tam can, sıfırdan
+    expect(freshPlayer.x).toBe(1); // başlangıç konumu
+  });
+
+  it("reset, karakterin kendisini SİLMEZ - eski karakter hâlâ ID ile erişilebilir", async () => {
+    const app = buildApp();
+    const createRes = await request(app)
+      .post("/api/character/create")
+      .send({ name: "SilinmeyenKarakter", raceId: "human", classId: "fighter" });
+
+    await request(app).post("/api/character/reset").send({});
+
+    const byIdRes = await request(app).get(`/api/character/${createRes.body.id}`);
+    expect(byIdRes.status).toBe(200);
+    expect(byIdRes.body.name).toBe("SilinmeyenKarakter");
+  });
+
+  it("reset sonrası sohbet geçmişi de temizlenir", async () => {
+    const app = buildApp();
+    await request(app)
+      .post("/api/character/create")
+      .send({ name: "Test", raceId: "human", classId: "fighter" });
+    await request(app).post("/api/chat").send({ message: "silinecek mesaj" });
+
+    await request(app).post("/api/character/reset").send({});
+
+    const chatRes = await request(app).get("/api/chat");
+    expect(chatRes.body.messages).toHaveLength(0);
+  });
+});
