@@ -11,6 +11,7 @@ const { saveScene, saveChatHistory, saveCharacter } = require("../services/persi
 const { awardXp } = require("../services/leveling");
 const { SPELLS } = require("../data/spells");
 const { CLASSES } = require("../data/dnd");
+const { advanceToNextEncounter } = require("../data/sceneFactory");
 
 const router = express.Router();
 const ATTACK_DAMAGE_DIE = 6;
@@ -42,6 +43,15 @@ function requireOwnedCharacter(req, res, characterId) {
     return null;
   }
   return character;
+}
+
+// Faz 7-A: sahnedeki son düşman da düşünce sıradaki karşılaşmaya geçilir.
+// Bir sonraki karşılaşmanın adını içeren bir anlatım eki döner (yoksa null).
+function checkEncounterCleared(scene) {
+  const hasEnemies = scene.tokens.some((t) => t.type === "enemy");
+  if (hasEnemies) return null;
+  advanceToNextEncounter(scene);
+  return ` Karşılaşma temizlendi! Yeni bir alana geçiliyor: ${scene.name}.`;
 }
 
 function getChatHistoryList(sessionId) {
@@ -234,6 +244,10 @@ router.post("/attack", async (req, res) => {
   if (levelsGained > 0) {
     narrationText += ` ${character.name} seviye ${character.level}'e ulaştı!`;
   }
+  if (defeated) {
+    const encounterSuffix = checkEncounterCleared(scene);
+    if (encounterSuffix) narrationText += encounterSuffix;
+  }
   pushGmMessage(sessionId, narrationText, source);
   saveScene(sessionId, scene);
 
@@ -346,6 +360,10 @@ router.post("/cast", async (req, res) => {
   let narrationText = defeated ? `${text} ${target.name} yenildi!` : text;
   if (levelsGained > 0) {
     narrationText += ` ${character.name} seviye ${character.level}'e ulaştı!`;
+  }
+  if (defeated) {
+    const encounterSuffix = checkEncounterCleared(scene);
+    if (encounterSuffix) narrationText += encounterSuffix;
   }
   pushGmMessage(sessionId, narrationText, source);
 

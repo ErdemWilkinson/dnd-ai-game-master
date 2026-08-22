@@ -113,6 +113,8 @@ export interface Scene {
   height: number;
   round: number;
   activeTokenId: string;
+  encounterIndex: number;
+  totalEncounters: number;
   obstacles: { x: number; y: number }[];
   loot: SceneLoot[];
   tokens: SceneToken[];

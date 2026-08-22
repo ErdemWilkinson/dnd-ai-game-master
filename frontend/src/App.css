@@ -458,9 +458,15 @@
 }
 
 .action-economy,
-.movement-economy {
+.movement-economy,
+.encounter-progress {
   font-size: 0.75rem;
   color: var(--parchment-dim);
+}
+
+.encounter-progress {
+  color: var(--gold);
+  font-weight: 600;
 }
 
 .scene-header button {

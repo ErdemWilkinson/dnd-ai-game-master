@@ -132,6 +132,9 @@ export function TacticalGrid({
     <div className="tactical-grid">
       <div className="scene-header">
         <h3>{scene.name}</h3>
+        <span className="encounter-progress">
+          Karşılaşma: {scene.encounterIndex + 1}/{scene.totalEncounters}
+        </span>
         <span>
           {throwingItemId
             ? 'Fırlatma hedefi seç'
