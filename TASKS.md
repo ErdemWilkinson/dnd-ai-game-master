@@ -269,9 +269,11 @@ PM'in kendi değerlendirmesi (kullanıcı onayladı): Proje şu ana kadar tek ki
 
 **Faz 6-A TAMAMEN KAPANDI** — bilinen açık bug yok (characterId-sahiplik notu mimari gözlem, blocker değil).
 
-### B) Kalıcılık (öncelik 2)
-- [ ] SQLite tabanlı kalıcı depolama eklensin (örn. `better-sqlite3` — ayrı bir DB sunucusu gerektirmez, tek dosya, bu ölçek için yeterli). Character/scene/chat state'i sessionId'ye göre DB'ye yazılsın, backend yeniden başlayınca kaybolmasın
-- [ ] Mevcut in-memory Map yapısı bir "repository" katmanına sarmalanabilir ki ileride DB değişirse route'lar etkilenmesin
+### B) Kalıcılık (öncelik 2) [x] TAMAMLANDI (commit 170adf3)
+- [x] `backend/data/db.js` — `better-sqlite3` ile tek dosyalık DB (`game.db`), 4 tablo: characters/scenes/chat_histories/sessions. Test koşumlarında (`process.env.VITEST`) otomatik `:memory:` kullanılıyor — paylaşılan `game.db`'yi kilitleyip aynı makinedeki diğer session'ların eşzamanlı `npm test` koşumlarıyla çakışmasın diye (gerçekten çakıştığını gördüm, dosya "busy" hatası verdi, bu yüzden bu düzeltmeyi ekledim).
+- [x] `backend/services/persistence.js` — repository katmanı: `loadAll()` sunucu açılışında DB'deki her şeyi in-memory Map'lere yüklüyor, `saveCharacter/saveScene/saveChatHistory/saveActiveCharacterId` her mutasyon noktasından çağrılıyor. **Tasarım kararı:** mevcut route kodu nesneleri hep REFERANSLA mutasyona uğratıyor (`.set()`'i tekrar çağırmadan) — "şeffaf DB-destekli Map" yaklaşımı bunu sessizce bozardı (her `get()` DB'den taze bir kopya dönerdi, mutasyonlar hiçbir yere yazılmazdı). Bunun yerine in-memory Map çalışma-zamanı otoritesi olarak kaldı, SQLite sadece restart'lar arası bir "gölge" kopya — her mutasyon noktasına (move/end-turn/attack/item aksiyonları/character create-update/chat/intro) açıkça `saveX()` çağrısı eklendi.
+
+**Doğrulama:** izole bir `DB_PATH` ile karakter oluşturdum, hareket ettim, sohbet ettim, sunucuyu tamamen kapatıp yeniden başlattım — karakter/pozisyon/sohbet geçmişi birebir korundu. backend 175/175, frontend 57/57 yeşil, tsc+build temiz.
 
 ### C) Oyun döngüsü tamamlama (öncelik 3, A+B'den sonra)
 - [ ] **Oyuncu ölümü**: HP 0'a inince bir "Game Over" durumu — savaş sona ersin, oyuncuya net bir mesaj/ekran gösterilsin (yeniden başlama seçeneğiyle)
