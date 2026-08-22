@@ -276,7 +276,8 @@
   margin: 0;
 }
 
-.action-economy {
+.action-economy,
+.movement-economy {
   font-size: 0.75rem;
   color: #b8ae9c;
 }

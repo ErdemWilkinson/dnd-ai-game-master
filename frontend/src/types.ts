@@ -72,6 +72,7 @@ export interface SceneToken {
   x: number;
   y: number;
   speed: number;
+  movementLeft: number;
   actionAvailable: boolean;
   bonusActionAvailable: boolean;
 }

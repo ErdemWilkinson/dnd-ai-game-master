@@ -81,6 +81,11 @@ export function TacticalGrid({ characterId, throwingItemId = null, onThrowComple
             : `Tur ${scene.round} · Sıra: ${activeToken?.name}${!isPlayerTurn ? ' (senin sıran değil)' : ''}`}
         </span>
         {playerToken && (
+          <span className="movement-economy">
+            Hareket: {playerToken.movementLeft}/{playerToken.speed}
+          </span>
+        )}
+        {playerToken && (
           <span className="action-economy">
             Aksiyon: {playerToken.actionAvailable ? '✓' : '✗'} · Bonus: {playerToken.bonusActionAvailable ? '✓' : '✗'}
           </span>
