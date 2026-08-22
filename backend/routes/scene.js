@@ -19,6 +19,25 @@ function getActiveCharacter(sessionId) {
   return characters.get(characterId) ?? null;
 }
 
+// Faz 6-B sonrası mimari not (tester): characterId body'den alınıp doğrudan
+// global `characters` Map'inde aranıyordu, sessionId'nin o karakterin GERÇEK
+// sahibi olduğu doğrulanmıyordu. nanoid tahmin edilemez olsa da, bir istemci
+// başka bir session'ın characterId'sini bilirse onun karakterine işlem
+// yaptırabilirdi. Artık her endpoint bu kontrolden geçiyor.
+function requireOwnedCharacter(req, res, characterId) {
+  const character = characters.get(characterId);
+  if (!character) {
+    res.status(404).json({ error: "Karakter bulunamadı." });
+    return null;
+  }
+  const sessionId = getSessionId(req);
+  if (activeCharacterIdBySession.get(sessionId) !== characterId) {
+    res.status(403).json({ error: "Bu karaktere erişim yetkin yok." });
+    return null;
+  }
+  return character;
+}
+
 function getChatHistoryList(sessionId) {
   if (!chatHistories.has(sessionId)) {
     chatHistories.set(sessionId, []);
@@ -150,8 +169,8 @@ function requirePlayerAction(sessionId, res) {
 
 router.post("/attack", async (req, res) => {
   const { characterId, targetTokenId } = req.body || {};
-  const character = characters.get(characterId);
-  if (!character) return res.status(404).json({ error: "Karakter bulunamadı." });
+  const character = requireOwnedCharacter(req, res, characterId);
+  if (!character) return;
 
   const sessionId = getSessionId(req);
   const playerToken = requirePlayerAction(sessionId, res);
@@ -215,8 +234,8 @@ router.post("/attack", async (req, res) => {
 
 router.post("/item/use", (req, res) => {
   const { characterId, itemId } = req.body || {};
-  const character = characters.get(characterId);
-  if (!character) return res.status(404).json({ error: "Karakter bulunamadı." });
+  const character = requireOwnedCharacter(req, res, characterId);
+  if (!character) return;
 
   const item = character.inventory.find((i) => i.id === itemId);
   if (!item) return res.status(404).json({ error: "Eşya bulunamadı." });
@@ -238,8 +257,8 @@ router.post("/item/use", (req, res) => {
 
 router.post("/item/equip", (req, res) => {
   const { characterId, itemId } = req.body || {};
-  const character = characters.get(characterId);
-  if (!character) return res.status(404).json({ error: "Karakter bulunamadı." });
+  const character = requireOwnedCharacter(req, res, characterId);
+  if (!character) return;
 
   const item = character.inventory.find((i) => i.id === itemId);
   if (!item) return res.status(404).json({ error: "Eşya bulunamadı." });
@@ -266,8 +285,8 @@ router.post("/item/equip", (req, res) => {
 
 router.post("/item/drop", (req, res) => {
   const { characterId, itemId } = req.body || {};
-  const character = characters.get(characterId);
-  if (!character) return res.status(404).json({ error: "Karakter bulunamadı." });
+  const character = requireOwnedCharacter(req, res, characterId);
+  if (!character) return;
 
   const item = character.inventory.find((i) => i.id === itemId);
   if (!item) return res.status(404).json({ error: "Eşya bulunamadı." });
@@ -288,8 +307,8 @@ router.post("/item/drop", (req, res) => {
 
 router.post("/item/throw", (req, res) => {
   const { characterId, itemId, x, y } = req.body || {};
-  const character = characters.get(characterId);
-  if (!character) return res.status(404).json({ error: "Karakter bulunamadı." });
+  const character = requireOwnedCharacter(req, res, characterId);
+  if (!character) return;
 
   const item = character.inventory.find((i) => i.id === itemId);
   if (!item) return res.status(404).json({ error: "Eşya bulunamadı." });

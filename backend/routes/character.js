@@ -108,6 +108,9 @@ router.post("/intro", async (req, res) => {
   if (!character) {
     return res.status(404).json({ error: "Karakter bulunamadı." });
   }
+  if (activeCharacterIdBySession.get(getSessionId(req)) !== characterId) {
+    return res.status(403).json({ error: "Bu karaktere erişim yetkin yok." });
+  }
 
   const appearanceDescription = character.appearance
     ? APPEARANCES[character.appearance]?.description
