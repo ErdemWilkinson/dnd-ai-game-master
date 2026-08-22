@@ -3,18 +3,14 @@ const { nanoid } = require("nanoid");
 const { RACES, CLASSES, BASE_ATTRIBUTES, ATTRIBUTE_KEYS } = require("../data/dnd");
 const { APPEARANCES } = require("../data/appearances");
 const { getSlotForItem, getIconForSlot } = require("../data/itemSlots");
-const { characters, chatHistories } = require("../data/store");
+const { characters, chatHistories, activeCharacterIdBySession } = require("../data/store");
 const { rollAttributes } = require("../services/dice");
 const { generateOpeningStory, isConfigured } = require("../services/aiGm");
 const { generateOpeningMock } = require("../data/openingFlavor");
 const { allowRequest } = require("../services/rateLimiter");
+const { getSessionId } = require("../services/sessionId");
 
 const router = express.Router();
-
-const CHAT_SESSION_KEY = "default";
-
-// Tek oyunculu Faz 1 kapsamı: tek "aktif" karakter takip edilir.
-let currentCharacterId = null;
 
 function applyBonuses(base, bonuses) {
   const result = { ...base };
@@ -98,7 +94,7 @@ router.post("/create", (req, res) => {
   };
 
   characters.set(id, character);
-  currentCharacterId = id;
+  activeCharacterIdBySession.set(getSessionId(req), id);
   res.status(201).json(character);
 });
 
@@ -128,28 +124,31 @@ router.post("/intro", async (req, res) => {
     source = "mock";
   }
 
-  if (!chatHistories.has(CHAT_SESSION_KEY)) {
-    chatHistories.set(CHAT_SESSION_KEY, []);
+  const sessionId = getSessionId(req);
+  if (!chatHistories.has(sessionId)) {
+    chatHistories.set(sessionId, []);
   }
-  const history = chatHistories.get(CHAT_SESSION_KEY);
+  const history = chatHistories.get(sessionId);
   const introMessage = { id: nanoid(), role: "gm", text, source, timestamp: Date.now() };
   history.push(introMessage);
 
   res.json({ text, source });
 });
 
-router.get("/", (_req, res) => {
-  if (!currentCharacterId || !characters.has(currentCharacterId)) {
+router.get("/", (req, res) => {
+  const characterId = activeCharacterIdBySession.get(getSessionId(req));
+  if (!characterId || !characters.has(characterId)) {
     return res.status(404).json({ error: "Aktif karakter yok." });
   }
-  res.json(characters.get(currentCharacterId));
+  res.json(characters.get(characterId));
 });
 
 router.post("/", (req, res) => {
-  if (!currentCharacterId || !characters.has(currentCharacterId)) {
+  const characterId = activeCharacterIdBySession.get(getSessionId(req));
+  if (!characterId || !characters.has(characterId)) {
     return res.status(404).json({ error: "Aktif karakter yok." });
   }
-  const character = characters.get(currentCharacterId);
+  const character = characters.get(characterId);
   const { hp, mana, attributes, inventory } = req.body || {};
   if (hp) character.hp = { ...character.hp, ...hp };
   if (mana) character.mana = { ...character.mana, ...mana };

@@ -1,30 +1,30 @@
 const express = require("express");
 const { nanoid } = require("nanoid");
-const { chatHistories, characters } = require("../data/store");
+const { chatHistories, characters, activeCharacterIdBySession } = require("../data/store");
 const { getScene } = require("../services/sceneState");
 const { resolveAction } = require("../services/actionResolver");
 const { generateNarration } = require("../services/narrationService");
+const { getSessionId } = require("../services/sessionId");
 
 const router = express.Router();
 
-const SESSION_KEY = "default";
 const HISTORY_CONTEXT_SIZE = 6;
 
-function getHistory() {
-  if (!chatHistories.has(SESSION_KEY)) {
-    chatHistories.set(SESSION_KEY, []);
+function getHistory(sessionId) {
+  if (!chatHistories.has(sessionId)) {
+    chatHistories.set(sessionId, []);
   }
-  return chatHistories.get(SESSION_KEY);
+  return chatHistories.get(sessionId);
 }
 
-function getActiveCharacter() {
-  // Faz 1 kapsamıyla tutarlı: en son oluşturulan karakter aktif kabul edilir.
-  const all = Array.from(characters.values());
-  return all[all.length - 1] ?? null;
+function getActiveCharacter(sessionId) {
+  const characterId = activeCharacterIdBySession.get(sessionId);
+  if (!characterId) return null;
+  return characters.get(characterId) ?? null;
 }
 
-router.get("/", (_req, res) => {
-  res.json({ messages: getHistory() });
+router.get("/", (req, res) => {
+  res.json({ messages: getHistory(getSessionId(req)) });
 });
 
 router.post("/", async (req, res) => {
@@ -33,7 +33,8 @@ router.post("/", async (req, res) => {
     return res.status(400).json({ error: "Mesaj gerekli." });
   }
 
-  const history = getHistory();
+  const sessionId = getSessionId(req);
+  const history = getHistory(sessionId);
 
   const playerMessage = {
     id: nanoid(),
@@ -43,10 +44,11 @@ router.post("/", async (req, res) => {
   };
   history.push(playerMessage);
 
-  const actionResult = resolveAction(getActiveCharacter(), playerMessage.text);
+  const character = getActiveCharacter(sessionId);
+  const actionResult = resolveAction(character, playerMessage.text);
   const { text, source } = await generateNarration({
-    character: getActiveCharacter(),
-    scene: getScene(),
+    character,
+    scene: getScene(sessionId),
     recentMessages: history.slice(-HISTORY_CONTEXT_SIZE),
     playerMessage: playerMessage.text,
     actionResult,

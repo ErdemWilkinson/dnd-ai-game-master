@@ -1,40 +1,42 @@
 const express = require("express");
 const { nanoid } = require("nanoid");
-const { characters, chatHistories } = require("../data/store");
+const { characters, chatHistories, activeCharacterIdBySession } = require("../data/store");
 const { getScene, isBlocked, isPathBlocked } = require("../services/sceneState");
 const { runEnemyTurn } = require("../services/enemyAI");
 const { rollD20, rollDie } = require("../services/dice");
 const { abilityModifier, DIFFICULTY_CLASS } = require("../services/actionResolver");
 const { generateNarration } = require("../services/narrationService");
+const { getSessionId } = require("../services/sessionId");
 const { CLASSES } = require("../data/dnd");
 
 const router = express.Router();
-const CHAT_SESSION_KEY = "default";
 const ATTACK_DAMAGE_DIE = 6;
 
-function getActiveCharacter() {
-  const all = Array.from(characters.values());
-  return all[all.length - 1] ?? null;
+function getActiveCharacter(sessionId) {
+  const characterId = activeCharacterIdBySession.get(sessionId);
+  if (!characterId) return null;
+  return characters.get(characterId) ?? null;
 }
 
-function getChatHistoryList() {
-  if (!chatHistories.has(CHAT_SESSION_KEY)) {
-    chatHistories.set(CHAT_SESSION_KEY, []);
+function getChatHistoryList(sessionId) {
+  if (!chatHistories.has(sessionId)) {
+    chatHistories.set(sessionId, []);
   }
-  return chatHistories.get(CHAT_SESSION_KEY);
+  return chatHistories.get(sessionId);
 }
 
-function pushGmMessage(text, source) {
-  getChatHistoryList().push({ id: nanoid(), role: "gm", text, source, timestamp: Date.now() });
+function pushGmMessage(sessionId, text, source) {
+  getChatHistoryList(sessionId).push({ id: nanoid(), role: "gm", text, source, timestamp: Date.now() });
 }
 
-router.get("/", (_req, res) => {
-  res.json(getScene());
+router.get("/", (req, res) => {
+  res.json(getScene(getSessionId(req)));
 });
 
 router.post("/move", async (req, res) => {
   const { tokenId, x, y } = req.body || {};
-  const scene = getScene();
+  const sessionId = getSessionId(req);
+  const scene = getScene(sessionId);
 
   const token = scene.tokens.find((t) => t.id === tokenId);
   if (!token) {
@@ -69,15 +71,15 @@ router.post("/move", async (req, res) => {
 
   let narration = null;
   if (token.type === "player") {
-    const character = getActiveCharacter();
-    const history = getChatHistoryList();
+    const character = getActiveCharacter(sessionId);
+    const history = getChatHistoryList(sessionId);
     const { text, source } = await generateNarration({
       character,
       scene,
       recentMessages: history.slice(-6),
       playerMessage: `${character?.name ?? "Oyuncu"} hareket ediyor.`,
     });
-    pushGmMessage(text, source);
+    pushGmMessage(sessionId, text, source);
     narration = { text, source };
   }
 
@@ -101,21 +103,22 @@ function advanceTurn(scene) {
 }
 
 router.post("/end-turn", (req, res) => {
-  const scene = getScene();
+  const sessionId = getSessionId(req);
+  const scene = getScene(sessionId);
   const enemyMessages = [];
 
   let activeToken = advanceTurn(scene);
   // Düşman token'ların sırası tamamen deterministik/scriptli işlenir (ek AI
   // çağrısı yok), sonra sıra otomatik olarak oyuncuya geri döner.
   while (activeToken.type === "enemy") {
-    const character = getActiveCharacter();
+    const character = getActiveCharacter(sessionId);
     const message = runEnemyTurn(scene, activeToken, character);
     if (message) enemyMessages.push(message);
     activeToken = advanceTurn(scene);
   }
 
   for (const text of enemyMessages) {
-    pushGmMessage(text, "mock");
+    pushGmMessage(sessionId, text, "mock");
   }
 
   // Geriye dönük uyumluluk: end-turn geleneksel olarak sahneyi düz (top-level)
@@ -124,8 +127,8 @@ router.post("/end-turn", (req, res) => {
   res.json({ ...scene, enemyMessages });
 });
 
-function requirePlayerAction(res) {
-  const scene = getScene();
+function requirePlayerAction(sessionId, res) {
+  const scene = getScene(sessionId);
   const playerToken = scene.tokens.find((t) => t.id === "player");
   if (scene.activeTokenId !== "player") {
     res.status(400).json({ error: "Sıra sende değil." });
@@ -143,10 +146,11 @@ router.post("/attack", async (req, res) => {
   const character = characters.get(characterId);
   if (!character) return res.status(404).json({ error: "Karakter bulunamadı." });
 
-  const playerToken = requirePlayerAction(res);
+  const sessionId = getSessionId(req);
+  const playerToken = requirePlayerAction(sessionId, res);
   if (!playerToken) return;
 
-  const scene = getScene();
+  const scene = getScene(sessionId);
   const target = scene.tokens.find((t) => t.id === targetTokenId && t.type === "enemy");
   if (!target) return res.status(404).json({ error: "Hedef bulunamadı." });
 
@@ -180,7 +184,7 @@ router.post("/attack", async (req, res) => {
   }
 
   const attackResult = { attribute: primaryAttribute, roll, modifier, total, dc: DIFFICULTY_CLASS, outcome };
-  const history = getChatHistoryList();
+  const history = getChatHistoryList(sessionId);
   const { text, source } = await generateNarration({
     character,
     scene,
@@ -189,7 +193,7 @@ router.post("/attack", async (req, res) => {
     actionResult: attackResult,
   });
   const narrationText = defeated ? `${text} ${target.name} yenildi!` : text;
-  pushGmMessage(narrationText, source);
+  pushGmMessage(sessionId, narrationText, source);
 
   res.json({
     character,
@@ -209,7 +213,7 @@ router.post("/item/use", (req, res) => {
   const item = character.inventory.find((i) => i.id === itemId);
   if (!item) return res.status(404).json({ error: "Eşya bulunamadı." });
 
-  const playerToken = requirePlayerAction(res);
+  const playerToken = requirePlayerAction(getSessionId(req), res);
   if (!playerToken) return;
 
   character.inventory = character.inventory.filter((i) => i.id !== itemId);
@@ -258,7 +262,7 @@ router.post("/item/drop", (req, res) => {
 
   character.inventory = character.inventory.filter((i) => i.id !== itemId);
 
-  const scene = getScene();
+  const scene = getScene(getSessionId(req));
   const playerToken = scene.tokens.find((t) => t.id === "player");
   if (playerToken) {
     scene.loot.push({ id: nanoid(), x: playerToken.x, y: playerToken.y, name: item.name });
@@ -279,12 +283,13 @@ router.post("/item/throw", (req, res) => {
     return res.status(400).json({ error: "Geçersiz koordinat." });
   }
 
-  const playerToken = requirePlayerAction(res);
+  const sessionId = getSessionId(req);
+  const playerToken = requirePlayerAction(sessionId, res);
   if (!playerToken) return;
 
   character.inventory = character.inventory.filter((i) => i.id !== itemId);
 
-  const scene = getScene();
+  const scene = getScene(sessionId);
   scene.loot.push({ id: nanoid(), x, y, name: item.name });
   playerToken.actionAvailable = false;
 
