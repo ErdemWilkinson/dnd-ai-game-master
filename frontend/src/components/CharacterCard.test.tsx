@@ -15,8 +15,9 @@ const character: Character = {
   mana: { current: 0, max: 0 },
   attributes: { str: 11, dex: 10, con: 12, int: 10, wis: 10, cha: 10 },
   inventory: [
-    { id: 'i1', name: 'Kısa Kılıç', equipped: false },
-    { id: 'i2', name: 'Deri Zırh', equipped: true },
+    { id: 'i1', name: 'Kısa Kılıç', equipped: false, slot: 'hand' },
+    { id: 'i2', name: 'Deri Zırh', equipped: true, slot: 'chest' },
+    { id: 'i3', name: 'İksir (Küçük İyileştirme)', equipped: false, slot: null },
   ],
 };
 
@@ -29,8 +30,9 @@ describe('CharacterCard', () => {
 
   it('envanterdeki eşyaları listeler', () => {
     render(<CharacterCard character={character} />);
-    expect(screen.getByText(/Kısa Kılıç/)).toBeInTheDocument();
-    expect(screen.getByText(/Deri Zırh/)).toBeInTheDocument();
+    const inventoryList = document.querySelector('.inventory-list') as HTMLElement;
+    expect(within(inventoryList).getByText(/Kısa Kılıç/)).toBeInTheDocument();
+    expect(within(inventoryList).getByText(/Deri Zırh/)).toBeInTheDocument();
     expect(screen.getByText('kuşanıldı')).toBeInTheDocument();
   });
 
@@ -73,5 +75,46 @@ describe('CharacterCard — Faz 3-E: fırlatma tetikleme', () => {
   it('throwingItemId yokken ipucu metni gösterilmez', () => {
     render(<CharacterCard character={character} />);
     expect(screen.queryByText(/taktik haritada bir kareye tıkla/i)).not.toBeInTheDocument();
+  });
+});
+
+describe('CharacterCard — Faz 4-C: ekipman paper-doll', () => {
+  it('6 slotu da etiketleriyle render eder', () => {
+    render(<CharacterCard character={character} />);
+    for (const label of ['Baş', 'Göğüs', 'Kollar', 'El', 'Bacaklar', 'Ayaklar']) {
+      expect(screen.getByText(label)).toBeInTheDocument();
+    }
+  });
+
+  it('kuşanılmış eşyayı doğru slotta gösterir, boş slotlar "(boş)" yazar', () => {
+    render(<CharacterCard character={character} />);
+    const chestSlot = screen.getByText('Göğüs').closest('.paper-doll-slot') as HTMLElement;
+    expect(within(chestSlot).getByText('Deri Zırh')).toBeInTheDocument();
+    expect(chestSlot).toHaveClass('filled');
+
+    const headSlot = screen.getByText('Baş').closest('.paper-doll-slot') as HTMLElement;
+    expect(within(headSlot).getByText('(boş)')).toBeInTheDocument();
+    expect(headSlot).not.toHaveClass('filled');
+  });
+
+  it('kuşanılmamış (equipped: false) bir eşya paper-doll\'da gösterilmez, sadece slot boş kalır', () => {
+    render(<CharacterCard character={character} />);
+    // Kısa Kılıç equipped:false, "El" slotu boş görünmeli
+    const handSlot = screen.getByText('El').closest('.paper-doll-slot') as HTMLElement;
+    expect(within(handSlot).getByText('(boş)')).toBeInTheDocument();
+  });
+
+  it('slotu olmayan eşyada (İksir) Kuşan/Çıkar butonu gösterilmez', () => {
+    render(<CharacterCard character={character} />);
+    const potionRow = screen.getByText(/İksir/).closest('li')!;
+    expect(within(potionRow).queryByRole('button', { name: /Kuşan|Çıkar/ })).not.toBeInTheDocument();
+    // Kullan/At/Fırlat hâlâ olmalı
+    expect(within(potionRow).getByRole('button', { name: 'Kullan' })).toBeInTheDocument();
+  });
+
+  it('slotu olan eşyada Kuşan/Çıkar butonu gösterilir', () => {
+    render(<CharacterCard character={character} />);
+    const kilicRow = screen.getByText(/Kısa Kılıç/).closest('li')!;
+    expect(within(kilicRow).getByRole('button', { name: 'Kuşan' })).toBeInTheDocument();
   });
 });

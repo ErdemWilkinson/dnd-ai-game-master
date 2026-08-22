@@ -97,6 +97,25 @@ describe("POST /api/character/create", () => {
     expect(res.body.inventory.length).toBeGreaterThan(0);
   });
 
+  it("Faz 4-C: her envanter eşyasına doğru ekipman slotu atanır", async () => {
+    const app = buildApp();
+    const res = await request(app)
+      .post("/api/character/create")
+      .send({ name: "Aragorn", raceId: "human", classId: "fighter" });
+
+    const sword = res.body.inventory.find((i) => i.name === "Kısa Kılıç");
+    const armor = res.body.inventory.find((i) => i.name === "Deri Zırh");
+    const potion = res.body.inventory.find((i) => i.name.includes("ksir"));
+
+    expect(sword.slot).toBe("hand");
+    expect(armor.slot).toBe("chest");
+    expect(potion.slot).toBeNull();
+    // Her eşyanın slot alanı var (undefined değil, açıkça null ya da bir string)
+    for (const item of res.body.inventory) {
+      expect(item).toHaveProperty("slot");
+    }
+  });
+
   it("attributes gönderilmeden istek atılırsa sunucu kendi D20 zarını atar ve ırk bonusunu uygular", async () => {
     // Faz 3-A: stat ataması artık D20 zarla belirleniyor. `attributes` body'de
     // yoksa (veya geçersizse) server kendi zarını atıp ırk bonusunu uyguluyor.
