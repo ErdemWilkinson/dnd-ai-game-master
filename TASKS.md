@@ -326,14 +326,18 @@ Kullanıcı kararı: "inovasyonlara devam et". PM değerlendirmesi: tek sabit sa
 
 **Doğrulama:** izole portta uçtan uca — goblin ölünce sahne otomatik "Örümcek İni"ye geçti (yeni düşman, oyuncu spawn'a döndü, tur/aksiyon sıfırlandı), gerçek dosya DB'siyle restart testinde `encounterIndex` korundu. backend 215/216 (1 bilinen davranış değişikliği — bkz. commit mesajı, tester güncellemeli), frontend 73/73 yeşil.
 
-### B) Postgres'e geçiş (coder, A'dan bağımsız paralel yapılabilir)
-- [ ] `backend/services/persistence.js`'i hem SQLite (yerel geliştirme/test — mevcut davranış korunur) hem Postgres (üretim) destekleyecek şekilde soyutla: `DATABASE_URL` ortam değişkeni varsa (`pg` paketiyle) Postgres kullan, yoksa mevcut `better-sqlite3`'e düş. Test ortamı (`VITEST=true`) davranışı değişmeyecek.
-- [ ] Postgres için eşdeğer tablo şeması (characters/scenes/chat_histories/sessions) + migration/init script'i
+### B) Postgres'e geçiş (coder, A'dan bağımsız paralel yapılabilir) [x] TAMAMLANDI (commit 94e20de)
+- [x] `data/dbSqlite.js` (senkron, mevcut `better-sqlite3` mantığı) ve `data/dbPostgres.js` (asenkron, `pg` Pool) aynı metod setini sağlıyor. `data/db.js` seçici: `DATABASE_URL` varsa VE `VITEST` değilse Postgres, aksi halde SQLite. `services/persistence.js`'in save* fonksiyonları hâlâ senkron-görünümlü çağrılıyor (route'larda hiçbir değişiklik gerekmedi) — SQLite'ta gerçekten bloklayıcı, Postgres'te "fire and forget" (in-memory Map zaten çalışma-zamanı otoritesi). `loadAll()` async oldu, `server.js` açılışta await ediyor.
+- [x] `scripts/initPostgres.js` — elle şema kurulumu için yardımcı script (uygulama zaten her açılışta otomatik `CREATE TABLE IF NOT EXISTS` çalıştırıyor).
 
-### C) Render deploy hazırlığı (coder, kod/config seviyesinde)
-- [ ] Backend'i tek bir Render Web Service olarak deploy edilebilir hale getir: `PORT` ortam değişkenini Render'ın verdiği porta uysun şekilde kullanmaya devam et (zaten `process.env.PORT` var), `GEMINI_API_KEY`/`DATABASE_URL` gibi secret'ların `.env` dosyası olmadan sadece ortam değişkeninden okunduğunu doğrula
-- [ ] Frontend için `vite build` çıktısının bir Render Static Site olarak deploy edilebilirliğini doğrula, API base URL'i (`localhost:3001` yerine) bir build-time ortam değişkeninden (`VITE_API_BASE`) okuyacak şekilde güncelle
-- [ ] `render.yaml` (Infrastructure-as-Code) dosyası hazırla ki PM/kullanıcı Render'da tek tıkla servisleri tanımlayabilsin
+**Doğrulama:** `DATABASE_URL` yokken engine='sqlite' (değişmedi); `DATABASE_URL`+`VITEST=true` → yine 'sqlite' (test izolasyonu korunuyor); `DATABASE_URL` tek başına → 'postgres', `Pool` eager bağlanmıyor; sahte/erişilemez bir Postgres URL'iyle gerçek başlatma denemesi net bir hata mesajıyla temiz exit etti (asılıp kalmadı); gerçek dosya SQLite ile uçtan uca restart testi refactor sonrası da bozulmadı. backend 237/237, gerçek bir Postgres instance'ı yok — o kısım yukarıdaki dry-run testleriyle doğrulandı, gerçek bağlantı testi PM ile deploy aşamasında yapılacak.
+
+### C) Render deploy hazırlığı (coder, kod/config seviyesinde) [x] TAMAMLANDI (commit d2a6558)
+- [x] `PORT` zaten `process.env.PORT`'tan okunuyordu (değişiklik gerekmedi). `GEMINI_API_KEY`/`DATABASE_URL` zaten sadece ortam değişkeninden okunuyor, `.env` gitignore'da, kodda/repoda hiçbir secret yok — doğrulandı.
+- [x] `frontend/src/api.ts`: `BASE` artık `import.meta.env.VITE_API_BASE`'den okunuyor (yoksa `/api`'ye düşer, yerel dev proxy davranışı değişmedi). Gerçek build ile doğrulandı: `VITE_API_BASE` build-time env'i verilince tam URL bundle'a gömülüyor.
+- [x] `render.yaml` — backend (Node Web Service, `healthCheckPath: /api/health`, `DATABASE_URL` Render Postgres'ten `fromDatabase` ile otomatik, `GEMINI_API_KEY` `sync: false` yani dashboard'dan elle girilecek), frontend (Static Site, `VITE_API_BASE` backend servisinden `fromService` ile bağlanmaya çalışıyor), ücretsiz Postgres tanımı.
+
+**Not (coder, dürüstlük payı):** `render.yaml`'daki `fromService` ile servisler-arası tam URL referansı Render'ın güncel şemasına birebir uyup uymadığını gerçek bir Render ortamım olmadığı için %100 doğrulayamadım — dosyanın içinde bunu açıkça belirten bir yorum bıraktım, dashboard'da ilk deploy denemesinde PM/kullanıcının bu alanı kontrol etmesi gerekebilir.
 
 **ÖNEMLİ — coder/tester DIKKAT:** Gerçek Render/GitHub hesabı açma, repo'yu GitHub'a push'lama, ve Render dashboard'unda servisleri kurma adımları PM ile kullanıcı arasında ayrıca yürütülecek (dış hesap işlemleri, sizin yetkinizde değil). Sizin işiniz sadece kodun/config'in deploy'a HAZIR olmasını sağlamak.
 
