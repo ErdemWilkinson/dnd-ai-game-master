@@ -6,7 +6,11 @@ export interface Narration {
   source: 'ai' | 'mock';
 }
 
-const BASE = '/api';
+// Faz 7-C: yerelde Vite dev proxy'si "/api"yi backend'e yönlendirir (bkz.
+// vite.config.ts). Production build'de (Render Static Site gibi ayrı bir
+// origin'den servis edilince) proxy olmaz - build-time VITE_API_BASE ortam
+// değişkeni backend'in tam URL'ini vermeli (örn. "https://xxx.onrender.com/api").
+const BASE = import.meta.env.VITE_API_BASE || '/api';
 
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
   const res = await fetch(`${BASE}${path}`, {

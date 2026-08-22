@@ -18,6 +18,20 @@ npm run dev     # node --watch server.js (dosya değişince otomatik yeniden ba�
 
 Varsayılan port: `3001` (`PORT` env değişkeniyle değiştirilebilir). Sağlık kontrolü: `GET /api/health`.
 
+## Ortam değişkenleri (Faz 7)
+
+Hepsi sadece ortam değişkeninden okunur, hiçbiri kodda/`.env`'de commit edilmez (`.env` `.gitignore`'da).
+
+| Değişken | Zorunlu mu | Açıklama |
+|---|---|---|
+| `PORT` | Hayır | Varsayılan `3001`, Render gibi platformlar otomatik ayarlar |
+| `GEMINI_API_KEY` | Hayır | Yoksa/hata verirse sistem sessizce mock GM'e düşer |
+| `GEMINI_MODEL` | Hayır | Varsayılan `gemini-3.6-flash` |
+| `AI_HOURLY_LIMIT` | Hayır | Saatlik AI çağrı limiti, varsayılan `30` |
+| `DATABASE_URL` | Hayır | Varsa Postgres kullanılır (`pg`), yoksa yerel `game.db` (SQLite) — bkz. `data/db.js` |
+| `DATABASE_SSL` | Hayır | `false` verilirse Postgres bağlantısında SSL kapatılır (varsayılan açık) |
+| `DB_PATH` | Hayır | SQLite dosya yolu override (test/geliştirme amaçlı) |
+
 ## Endpoint'ler
 
 | Method | Path | Açıklama |

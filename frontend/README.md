@@ -17,6 +17,12 @@ npm run build    # tip kontrolü (tsc -b) + production build -> dist/
 npm run preview  # build çıktısını yerelde önizler
 ```
 
+## Ortam değişkenleri (Faz 7)
+
+| Değişken | Zorunlu mu | Açıklama |
+|---|---|---|
+| `VITE_API_BASE` | Hayır | Build-time. Ayarlanmazsa `/api` kullanılır (yerel dev proxy'si için). Production'da (örn. Render Static Site, backend'den ayrı bir origin) backend'in tam URL'i verilmeli, örn. `VITE_API_BASE=https://dnd-game-backend.onrender.com/api npm run build` |
+
 ## Yapı
 
 - `src/types.ts` — backend ile paylaşılan tipler (Character, Scene, ChatMessage, ...)
