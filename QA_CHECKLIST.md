@@ -1,4 +1,4 @@
-# Manuel QA Checklist — Faz 1 / Faz 1.5 / Faz 2 / Faz 3 / Faz 3.5 / Faz 4 / Faz 5
+# Manuel QA Checklist — Faz 1 / Faz 1.5 / Faz 2 / Faz 3 / Faz 3.5 / Faz 4 / Faz 5 / Faz 6
 
 Kullanım: backend (`cd backend && npm start`, :3001) ve frontend (`cd frontend && npm run dev`, :5173) ayrı terminallerde çalışırken, tarayıcıda `http://localhost:5173` açılarak sırayla kontrol edilir.
 
@@ -140,6 +140,21 @@ Otomatik testlerle doğrulanan davranış: backend **165/165**, frontend **49/49
 
 **Faz 5 (madde 1, 2, 3) TAMAMEN KAPANDI** — bilinen açık bug yok.
 
+## Faz 6-A — Oturum izolasyonu (çoklu kullanıcı)
+
+Otomatik testlerle doğrulanan davranış: backend **175/175**, frontend **57/57**, tsc+vite build temiz.
+
+- [x] Her tarayıcı ilk ziyarette kendi `X-Session-Id`'sini üretip `localStorage`'a kaydediyor, sonraki tüm isteklerde aynı id gönderiliyor
+- [x] İki farklı session tamamen bağımsız karakter/sahne/sohbete sahip — biri diğerini hiç görmüyor/etkilemiyor
+- [x] `X-Session-Id` header'ı olmayan eski istekler (curl vb.) `"default"` oturumuna düşüyor, geriye dönük uyumluluk korunuyor
+- [x] Rate limiter kasıtlı olarak GLOBAL (session-başına değil, uygulama-geneli tek kota — PM kararı)
+
+**Tarayıcıda gerçek çoklu-kullanıcı testi (Playwright, iki ayrı browser context, 2026-08-22) — TAMAMLANDI:** İki bağımsız "kullanıcı" (izole localStorage) aynı anda karakter oluşturdu, sohbet etti, grid'de hareket etti — hiçbiri diğerinin ismini, sohbetini veya sahne durumunu görmedi/etkilemedi. Farklı session id'ler doğrulandı. Konsol hatası yok.
+
+**Bilinen mimari not (bug değil, kayıt altında):** `item/use|equip|drop|throw` ve `/attack` endpoint'leri, gönderilen `characterId`'nin gerçekten o session'a ait olduğunu doğrulamıyor — sadece `characters` Map'inde var mı diye bakıyor. nanoid'ler tahmin edilemez olduğu için pratik risk düşük, testle belgelendi (`sessionIsolation.test.js`).
+
+**Faz 6-A TAMAMEN KAPANDI** — bilinen açık bug yok.
+
 ## Bilinen kısıtlar (bug değil, kayıt altında)
 - SS13 slot listesinde ayrı bir "kalkan" slotu yok — Kalkan eşyası en yakın karşılık olan "back" (sırt) slotuna atanmış, PM/coder kararı, tutarlı davranıyor.
 - Silahlar (hand slotu) için tgstation asset setinde ikon yok — frontend metin/emoji fallback (⚔) kullanıyor, kapsam dışı değil ama görsel olarak diğer slotlardan farklı.
@@ -149,6 +164,6 @@ Otomatik testlerle doğrulanan davranış: backend **165/165**, frontend **49/49
 
 ## Kapsam dışı (bilerek yok, "bug" olarak raporlamayın)
 - Gerçek LLM tabanlı GM (Gemini varsa kullanılıyor, yoksa kural tabanlı/şablon metin — bkz. Faz 2)
-- Kalıcı depolama / login / çoklu oturum (state sunucu belleğinde, tek global oturum)
+- Kalıcı depolama / login (state hâlâ sunucu belleğinde — çoklu OTURUM artık var, Faz 6-A, ama server restart'ta her şey siliniyor; kalıcılık Faz 6-B'de planlı)
 - Sahne görselleri (statik placeholder yok, sadece grid) ve AI ile görsel/portre üretimi
 - Savaş mekaniği derinliği (kapak, yükseklik, fırlatma menzili vb.)

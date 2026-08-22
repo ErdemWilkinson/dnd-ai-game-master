@@ -252,11 +252,22 @@ Kullanıcının el çizimi diyagram + ekran görüntüsü ile verdiği geri bild
 
 PM'in kendi değerlendirmesi (kullanıcı onayladı): Proje şu ana kadar tek kişilik bir demo gibi çalışıyor — backend'de TEK bir global karakter/sahne/sohbet state'i var, herkes aynı state'i paylaşıyor, ve her şey RAM'de (server restart'ta her şey siliniyor). "Kullanıcılara açma" hedefi için bunlar olmadan ilerlemek anlamsız. Kullanıcı kararı: önce A+B (altyapı), sonra C (oyun döngüsü).
 
-### A) Oturum izolasyonu (öncelik 1, en kritik)
-- [ ] Frontend: ilk ziyarette `crypto.randomUUID()` ile bir session ID üretilip `localStorage`'a kaydedilsin, her API isteğinde bir header (örn. `X-Session-Id`) olarak gönderilsin
-- [ ] Backend: `data/store.js`'teki tüm global state (character, messages/chat, mapState/scene) sessionId'ye göre anahtarlanan Map'lere geçirilsin — her route handler artık "hangi session" sorusuna göre doğru veriyi okumalı/yazmalı
-- [ ] Rate limiter: şimdilik GLOBAL kalabilir (toplam API maliyetini korumak için tek bir uygulama-geneli saatlik limit) — session-başına ayrı kota Faz 6 kapsamı dışı, ileride değerlendirilebilir, TASKS.md'ye not düşülsün
-- [ ] Var olmayan/eskimiş bir sessionId ile gelen istekler için makul bir davranış (örn. otomatik yeni state oluşturma, karakter yoksa 404 zaten mevcut davranışla tutarlı)
+### A) Oturum izolasyonu (öncelik 1, en kritik) [x] TAMAMLANDI (commit 91e4ebf)
+- [x] Frontend: `session.ts` — ilk ziyarette `crypto.randomUUID()` ile session ID üretilip `localStorage`'a (`dnd-session-id`) kaydediliyor, bellek-içi cache'leniyor; `api.ts`'teki her istek `X-Session-Id` header'ı gönderiyor
+- [x] Backend: `services/sessionId.js` header'ı okuyor (yoksa `"default"`'e düşüyor — geriye dönük uyumluluk). `data/store.js`'e `activeCharacterIdBySession` eklendi; `chatHistories`/`scenes` zaten sessionId'ye göre anahtarlanan Map'lerdi, artık gerçek sessionId ile anahtarlanıyor (sabit `"default"` yerine). `characters` hâlâ characterId'ye göre global (id'ler benzersiz)
+- [x] Rate limiter kasıtlı olarak GLOBAL bırakıldı (PM kararıyla tutarlı) — testle doğrulandı (`allowRequest()` parametresiz)
+- [x] Var olmayan/eskimiş sessionId → mevcut karakter/sahne yok davranışıyla tutarlı (404 karakter yoksa, sahne lazy-init ediliyor)
+
+**Tester notu (mimari, bug değil):** `item/use|equip|drop|throw` ve `/attack` endpoint'leri `characterId`'yi body'den alıp doğrudan global `characters` Map'inde arıyor — sessionId'nin o characterId'nin GERÇEK sahibi olduğunu doğrulamıyor. nanoid'ler tahmin edilemez olduğu için pratik risk düşük, ama mimari olarak "characterId bilmek = erişim" varsayımına dayanıyor. Test edilip belgelendi (`sessionIsolation.test.js`), bug olarak açılmadı — ileride (özellikle B/kalıcılık sonrası, hesaplar kalıcı hale gelince) tekrar gözden geçirilmesi önerilir.
+
+#### Tester (A — oturum izolasyonu)
+- [x] `sessionIsolation.test.js` (yeni, 10 test): iki farklı `X-Session-Id` ile karakter oluşturma/görüntüleme birbirinden bağımsız, A'nın karakter güncellemesi B'yi etkilemiyor, A B'den SONRA oluşturulsa bile ikisi de kendi karakterini görüyor (eski "son oluşturulan karakter" hack'i tamamen gitmiş), header yoksa `"default"`'e düşüyor, sahne izolasyonu (hareket/end-turn birbirini etkilemiyor), sohbet izolasyonu (A'nın mesajı B'de görünmüyor), GM anlatımının doğru session'ın karakterine göre üretilmesi, rate limiter'ın gerçekten global kaldığı, characterId-sahiplik-doğrulaması-yok mimari notunun testle belgelenmesi
+- [x] `session.test.ts` (yeni, 5 test): ilk çağrıda UUID üretilip localStorage'a yazılıyor, var olan id yeniden kullanılıyor, aynı modülde cache'leniyor (randomUUID sadece 1 kez çağrılıyor), localStorage erişilemezse (gizli sekme) çökmeden bellek-içi id dönüyor
+- [x] `api.test.ts` (yeni, 3 test): her istek `X-Session-Id` header'ı taşıyor, ardışık isteklerde aynı id kullanılıyor, id localStorage'a yazılıyor
+- [x] Test durumu: backend **175/175**, frontend **57/57**, tsc+vite build temiz
+- [x] **Tarayıcıda gerçek çoklu-kullanıcı testi (Playwright, iki AYRI browser context = iki gerçek izole kullanıcı, 2026-08-22):** İki farklı karakter oluşturuldu (OyuncuA, OyuncuB) — her ikisi de sadece kendi ismini görüyor, birbirininkini görmüyor; A sohbete mesaj gönderdi, B'nin sohbeti tamamen boş/etkilenmemiş kaldı; A grid'de hareket etti, B sayfayı yenileyince kendi token'ı hâlâ başlangıç konumunda (A'nın hareketi hiç yansımadı); iki farklı `dnd-session-id` localStorage'da doğrulandı. Konsol hatası yok (sadece beklenen başlangıç 404'leri).
+
+**Faz 6-A TAMAMEN KAPANDI** — bilinen açık bug yok (characterId-sahiplik notu mimari gözlem, blocker değil).
 
 ### B) Kalıcılık (öncelik 2)
 - [ ] SQLite tabanlı kalıcı depolama eklensin (örn. `better-sqlite3` — ayrı bir DB sunucusu gerektirmez, tek dosya, bu ölçek için yeterli). Character/scene/chat state'i sessionId'ye göre DB'ye yazılsın, backend yeniden başlayınca kaybolmasın
