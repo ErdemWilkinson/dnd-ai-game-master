@@ -185,6 +185,23 @@ Kullanıcının kendi elle test edip verdiği geri bildirim (2026-08-22). Kapsam
 ### Not
 Gerçek Gemini key kotası bu turda yine tükendi (429) — Faz 3'ün "5 duyu betimlemesi" gerçek bir AI cevabıyla henüz görsel doğrulanmadı, fallback sorunsuz çalıştı. Yeni/dolu kotalı bir key gelirse tekrar denenmeli.
 
+## Faz 4 — Hareket Bugları, Ekipman Slotları, Basit Düşman AI, BG3 Görsel Stili
+
+Kullanıcının elle test edip verdiği geri bildirim. Kullanıcı kararları: düşman AI'ı **basit scriptli** olacak (oyuncuya doğru hareket + yakınsa saldırı, karmaşık strateji yok, AI/LLM çağrısı YOK — maliyet/darboğaz ilkesiyle tutarlı); "BG3 gibi olsun" isteği sadece **görsel/estetik** kapsamında (renk, buton stili, panel yerleşimi) — savaş mekaniği derinliği (kapak, yükseklik vb.) ve AI görsel üretimi bu fazda KAPSAM DIŞI.
+
+### Coder — öncelik sırasıyla (A ve B gerçek bug, önce onlar)
+- [ ] Bug A (yüksek öncelik): Token hareketi engellerin (obstacles) üzerinden geçebiliyor — hareket endpoint'i (`/scene/move`) hedef karenin bir engelle çakışmadığını doğrulamalı, hedefe giden yolun da engellerden geçmediği kontrol edilmeli (basit bir yol kontrolü yeterli, tam pathfinding şart değil)
+- [ ] Bug B (yüksek öncelik): Hareket mesafesi sınırsız görünüyor — Faz 3-C'de 5 kareye çıkarılan `maxMovement`/`movementLeft` alanı hem backend'de hem frontend'de gerçekten zorlanmalı (regresyon mu yoksa hiç enforce edilmemiş mi, kontrol et)
+- [ ] Ekipman slotları (paper-doll sistemi): Düz envanter listesi yerine kafa/göğüs/kol/bacak/ayak/el gibi ayrı slotlarla görsel bir ekipman gösterimi — `equipped: true/false` alanı zaten var, buna bir `slot` alanı eklenip (örn. "head","chest","arms","legs","feet","hand") CharacterCard'da slot bazlı gösterime geçilebilir. Mevcut eşyalara uygun slot ataması gerekir (örn. zırh→chest, kılıç→hand)
+- [ ] Basit düşman AI: Düşman token'ın sırası geldiğinde (end-turn sonrası) otomatik olarak oyuncuya doğru hareket etsin, menzildeyse (bitişik kare) basit bir saldırı eylemi tetiklesin (HP azaltma + chat'e kısa bir mock/AI mesajı). Tamamen deterministik/scriptli olsun, ekstra AI çağrısı GEREKMİYOR — mevcut zar/hasar mantığı (actionResolver, dice.js) yeniden kullanılabilir.
+- [ ] BG3 görsel stili: Genel tema BG3'ün karanlık-fantastik, altın/bronz vurgulu, süslü çerçeveli estetiğine yaklaştırılsın — renk paleti, buton stilleri, panel çerçeveleri güncellensin. Panel yerleşimi kullanıcı tarafından şöyle netleştirildi: sol=karakter bilgisi, orta=günlük/sohbet, sağ=taktik harita (mevcut düzen zaten buna yakın, sadece görsel stil değişecek, düzen değil)
+
+### Tester
+- [ ] Bug A/B için regresyon testleri (engelin üzerinden geçilemediğini, mesafe aşımının reddedildiğini doğrulayan testler)
+- [ ] Ekipman slot sistemi için testler (doğru slota doğru eşya türü, slot çakışması engellensin mi vb. — coder'ın kararına göre)
+- [ ] Basit düşman AI için testler (düşman sırası geldiğinde hareket ettiğini, menzildeyse saldırdığını doğrula — deterministik olduğu için mock RNG ile test edilebilir)
+- [ ] Görsel stil değişikliği için otomatik test beklenmiyor, tarayıcıda elle QA yeterli
+
 ## Notlar
-- FRP (`C:\Users\erdem\OneDrive\Masaüstü\FRP`) yalnızca konsept referansıdır, kod kopyalanmayacak.
+- FRP (`C:\Users\erdem\OneDrive\Masaüstü\FRP`) yalnızca konsept referansıdır, kod kopyalanmayacak. Kök `.gitignore` ile git takibi dışında.
 - Değişiklik/karar gerektiren konularda PM'e (bu session) danışın, kullanıcıya sormadan büyük mimari karar almayın.
