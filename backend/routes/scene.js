@@ -16,6 +16,10 @@ const { trimChatHistory } = require("../services/chatHistoryLimit");
 
 const router = express.Router();
 const ATTACK_DAMAGE_DIE = 6;
+// Yaratıcı cron fikir #16: /item/throw grid sınırını/menzili hiç doğrulamıyordu
+// (x:99999 gibi bir değer görünmez/kayıp bir loot yaratabiliyordu). Ateş
+// Topu'nun range:3'üyle tutarlı bir fırlatma menzili.
+const THROW_RANGE = 3;
 
 function getActiveCharacter(sessionId) {
   const characterId = activeCharacterIdBySession.get(sessionId);
@@ -478,17 +482,27 @@ router.post("/item/throw", (req, res) => {
   const item = character.inventory.find((i) => i.id === itemId);
   if (!item) return res.status(404).json({ error: "Eşya bulunamadı." });
 
-  if (typeof x !== "number" || typeof y !== "number") {
+  if (typeof x !== "number" || typeof y !== "number" || !Number.isInteger(x) || !Number.isInteger(y)) {
     return res.status(400).json({ error: "Geçersiz koordinat." });
   }
 
   const sessionId = getSessionId(req);
+  const scene = getScene(sessionId);
+
+  if (x < 0 || x >= scene.width || y < 0 || y >= scene.height) {
+    return res.status(400).json({ error: "Hedef harita sınırlarının dışında." });
+  }
+
   const playerToken = requirePlayerAction(sessionId, res);
   if (!playerToken) return;
 
+  const distance = Math.abs(x - playerToken.x) + Math.abs(y - playerToken.y);
+  if (distance > THROW_RANGE) {
+    return res.status(400).json({ error: "Hedef fırlatma menzili dışında." });
+  }
+
   character.inventory = character.inventory.filter((i) => i.id !== itemId);
 
-  const scene = getScene(sessionId);
   scene.loot.push({ id: nanoid(), x, y, name: item.name });
   playerToken.actionAvailable = false;
 
