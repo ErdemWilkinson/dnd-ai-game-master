@@ -479,6 +479,16 @@
   border-radius: 2px;
 }
 
+.inventory-icon-fallback {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  font-size: 0.9rem;
+  flex-shrink: 0;
+}
+
 .inventory-actions {
   display: flex;
   gap: 0.3rem;

@@ -295,7 +295,11 @@ export function CharacterCard({
           >
             <div className="inventory-item-row">
               <span className="inventory-item-name">
-                {item.icon && <img className="inventory-icon" src={item.icon} alt="" width={20} height={20} />}
+                {item.icon ? (
+                  <img className="inventory-icon" src={item.icon} alt="" width={20} height={20} />
+                ) : (
+                  !item.slot && <span className="inventory-icon-fallback">🧪</span>
+                )}
                 {item.name} {item.equipped && <span className="tag">🎽 kuşanıldı</span>}
               </span>
               <div className="inventory-actions">
