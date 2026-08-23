@@ -6,25 +6,54 @@ import { ChatPanel } from './components/ChatPanel';
 import { TacticalGrid } from './components/TacticalGrid';
 import { IntroScreen } from './components/IntroScreen';
 import { GameOverScreen } from './components/GameOverScreen';
-import { getCurrentCharacter, resetSession } from './api';
+import { getCurrentCharacter, resetSession, NetworkError } from './api';
 import type { Character, SpellId } from './types';
+
+// Faz 9 (yaratıcı cron fikir #4): Render'ın soğuk başlangıcında ilk istek
+// 30-60sn sürebiliyor - sessizce hata yutmak yerine kullanıcıya "bağlanılıyor"
+// geri bildirimi verip birkaç kez otomatik deniyoruz.
+const CONNECT_RETRY_COUNT = 3;
+const CONNECT_RETRY_DELAY_MS = 4000;
 
 function App() {
   const [character, setCharacter] = useState<Character | null>(null);
   const [pendingIntro, setPendingIntro] = useState<{ text: string; source: 'ai' | 'mock' } | null>(null);
   const [loading, setLoading] = useState(true);
+  const [connectRetry, setConnectRetry] = useState(0);
   const [throwingItemId, setThrowingItemId] = useState<string | null>(null);
   const [castingSpellId, setCastingSpellId] = useState<SpellId | null>(null);
   const [sceneRefreshTick, setSceneRefreshTick] = useState(0);
   const [chatRefreshTick, setChatRefreshTick] = useState(0);
 
   useEffect(() => {
-    getCurrentCharacter()
-      .then(setCharacter)
-      .catch(() => {
-        // aktif karakter yok, oluşturma formu gösterilecek
-      })
-      .finally(() => setLoading(false));
+    let cancelled = false;
+
+    async function loadInitialCharacter() {
+      for (let attempt = 0; attempt <= CONNECT_RETRY_COUNT; attempt++) {
+        try {
+          const current = await getCurrentCharacter();
+          if (!cancelled) setCharacter(current);
+          return;
+        } catch (e) {
+          if (!(e instanceof NetworkError)) {
+            // Gerçek bir HTTP hatası (örn. "aktif karakter yok" 404'ü) -
+            // bağlantı sorunu değil, oluşturma formu gösterilecek.
+            return;
+          }
+          if (attempt === CONNECT_RETRY_COUNT || cancelled) return;
+          if (!cancelled) setConnectRetry(attempt + 1);
+          await new Promise((resolve) => setTimeout(resolve, CONNECT_RETRY_DELAY_MS));
+        }
+      }
+    }
+
+    loadInitialCharacter().finally(() => {
+      if (!cancelled) setLoading(false);
+    });
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   function handleCreated(newCharacter: Character, intro: { text: string; source: 'ai' | 'mock' }) {
@@ -65,7 +94,11 @@ function App() {
   if (loading) {
     return (
       <div className="app app-centered">
-        <p>Yükleniyor...</p>
+        <p>
+          {connectRetry > 0
+            ? `Bağlantı kurulamadı, tekrar deneniyor... (${connectRetry}/${CONNECT_RETRY_COUNT})`
+            : 'Yükleniyor...'}
+        </p>
       </div>
     );
   }

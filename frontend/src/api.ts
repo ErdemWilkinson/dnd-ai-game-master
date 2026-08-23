@@ -12,12 +12,29 @@ export interface Narration {
 // değişkeni backend'in tam URL'ini vermeli (örn. "https://xxx.onrender.com/api").
 const BASE = import.meta.env.VITE_API_BASE || '/api';
 
+// Faz 9 (yaratıcı cron fikir #4): Render'ın ücretsiz servisleri ~15dk
+// hareketsizlikten sonra "uyuyor", ilk istek 30-60sn sürebiliyor - bu sırada
+// fetch() ağ hatasıyla (backend'e hiç ulaşamama) reddedilir. Bunu normal bir
+// HTTP hatasından (ör. "aktif karakter yok" 404'ü) ayırt edebilmek için ayrı
+// bir hata sınıfı kullanılıyor - App.tsx sadece NetworkError'da retry gösteriyor.
+export class NetworkError extends Error {}
+
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
-  const res = await fetch(`${BASE}${path}`, {
-    headers: { 'Content-Type': 'application/json', 'X-Session-Id': getSessionId() },
-    ...options,
-  });
-  const data = await res.json();
+  let res: Response;
+  try {
+    res = await fetch(`${BASE}${path}`, {
+      headers: { 'Content-Type': 'application/json', 'X-Session-Id': getSessionId() },
+      ...options,
+    });
+  } catch (e) {
+    throw new NetworkError((e as Error).message || 'Bağlantı kurulamadı.');
+  }
+  let data: any;
+  try {
+    data = await res.json();
+  } catch {
+    throw new NetworkError('Sunucudan geçersiz yanıt alındı.');
+  }
   if (!res.ok) {
     throw new Error(data.error || `İstek başarısız: ${path}`);
   }

@@ -38,12 +38,33 @@ function saveActiveCharacterId(sessionId, characterId) {
 }
 
 // Faz 6-C: oyuncu öldüğünde "yeniden başla" akışı - session'ın karakter/
-// sahne/sohbet state'ini temizler (karakter kaydı DB'de kalır, sadece
-// session'ın ona işaret etmesi kesilir - geçmiş karakterleri silmeye gerek yok).
-function clearSession(sessionId) {
+// sahne/sohbet state'ini temizler. Faz 9 (yaratıcı cron fikir #1): artık
+// karakter kaydını da (in-memory + DB) gerçekten siliyor - eskiden sadece
+// session bağı kesiliyordu ve karakter satırı kalıcı olarak "sahipsiz"
+// (orphan) kalıyordu, ücretsiz Postgres'in 1GB sınırına birikerek çarpardı.
+function clearSession(sessionId, characterId) {
   fireAndForget(db.deleteSession(sessionId));
   fireAndForget(db.deleteScene(sessionId));
   fireAndForget(db.deleteChatHistory(sessionId));
+  if (characterId) {
+    characters.delete(characterId);
+    fireAndForget(db.deleteCharacter(characterId));
+  }
+}
+
+// Faz 9: belirli bir süredir hiç aktivite görmemiş session'ları (ve onlara
+// bağlı karakter/sahne/sohbet verisini) temizler. Server açılışında bir kere
+// ve periyodik olarak (bkz. server.js) çağrılır.
+async function cleanupStaleSessions(maxAgeMs) {
+  const threshold = Date.now() - maxAgeMs;
+  const staleSessions = await db.getStaleSessions(threshold);
+  for (const row of staleSessions) {
+    clearSession(row.session_id, row.active_character_id);
+    activeCharacterIdBySession.delete(row.session_id);
+    scenes.delete(row.session_id);
+    chatHistories.delete(row.session_id);
+  }
+  return staleSessions.length;
 }
 
 // Sunucu açılışında bir kere çağrılır (await edilir - bu tek noktada
@@ -68,4 +89,12 @@ async function loadAll() {
   }
 }
 
-module.exports = { loadAll, saveCharacter, saveScene, saveChatHistory, saveActiveCharacterId, clearSession };
+module.exports = {
+  loadAll,
+  saveCharacter,
+  saveScene,
+  saveChatHistory,
+  saveActiveCharacterId,
+  clearSession,
+  cleanupStaleSessions,
+};

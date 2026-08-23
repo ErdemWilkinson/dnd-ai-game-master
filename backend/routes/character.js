@@ -10,6 +10,7 @@ const { generateOpeningMock } = require("../data/openingFlavor");
 const { allowRequest } = require("../services/rateLimiter");
 const { getSessionId } = require("../services/sessionId");
 const { saveCharacter, saveChatHistory, saveActiveCharacterId, clearSession } = require("../services/persistence");
+const { publicRateLimit } = require("../services/publicRateLimit");
 
 const router = express.Router();
 
@@ -34,7 +35,7 @@ router.get("/options", (_req, res) => {
   });
 });
 
-router.post("/roll-stats", (req, res) => {
+router.post("/roll-stats", publicRateLimit, (req, res) => {
   const { raceId } = req.body || {};
   const race = RACES[raceId];
   if (!race) {
@@ -46,7 +47,7 @@ router.post("/roll-stats", (req, res) => {
   res.json({ rolls, attributes });
 });
 
-router.post("/create", (req, res) => {
+router.post("/create", publicRateLimit, (req, res) => {
   const { name, raceId, classId, appearanceId, attributes: providedAttributes } = req.body || {};
 
   if (!name || typeof name !== "string" || !name.trim()) {
@@ -173,10 +174,11 @@ router.post("/", (req, res) => {
 // sohbet bağını temizler, frontend karakter oluşturma ekranına döner.
 router.post("/reset", (req, res) => {
   const sessionId = getSessionId(req);
+  const characterId = activeCharacterIdBySession.get(sessionId);
   activeCharacterIdBySession.delete(sessionId);
   chatHistories.delete(sessionId);
   scenes.delete(sessionId);
-  clearSession(sessionId);
+  clearSession(sessionId, characterId);
   res.json({ ok: true });
 });
 

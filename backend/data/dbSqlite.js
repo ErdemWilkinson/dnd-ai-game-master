@@ -39,6 +39,14 @@ db.exec(`
   );
 `);
 
+// Faz 9: orphan/eski session temizliği için "en son ne zaman aktifti" bilgisi
+// gerekiyor - tablo zaten var olan dağıtımlarda "IF NOT EXISTS" bunu eklemez,
+// bu yüzden kolon varlığı elle kontrol edilip yoksa eklenir.
+const sessionColumns = db.prepare("PRAGMA table_info(sessions)").all();
+if (!sessionColumns.some((col) => col.name === "updated_at")) {
+  db.exec("ALTER TABLE sessions ADD COLUMN updated_at INTEGER");
+}
+
 const selectAllCharacters = db.prepare("SELECT id, data FROM characters");
 const upsertCharacterStmt = db.prepare(
   "INSERT INTO characters (id, data) VALUES (?, ?) ON CONFLICT(id) DO UPDATE SET data = excluded.data",
@@ -56,11 +64,15 @@ const upsertChatHistoryStmt = db.prepare(
 
 const selectAllSessions = db.prepare("SELECT session_id, active_character_id FROM sessions");
 const upsertSessionStmt = db.prepare(
-  "INSERT INTO sessions (session_id, active_character_id) VALUES (?, ?) ON CONFLICT(session_id) DO UPDATE SET active_character_id = excluded.active_character_id",
+  "INSERT INTO sessions (session_id, active_character_id, updated_at) VALUES (?, ?, ?) ON CONFLICT(session_id) DO UPDATE SET active_character_id = excluded.active_character_id, updated_at = excluded.updated_at",
 );
 const deleteSessionStmt = db.prepare("DELETE FROM sessions WHERE session_id = ?");
 const deleteSceneStmt = db.prepare("DELETE FROM scenes WHERE session_id = ?");
 const deleteChatHistoryStmt = db.prepare("DELETE FROM chat_histories WHERE session_id = ?");
+const deleteCharacterStmt = db.prepare("DELETE FROM characters WHERE id = ?");
+const selectStaleSessionsStmt = db.prepare(
+  "SELECT session_id, active_character_id FROM sessions WHERE updated_at IS NOT NULL AND updated_at < ?",
+);
 
 module.exports = {
   engine: "sqlite",
@@ -77,8 +89,10 @@ module.exports = {
   getAllChatHistories: () => selectAllChatHistories.all(),
   upsertChatHistory: (sessionId, data) => upsertChatHistoryStmt.run(sessionId, data),
   getAllSessions: () => selectAllSessions.all(),
-  upsertSession: (sessionId, characterId) => upsertSessionStmt.run(sessionId, characterId),
+  upsertSession: (sessionId, characterId) => upsertSessionStmt.run(sessionId, characterId, Date.now()),
   deleteSession: (sessionId) => deleteSessionStmt.run(sessionId),
   deleteScene: (sessionId) => deleteSceneStmt.run(sessionId),
   deleteChatHistory: (sessionId) => deleteChatHistoryStmt.run(sessionId),
+  deleteCharacter: (id) => deleteCharacterStmt.run(id),
+  getStaleSessions: (beforeMs) => selectStaleSessionsStmt.all(beforeMs),
 };

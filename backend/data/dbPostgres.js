@@ -33,8 +33,14 @@ const SCHEMA = `
   );
 `;
 
+// Faz 9: orphan/eski session temizliği için "en son ne zaman aktifti" bilgisi
+// gerekiyor - "IF NOT EXISTS" var olan sessions tablosuna kolon eklemiyor,
+// bu yüzden ayrı bir ALTER TABLE ... ADD COLUMN IF NOT EXISTS gerekiyor.
+const ADD_UPDATED_AT_COLUMN = `ALTER TABLE sessions ADD COLUMN IF NOT EXISTS updated_at BIGINT;`;
+
 async function init() {
   await pool.query(SCHEMA);
+  await pool.query(ADD_UPDATED_AT_COLUMN);
 }
 
 async function getAllCharacters() {
@@ -80,8 +86,8 @@ async function getAllSessions() {
 
 async function upsertSession(sessionId, characterId) {
   await pool.query(
-    "INSERT INTO sessions (session_id, active_character_id) VALUES ($1, $2) ON CONFLICT (session_id) DO UPDATE SET active_character_id = excluded.active_character_id",
-    [sessionId, characterId],
+    "INSERT INTO sessions (session_id, active_character_id, updated_at) VALUES ($1, $2, $3) ON CONFLICT (session_id) DO UPDATE SET active_character_id = excluded.active_character_id, updated_at = excluded.updated_at",
+    [sessionId, characterId, Date.now()],
   );
 }
 
@@ -95,6 +101,18 @@ async function deleteScene(sessionId) {
 
 async function deleteChatHistory(sessionId) {
   await pool.query("DELETE FROM chat_histories WHERE session_id = $1", [sessionId]);
+}
+
+async function deleteCharacter(id) {
+  await pool.query("DELETE FROM characters WHERE id = $1", [id]);
+}
+
+async function getStaleSessions(beforeMs) {
+  const { rows } = await pool.query(
+    "SELECT session_id, active_character_id FROM sessions WHERE updated_at IS NOT NULL AND updated_at < $1",
+    [beforeMs],
+  );
+  return rows;
 }
 
 module.exports = {
@@ -111,4 +129,6 @@ module.exports = {
   deleteSession,
   deleteScene,
   deleteChatHistory,
+  deleteCharacter,
+  getStaleSessions,
 };
