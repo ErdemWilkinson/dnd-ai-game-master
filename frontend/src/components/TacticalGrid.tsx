@@ -175,16 +175,19 @@ export function TacticalGrid({
             if (token) className += token.type === 'player' ? ' player-token' : ' enemy-token';
             if (loot) className += ' loot';
 
+            const cellLabel = token
+              ? `${token.name}${token.hp !== undefined ? ` (${token.hp}/${token.maxHp} HP)` : ''}`
+              : loot
+                ? loot.name
+                : `Boş kare (${x}, ${y})`;
+
             return (
               <button
                 key={key}
                 className={className}
                 onClick={() => handleCellClick(x, y)}
-                title={
-                  token
-                    ? `${token.name}${token.hp !== undefined ? ` (${token.hp}/${token.maxHp} HP)` : ''}`
-                    : (loot?.name ?? '')
-                }
+                title={cellLabel}
+                aria-label={cellLabel}
               >
                 {token ? token.name[0] : loot ? '◆' : ''}
               </button>

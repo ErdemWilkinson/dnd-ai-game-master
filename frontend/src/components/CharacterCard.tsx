@@ -258,6 +258,7 @@ export function CharacterCard({
               onDragOver={(e) => handleSlotDragOver(e, slot)}
               onDrop={(e) => handleSlotDrop(e, slot)}
               title={equippedItem ? `${equippedItem.name} (çıkarmak için tıkla)` : `${SLOT_LABELS[slot]} (boş)`}
+              aria-label={equippedItem ? `${equippedItem.name} (çıkarmak için tıkla)` : `${SLOT_LABELS[slot]} (boş)`}
             >
               <span className="slot-icon">
                 {equippedItem?.icon ? (

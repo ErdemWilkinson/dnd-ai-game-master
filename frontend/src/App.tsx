@@ -188,7 +188,13 @@ function App() {
     <div className="app app-game">
       <header className="app-header">
         <h1>D&D AI Game Master</h1>
-        <button type="button" className="help-button" onClick={() => setShowHelp(true)} title="Nasıl Oynanır?">
+        <button
+          type="button"
+          className="help-button"
+          onClick={() => setShowHelp(true)}
+          title="Nasıl Oynanır?"
+          aria-label="Nasıl Oynanır? yardım penceresini aç"
+        >
           ❓
         </button>
       </header>
