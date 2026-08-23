@@ -404,8 +404,24 @@ Kullanıcı kararı: "inovasyonlara devam et". PM değerlendirmesi: tek sabit sa
 
 **Faz 8 TAMAMEN kapandı** (A, C, D, B'nin key-bağımsız kısmı) — bilinen açık bug yok. B'nin geri kalanı (gerçek key ile prod doğrulaması) PM/kullanıcı tarafında, coder/tester kapsamında değil.
 
+## Faz 9 — Yaratıcı Cron Bulgularının Uygulanması (rate-limit, cleanup, mobil, hata UX)
+
+Aşağıdaki "İnovasyon Fikirleri" bölümündeki 1-4 numaralı maddeler PM tarafından değerlendirildi, Faz 9 olarak resmileştirildi.
+
+### Coder
+- [ ] **Genel API rate-limit** (fikir #2): `express-rate-limit` (ya da benzeri) ile en azından `/character/create` ve `/character/roll-stats` gibi kimliksiz-erişilebilir uç noktalara IP bazlı bir sınır ekle (örn. dakikada 20 istek, makul bir değer sen belirle)
+- [ ] **Orphan temizliği** (fikir #1): `/character/reset` artık orphan karakter satırını da gerçekten silsin (sadece bağını kesmek yerine); ayrıca belirli süre (örn. 30 gün) hiç aktivite görmemiş session/karakterleri temizleyen basit bir bakım görevi ekle (server açılışında + periyodik `setInterval` yeterli, ayrı bir servis şart değil)
+- [ ] **Sessiz fetch hataları** (fikir #4): İlk yükleme başarısız olursa kullanıcıya "Bağlantı kurulamadı, tekrar deneniyor..." mesajı + birkaç saniye arayla 2-3 otomatik retry göster (Render soğuk başlangıç senaryosunu iyileştirir)
+- [ ] **Mobil/responsive temel destek** (fikir #3, PM kararı): Tam özel mobil tasarım yerine, minimal bir çözüm yeterli — **768px altı tek bir breakpoint**: 3 sütunlu grid tek sütuna düşsün (karakter kartı üstte, sohbet ortada, taktik harita altta, dikey sırayla), her biri kendi içinde scroll edebilsin. Karmaşık sekme/accordion sistemi ŞART DEĞİL, sadece kullanılabilir olsun yeterli.
+
+### Tester
+- [ ] Rate-limit için test (limit aşımının 429 döndürdüğünü doğrula)
+- [ ] Orphan temizliği için test (reset sonrası karakterin gerçekten silindiğini, eski session'ların temizlendiğini doğrula)
+- [ ] Fetch retry UX'i için test/QA (backend'i geçici kapatıp retry mesajının göründüğünü dene)
+- [ ] Mobil breakpoint'i gerçek dar viewport (örn. 375px) ile Playwright'ta görsel QA
+
 ## İnovasyon Fikirleri (yaratıcı cron)
-(Bu bölümü yaratıcı cron dolduracak — her turda bir fikir ekler.)
+(Bu bölümü yaratıcı cron dolduracak — her turda bir fikir ekler. Yukarıdaki maddeler Faz 9'a taşındı.)
 
 4. **[2026-08-23] Frontend'de fetch hataları tamamen sessizce yutuluyor — Render'ın "soğuk başlangıç" gecikmesiyle birleşince kullanıcı boş/bozuk bir ekranla baş başa kalıyor.** `App.tsx`'te ilk veri çekmeleri `.catch(() => {})` ile hiçbir kullanıcı geri bildirimi vermeden hata yutuyor (satır 24, 46). Bu, tam olarak kullanıcının şikayet ettiği "Failed to fetch" ekranının (VITE_API_BASE düzeltmeden önce gördüğü) kök nedeniydi — o spesifik bug artık düzeldi ama ALTTAKİ desen (sessiz hata yutma) hâlâ duruyor. Render'ın ücretsiz web servisleri ~15 dk hareketsizlikten sonra "uyuyor", ilk istek 30-60 saniye sürebiliyor (araştırmayla doğrulanmıştı, bkz. Faz 7 deploy notları) — bir ziyaretçi backend uyanırken siteye gelirse şu an hiçbir şey görmeyecek/bozuk bir ekranla karşılaşacak, "sunucu uyanıyor, biraz bekle" gibi bir geri bildirim yok. Öneri: en azından ilk yükleme başarısız olursa kullanıcıya "Bağlantı kurulamadı, tekrar deneniyor..." gibi bir mesaj + otomatik retry (birkaç saniye arayla 2-3 deneme) göster. Küçük/net bir iş, coder/tester Faz 8 push'unu bitirince alınabilir.
 
