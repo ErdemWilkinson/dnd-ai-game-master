@@ -96,7 +96,8 @@ describe("runEnemyTurn", () => {
 
     expect(freshCharacter.hp.current).toBe(15); // 20 - 5
     expect(enemy.actionAvailable).toBe(false);
-    expect(message).toMatch(/vuruyor/i);
+    expect(message).toMatch(/5 hasar aldın/);
+    expect(message).toMatch(/HP: 15\/20/);
   });
 
   it("bitişik + nat1 ıskalarsa hasar verilmez", () => {

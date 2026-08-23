@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, within, waitFor } from '@testing-library/react';
+import { render, screen, within, waitFor, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { CharacterCard } from './CharacterCard';
 import * as api from '../api';
@@ -40,7 +40,7 @@ describe('CharacterCard', () => {
     const inventoryList = document.querySelector('.inventory-list') as HTMLElement;
     expect(within(inventoryList).getByText(/Kısa Kılıç/)).toBeInTheDocument();
     expect(within(inventoryList).getByText(/Deri Zırh/)).toBeInTheDocument();
-    expect(screen.getByText('kuşanıldı')).toBeInTheDocument();
+    expect(screen.getByText(/kuşanıldı/)).toBeInTheDocument();
   });
 
   it('ırk/sınıf Türkçe görünen adla gösterilir (Bug #3, Faz 1.5\'te düzeltildi)', () => {
@@ -56,7 +56,7 @@ describe('CharacterCard — Faz 3-E: fırlatma tetikleme', () => {
     render(<CharacterCard character={character} onStartThrow={onStartThrow} />);
 
     const kilicRow = screen.getByText(/Kısa Kılıç/).closest('li')!;
-    await user.click(within(kilicRow).getByRole('button', { name: 'Fırlat' }));
+    await user.click(within(kilicRow).getByRole('button', { name: /Fırlat/ }));
 
     expect(onStartThrow).toHaveBeenCalledWith('i1');
   });
@@ -67,7 +67,7 @@ describe('CharacterCard — Faz 3-E: fırlatma tetikleme', () => {
     render(<CharacterCard character={character} throwingItemId="i1" onCancelThrow={onCancelThrow} />);
 
     const kilicRow = screen.getByText(/Kısa Kılıç/).closest('li')!;
-    const throwButton = within(kilicRow).getByRole('button', { name: 'Hedef Seçiliyor...' });
+    const throwButton = within(kilicRow).getByRole('button', { name: /Hedef Seçiliyor.../ });
     expect(throwButton).toBeInTheDocument();
 
     await user.click(throwButton);
@@ -91,16 +91,21 @@ describe('CharacterCard — Faz 5-3: SS13 tarzı ikonlu paper-doll', () => {
     'Zırh', 'Üst Giysi', 'Eldiven', 'Kemer', 'Ayakkabı', 'Aksesuar', 'El',
   ];
 
+  function paperDoll() {
+    return document.querySelector('.paper-doll') as HTMLElement;
+  }
+
   it('13 SS13 slotunun hepsini etiketleriyle render eder', () => {
     render(<CharacterCard character={character} />);
     for (const label of ALL_SLOT_LABELS) {
-      expect(screen.getByText(label)).toBeInTheDocument();
+      // anchored: "El" olmasa "Eldiven" etiketiyle de eşleşip belirsizlik yaratırdı
+      expect(within(paperDoll()).getByText(new RegExp(`\\s${label}$`))).toBeInTheDocument();
     }
   });
 
   it('kuşanılmış eşyayı doğru slotta ikonuyla gösterir ("filled" class)', () => {
     render(<CharacterCard character={character} />);
-    const suitSlot = screen.getByText('Zırh').closest('.paper-doll-slot') as HTMLElement;
+    const suitSlot = within(paperDoll()).getByText(/Zırh/).closest('.paper-doll-slot') as HTMLElement;
     expect(suitSlot).toHaveClass('filled');
     const img = within(suitSlot).getByRole('img', { name: 'Deri Zırh' });
     expect(img).toHaveAttribute('src', '/icons/suit.png');
@@ -108,7 +113,7 @@ describe('CharacterCard — Faz 5-3: SS13 tarzı ikonlu paper-doll', () => {
 
   it('boş bir slot (ikonu olan türden) "filled" class almaz, yer tutucu "·" gösterir', () => {
     render(<CharacterCard character={character} />);
-    const headSlot = screen.getByText('Baş').closest('.paper-doll-slot') as HTMLElement;
+    const headSlot = within(paperDoll()).getByText(/Baş/).closest('.paper-doll-slot') as HTMLElement;
     expect(headSlot).not.toHaveClass('filled');
     expect(within(headSlot).getByText('·')).toBeInTheDocument();
   });
@@ -116,7 +121,7 @@ describe('CharacterCard — Faz 5-3: SS13 tarzı ikonlu paper-doll', () => {
   it('kuşanılmamış (equipped: false) bir eşya paper-doll\'da gösterilmez, slot boş kalır', () => {
     render(<CharacterCard character={character} />);
     // Kısa Kılıç equipped:false, "El" slotu boş görünmeli (glyph fallback ⚔ değil, boş hâli)
-    const handSlot = screen.getByText('El').closest('.paper-doll-slot') as HTMLElement;
+    const handSlot = screen.getByText(/^⚔️ El$/).closest('.paper-doll-slot') as HTMLElement;
     expect(handSlot).not.toHaveClass('filled');
   });
 
@@ -126,11 +131,11 @@ describe('CharacterCard — Faz 5-3: SS13 tarzı ikonlu paper-doll', () => {
     // "El" slotu boşken de ⚔ görünüyor, dolu olduğunda ikon varsa ikon
     // gösteriliyor. Bu, tester tarafından bilinçli belgelenen bir davranış.
     render(<CharacterCard character={character} />);
-    const handSlot = screen.getByText('El').closest('.paper-doll-slot') as HTMLElement;
+    const handSlot = screen.getByText(/^⚔️ El$/).closest('.paper-doll-slot') as HTMLElement;
     expect(within(handSlot).getByText('⚔')).toBeInTheDocument();
   });
 
-  it('dolu bir slota tıklamak eşyayı çıkarır (equipItem çağrılır), boş slot tıklanamaz (disabled)', async () => {
+  it('dolu bir slota tıklamak eşyayı çıkarır (equipItem çağrılır), boş slot tıklamak no-op kalır', async () => {
     vi.mocked(api.equipItem).mockResolvedValue({
       character: { ...character, inventory: character.inventory.map((i) => (i.id === 'i2' ? { ...i, equipped: false } : i)) },
     });
@@ -138,14 +143,68 @@ describe('CharacterCard — Faz 5-3: SS13 tarzı ikonlu paper-doll', () => {
     const user = userEvent.setup();
     render(<CharacterCard character={character} onCharacterChange={onCharacterChange} />);
 
-    const suitSlot = screen.getByText('Zırh').closest('.paper-doll-slot') as HTMLElement;
-    expect(suitSlot).not.toBeDisabled();
+    const suitSlot = within(paperDoll()).getByText(/Zırh/).closest('.paper-doll-slot') as HTMLElement;
+    expect(suitSlot).toHaveClass('filled');
     await user.click(suitSlot);
     await waitFor(() => expect(onCharacterChange).toHaveBeenCalled());
     expect(api.equipItem).toHaveBeenCalledWith('c1', 'i2');
 
-    const headSlot = screen.getByText('Baş').closest('.paper-doll-slot') as HTMLElement;
-    expect(headSlot).toBeDisabled();
+    // Faz 8: boş slotlarda artık HTML disabled attribute yok (drag/drop event'i
+    // alabilmesi için kaldırıldı), guard onClick içinde (`equippedItem && ...`).
+    const headSlot = within(paperDoll()).getByText(/Baş/).closest('.paper-doll-slot') as HTMLElement;
+    expect(headSlot).not.toHaveClass('filled');
+    await user.click(headSlot);
+    expect(api.equipItem).toHaveBeenCalledTimes(1); // boş slota tıklamak yeni bir çağrı tetiklemedi
+  });
+
+  function makeDataTransfer() {
+    const data: Record<string, string> = {};
+    return {
+      setData: (type: string, val: string) => { data[type] = val; },
+      getData: (type: string) => data[type] ?? '',
+      dropEffect: '',
+      effectAllowed: '',
+    };
+  }
+
+  it('Faz 8: eşyayı sürükleyip uygun slota bırakınca kuşanılır (drag-and-drop)', async () => {
+    vi.mocked(api.equipItem).mockResolvedValue({
+      character: { ...character, inventory: character.inventory.map((i) => (i.id === 'i1' ? { ...i, equipped: true } : i)) },
+    });
+    const onCharacterChange = vi.fn();
+    render(<CharacterCard character={character} onCharacterChange={onCharacterChange} />);
+
+    const kilicRow = screen.getByText(/Kısa Kılıç/).closest('li') as HTMLElement;
+    expect(kilicRow).toHaveAttribute('draggable', 'true');
+    const handSlot = screen.getByText(/^⚔️ El$/).closest('.paper-doll-slot') as HTMLElement;
+    const dataTransfer = makeDataTransfer();
+
+    fireEvent.dragStart(kilicRow, { dataTransfer });
+    fireEvent.dragOver(handSlot, { dataTransfer });
+    fireEvent.drop(handSlot, { dataTransfer });
+
+    await waitFor(() => expect(api.equipItem).toHaveBeenCalledWith('c1', 'i1'));
+    expect(onCharacterChange).toHaveBeenCalled();
+  });
+
+  it('Faz 8: eşyayı slotu uyuşmayan bir hedefe bırakmak kuşandırmaz (sessizce yok sayılır)', () => {
+    vi.mocked(api.equipItem).mockClear();
+    render(<CharacterCard character={character} />);
+
+    const kilicRow = screen.getByText(/Kısa Kılıç/).closest('li') as HTMLElement;
+    const headSlot = within(paperDoll()).getByText(/Baş/).closest('.paper-doll-slot') as HTMLElement;
+    const dataTransfer = makeDataTransfer();
+
+    fireEvent.dragStart(kilicRow, { dataTransfer });
+    fireEvent.drop(headSlot, { dataTransfer });
+
+    expect(api.equipItem).not.toHaveBeenCalled();
+  });
+
+  it('Faz 8: kuşanılı bir eşya sürüklenemez (draggable=false)', () => {
+    render(<CharacterCard character={character} />);
+    const zirhRow = screen.getByText(/Deri Zırh/).closest('li') as HTMLElement;
+    expect(zirhRow).toHaveAttribute('draggable', 'false');
   });
 
   it('envanter listesindeki eşya ikonu varsa küçük bir thumbnail gösterir', () => {
@@ -171,13 +230,19 @@ describe('CharacterCard — Faz 5-3: SS13 tarzı ikonlu paper-doll', () => {
     const potionRow = screen.getByText(/İksir/).closest('li')!;
     expect(within(potionRow).queryByRole('button', { name: /Kuşan|Çıkar/ })).not.toBeInTheDocument();
     // Kullan/At/Fırlat hâlâ olmalı
-    expect(within(potionRow).getByRole('button', { name: 'Kullan' })).toBeInTheDocument();
+    expect(within(potionRow).getByRole('button', { name: /Kullan/ })).toBeInTheDocument();
   });
 
   it('slotu olan eşyada Kuşan/Çıkar butonu gösterilir', () => {
     render(<CharacterCard character={character} />);
     const kilicRow = screen.getByText(/Kısa Kılıç/).closest('li')!;
-    expect(within(kilicRow).getByRole('button', { name: 'Kuşan' })).toBeInTheDocument();
+    expect(within(kilicRow).getByRole('button', { name: /Kuşan/ })).toBeInTheDocument();
+  });
+
+  it('Faz 8: slotu olan eşyada (Kısa Kılıç) "Kullan" butonu HİÇ gösterilmez', () => {
+    render(<CharacterCard character={character} />);
+    const kilicRow = screen.getByText(/Kısa Kılıç/).closest('li')!;
+    expect(within(kilicRow).queryByRole('button', { name: /Kullan/ })).not.toBeInTheDocument();
   });
 });
 
@@ -198,7 +263,7 @@ describe('CharacterCard — Faz 6-C: büyü listesi', () => {
 
   it('mana kullanan bir karakterde büyü butonları mana maliyetiyle gösterilir', () => {
     render(<CharacterCard character={wizard} />);
-    expect(screen.getByText('Büyüler')).toBeInTheDocument();
+    expect(screen.getByText(/Büyüler/)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /İyileştir \(4 mana\)/ })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Ateş Topu \(4 mana\)/ })).toBeInTheDocument();
   });

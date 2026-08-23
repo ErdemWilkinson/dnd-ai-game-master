@@ -295,7 +295,9 @@ describe("POST /api/scene/end-turn — Faz 4-D: scriptli düşman AI", () => {
     const distanceAfter = Math.abs(goblinAfter.x - playerToken.x) + Math.abs(goblinAfter.y - playerToken.y);
 
     expect(distanceAfter).toBeLessThan(distanceBefore); // oyuncuya yaklaştı
-    expect(res.body.enemyMessages.some((m) => /yaklaşıyor/i.test(m))).toBe(true);
+    expect(
+      res.body.enemyMessages.some((m) => /(yaklaşıyor|hızlandırıyor|üzerine yürüyor)/i.test(m))
+    ).toBe(true);
   });
 
   it("düşman bitişikse ve saldırı BAŞARILIYSA oyuncuya hasar verir, mesaj hasar miktarını bildirir", async () => {
@@ -311,7 +313,7 @@ describe("POST /api/scene/end-turn — Faz 4-D: scriptli düşman AI", () => {
 
     const res = await request(app).post("/api/scene/end-turn").send({});
 
-    expect(res.body.enemyMessages.some((m) => /vuruyor/i.test(m))).toBe(true);
+    expect(res.body.enemyMessages.some((m) => /5 hasar aldın/.test(m))).toBe(true);
     const charRes = await request(app).get("/api/character");
     expect(charRes.body.hp.current).toBeLessThan(hpBefore);
     expect(charRes.body.hp.current).toBe(hpBefore - 5);

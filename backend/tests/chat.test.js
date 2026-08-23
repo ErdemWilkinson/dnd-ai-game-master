@@ -87,7 +87,9 @@ describe("POST /api/chat", () => {
   it("saldırı anahtar kelimesi ATTACK havuzundan cevap üretir", async () => {
     const app = buildApp();
     const res = await request(app).post("/api/chat").send({ message: "goblin'e saldır" });
-    expect(res.body.gmMessage.text).toMatch(/(Silahını|Ani bir hamle|Saldırın)/);
+    expect(res.body.gmMessage.text).toMatch(
+      /(Silahını|Ani bir hamle|Saldırın|Öfkeyle atılıyorsun|savuşturmaya çalışıyor|Kaslarını gererek)/,
+    );
   });
 
   it("mesajlar geçmişe (history) eklenir ve GET ile görünür", async () => {
