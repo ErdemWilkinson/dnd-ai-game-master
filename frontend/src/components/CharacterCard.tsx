@@ -8,6 +8,11 @@ const SPELLS: { id: SpellId; name: string; manaCost: number; needsTarget: boolea
   { id: 'fireball', name: 'Ateş Topu', manaCost: 4, needsTarget: true },
 ];
 
+// Yaratıcı cron fikir #12: bir sınıfın mana.max'i büyülerin hepsinden düşük
+// olabilir (örn. Hırsız: 3 mana, en ucuz büyü 4 mana) - o zaman panel hiç
+// gösterilmemeli, aksi halde kullanıcı sürekli devre dışı butonlarla karşılaşır.
+const CHEAPEST_SPELL_COST = Math.min(...SPELLS.map((s) => s.manaCost));
+
 // SS13 (tgstation ikon seti) tarzı genişletilmiş paper-doll slot düzeni.
 const SLOT_ORDER: EquipmentSlot[] = [
   'head',
@@ -224,7 +229,7 @@ export function CharacterCard({
         ))}
       </div>
 
-      {character.mana.max > 0 && (
+      {character.mana.max >= CHEAPEST_SPELL_COST && (
         <>
           <h4>✨ Büyüler</h4>
           <div className="spell-list">
