@@ -48,10 +48,19 @@ function requireOwnedCharacter(req, res, characterId) {
 
 // Faz 7-A: sahnedeki son düşman da düşünce sıradaki karşılaşmaya geçilir.
 // Bir sonraki karşılaşmanın adını içeren bir anlatım eki döner (yoksa null).
+// Yaratıcı cron fikir #14: liste sonundaki (en zor) karşılaşma temizlenip
+// başa dönüldüğünde (tam bir tur tamamlandığında) özel bir tebrik cümlesi
+// dönüyor - eskiden bu da diğerleriyle aynı genel mesajı alıyordu.
 function checkEncounterCleared(scene) {
   const hasEnemies = scene.tokens.some((t) => t.type === "enemy");
   if (hasEnemies) return null;
+  const clearedIndex = scene.encounterIndex;
+  const totalEncounters = scene.totalEncounters;
   advanceToNextEncounter(scene);
+  const completedFullLap = (clearedIndex + 1) % totalEncounters === 0;
+  if (completedFullLap) {
+    return ` Tüm bölgeyi temizledin! Kahramanlığın efsaneleşiyor... ama tehlike hiç bitmiyor, yeni bir tehdit beliriyor: ${scene.name}.`;
+  }
   return ` Karşılaşma temizlendi! Yeni bir alana geçiliyor: ${scene.name}.`;
 }
 
