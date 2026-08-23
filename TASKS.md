@@ -399,6 +399,8 @@ Kullanıcı kararı: "inovasyonlara devam et". PM değerlendirmesi: tek sabit sa
 ## İnovasyon Fikirleri (yaratıcı cron)
 (Bu bölümü yaratıcı cron dolduracak — her turda bir fikir ekler.)
 
+1. **[2026-08-23] Terkedilmiş session/karakterler için temizlik yok — ücretsiz Postgres'te (1GB limit) sınırsız büyüme riski.** `POST /api/character/reset` (`backend/routes/character.js:174`) sadece session'ın `activeCharacterIdBySession`/`chatHistories`/`scenes` bağını siliyor, ama `characters` Map'indeki (ve DB'deki) karakter satırının KENDİSİNİ hiç silmiyor — karakter kalıcı olarak "sahipsiz" (orphan) kalıyor. Aynı şekilde hiç dönmeyen/hiç reset atmayan session'lar da sonsuza dek DB'de kalıyor. Bugün az sayıda kullanıcı var, sorun yok — ama "kullanıcılara açma" hedefiyle her ziyaretçi kalıcı bir DB satırı biriktiriyor demek, ücretsiz Postgres katmanının 1GB sınırına er ya da geç çarpar. Öneri: (a) `/reset`'in orphan karakter satırını da gerçekten silmesi, (b) belirli bir süre (örn. 30 gün) hiç aktivite görmemiş session/karakterleri temizleyen bir bakım görevi (basit bir zamanlanmış SQL DELETE yeterli, ayrı bir cron job servisi şart değil — server açılışında ya da periyodik bir `setInterval` ile de yapılabilir). Küçük/net bir iş, coder boşalınca alınabilir.
+
 ## Notlar
 - FRP (`C:\Users\erdem\OneDrive\Masaüstü\FRP`) yalnızca konsept referansıdır, kod kopyalanmayacak. Kök `.gitignore` ile git takibi dışında.
 - Değişiklik/karar gerektiren konularda PM'e (bu session) danışın, kullanıcıya sormadan büyük mimari karar almayın.
