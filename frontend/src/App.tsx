@@ -7,7 +7,7 @@ import { TacticalGrid } from './components/TacticalGrid';
 import { IntroScreen } from './components/IntroScreen';
 import { GameOverScreen } from './components/GameOverScreen';
 import { HelpModal } from './components/HelpModal';
-import { getCurrentCharacter, resetSession, NetworkError } from './api';
+import { getCurrentCharacter, getScene, resetSession, NetworkError } from './api';
 import type { Character, SpellId } from './types';
 
 // Faz 9 (yaratıcı cron fikir #4): Render'ın soğuk başlangıcında ilk istek
@@ -47,6 +47,7 @@ function App() {
   const [sceneRefreshTick, setSceneRefreshTick] = useState(0);
   const [chatRefreshTick, setChatRefreshTick] = useState(0);
   const [showHelp, setShowHelp] = useState(false);
+  const [encountersCleared, setEncountersCleared] = useState<number | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -94,6 +95,18 @@ function App() {
     }
   }, [character, pendingIntro]);
 
+  // Yaratıcı cron fikir #9: Game Over ekranında bir macera özeti göstermek
+  // için sahnenin encounterIndex'ine ihtiyaç var - App normalde sahne state'i
+  // tutmuyor (TacticalGrid kendi yönetiyor), bu yüzden sadece karakter
+  // öldüğünde bir kerelik ayrıca çekiyoruz.
+  useEffect(() => {
+    if (character && character.hp.current <= 0) {
+      getScene()
+        .then((scene) => setEncountersCleared(scene.encounterIndex))
+        .catch(() => {});
+    }
+  }, [character]);
+
   function handleCharacterChange(updated: Character) {
     setCharacter(updated);
     // CharacterCard'daki eylemler (kullan/kuşan/at) sahnedeki Aksiyon/Bonus
@@ -122,6 +135,7 @@ function App() {
     setCastingSpellId(null);
     setSceneRefreshTick(0);
     setChatRefreshTick(0);
+    setEncountersCleared(null);
   }
 
   if (loading) {
@@ -159,7 +173,13 @@ function App() {
   if (character.hp.current <= 0) {
     return (
       <div className="app app-centered">
-        <GameOverScreen characterName={character.name} level={character.level} onRestart={handleRestart} />
+        <GameOverScreen
+          characterName={character.name}
+          level={character.level}
+          xp={character.xp}
+          encountersCleared={encountersCleared}
+          onRestart={handleRestart}
+        />
       </div>
     );
   }
