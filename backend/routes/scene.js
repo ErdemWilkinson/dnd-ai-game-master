@@ -61,9 +61,13 @@ function getChatHistoryList(sessionId) {
   return chatHistories.get(sessionId);
 }
 
-function pushGmMessage(sessionId, text, source) {
+// Faz 8: `roll` opsiyonel - ham zar detayını (attribute/roll/modifier/total/dc/outcome)
+// mesaja ekler. Frontend bunu ana metinde DEĞİL, ikincil bir tooltip'te gösteriyor.
+function pushGmMessage(sessionId, text, source, roll = null) {
   const history = getChatHistoryList(sessionId);
-  history.push({ id: nanoid(), role: "gm", text, source, timestamp: Date.now() });
+  const message = { id: nanoid(), role: "gm", text, source, timestamp: Date.now() };
+  if (roll) message.roll = roll;
+  history.push(message);
   saveChatHistory(sessionId, history);
 }
 
@@ -248,7 +252,7 @@ router.post("/attack", async (req, res) => {
     const encounterSuffix = checkEncounterCleared(scene);
     if (encounterSuffix) narrationText += encounterSuffix;
   }
-  pushGmMessage(sessionId, narrationText, source);
+  pushGmMessage(sessionId, narrationText, source, attackResult);
   saveScene(sessionId, scene);
 
   res.json({
@@ -365,7 +369,7 @@ router.post("/cast", async (req, res) => {
     const encounterSuffix = checkEncounterCleared(scene);
     if (encounterSuffix) narrationText += encounterSuffix;
   }
-  pushGmMessage(sessionId, narrationText, source);
+  pushGmMessage(sessionId, narrationText, source, castResult);
 
   saveCharacter(character);
   saveScene(sessionId, scene);

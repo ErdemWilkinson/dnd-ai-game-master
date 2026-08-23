@@ -26,14 +26,17 @@ export function ChatPanel({ refreshKey = 0 }: Props) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
   const [sending, setSending] = useState(false);
-  const bottomRef = useRef<HTMLDivElement>(null);
+  const messagesRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     getChatHistory().then(({ messages }) => setMessages(messages));
   }, [refreshKey]);
 
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+    const container = messagesRef.current;
+    if (container) {
+      container.scrollTop = container.scrollHeight;
+    }
   }, [messages]);
 
   async function handleSend(e: React.FormEvent) {
@@ -53,23 +56,26 @@ export function ChatPanel({ refreshKey = 0 }: Props) {
   return (
     <div className="chat-panel">
       <h3>Macera Günlüğü</h3>
-      <div className="chat-messages">
+      <div className="chat-messages" ref={messagesRef}>
         {messages.map((m) => (
           <div key={m.id} className={`chat-message ${m.role}`}>
             <span className="chat-role">
               {m.role === 'gm' ? 'GM' : 'Sen'}
               {m.source === 'mock' && <span className="chat-source-tag"> (mock)</span>}
             </span>
-            <p>{m.text}</p>
-            {m.role === 'gm' && m.roll && (
-              <p className="roll-tag">
-                {ATTR_LABELS_TR[m.roll.attribute]} kontrolü: {m.roll.roll}+{m.roll.modifier}={m.roll.total} (DC {m.roll.dc}) —{' '}
-                {OUTCOME_LABELS_TR[m.roll.outcome]}
-              </p>
-            )}
+            <p>
+              {m.text}
+              {m.role === 'gm' && m.roll && (
+                <span
+                  className={`roll-badge roll-${m.roll.outcome}`}
+                  title={`${ATTR_LABELS_TR[m.roll.attribute]} kontrolü: ${m.roll.roll}+${m.roll.modifier}=${m.roll.total} (DC ${m.roll.dc})`}
+                >
+                  {OUTCOME_LABELS_TR[m.roll.outcome]}
+                </span>
+              )}
+            </p>
           </div>
         ))}
-        <div ref={bottomRef} />
       </div>
       <form className="chat-input-row" onSubmit={handleSend}>
         <input

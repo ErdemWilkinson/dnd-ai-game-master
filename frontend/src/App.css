@@ -1,15 +1,20 @@
 .app {
-  min-height: 100vh;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
   color: var(--parchment);
   background:
     radial-gradient(ellipse at top, rgba(138, 106, 58, 0.08), transparent 60%),
     var(--bg-void);
 }
 
+
 .app-centered {
   display: flex;
   align-items: center;
   justify-content: center;
+  overflow-y: auto;
 }
 
 .app-header {
@@ -39,7 +44,10 @@
   grid-template-columns: 280px 1fr 380px;
   gap: 1rem;
   padding: 1rem;
-  align-items: start;
+  align-items: stretch;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
 }
 
 /* Ortak "ornate" panel görünümü */
@@ -189,6 +197,8 @@
 /* Character card */
 .character-card {
   padding: 1rem;
+  overflow-y: auto;
+  min-height: 0;
 }
 
 .character-card h3 {
@@ -277,13 +287,17 @@
   font-family: var(--font-body);
 }
 
-.paper-doll-slot:not(:disabled) {
+.paper-doll-slot.filled {
   cursor: pointer;
 }
 
-.paper-doll-slot:not(:disabled):hover {
+.paper-doll-slot.filled:hover {
   border-color: #e07a5f;
   box-shadow: 0 0 8px rgba(224, 122, 95, 0.3);
+}
+
+.paper-doll-slot:hover {
+  border-color: var(--bronze-bright);
 }
 
 .paper-doll-slot.filled {
@@ -442,6 +456,8 @@
 /* Tactical grid */
 .tactical-grid {
   padding: 1rem;
+  overflow-y: auto;
+  min-height: 0;
 }
 
 .scene-header {
@@ -547,7 +563,8 @@
   padding: 1rem;
   display: flex;
   flex-direction: column;
-  height: 520px;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .chat-panel h3 {
@@ -596,10 +613,29 @@
   color: #7a6f5c;
 }
 
-.roll-tag {
-  margin: 0.25rem 0 0;
-  font-size: 0.7rem;
+.roll-badge {
+  display: inline-block;
+  margin-left: 0.4rem;
+  padding: 0.05rem 0.4rem;
+  border-radius: 3px;
+  font-size: 0.65rem;
+  letter-spacing: 0.03em;
+  vertical-align: middle;
+  cursor: help;
+  background: rgba(138, 154, 122, 0.15);
   color: #8a9a7a;
+}
+
+.roll-badge.roll-success,
+.roll-badge.roll-critical-success {
+  background: rgba(122, 179, 108, 0.18);
+  color: #7ab36c;
+}
+
+.roll-badge.roll-failure,
+.roll-badge.roll-critical-failure {
+  background: rgba(179, 96, 86, 0.18);
+  color: #d18276;
 }
 
 .chat-input-row {

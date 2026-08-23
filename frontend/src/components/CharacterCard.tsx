@@ -46,6 +46,22 @@ const SLOT_FALLBACK_GLYPH: Partial<Record<EquipmentSlot, string>> = {
   hand: '⚔',
 };
 
+const SLOT_EMOJI: Record<EquipmentSlot, string> = {
+  head: '🪖',
+  mask: '😷',
+  glasses: '👓',
+  ears: '👂',
+  neck: '📿',
+  back: '🎒',
+  suit: '🥋',
+  under: '👕',
+  gloves: '🧤',
+  belt: '🪢',
+  shoes: '👢',
+  accessories: '💍',
+  hand: '⚔️',
+};
+
 interface Props {
   character: Character;
   onCharacterChange?: (character: Character) => void;
@@ -113,6 +129,31 @@ export function CharacterCard({
     }
   }
 
+  function handleDragStart(e: React.DragEvent, itemId: string) {
+    e.dataTransfer.setData('text/plain', itemId);
+    e.dataTransfer.effectAllowed = 'move';
+  }
+
+  function handleSlotDragOver(e: React.DragEvent, slot: EquipmentSlot) {
+    const draggedId = e.dataTransfer.getData('text/plain');
+    const draggedItem = character.inventory.find((i) => i.id === draggedId);
+    // getData çoğu tarayıcıda dragover sırasında boş döner (güvenlik kısıtlaması),
+    // o yüzden id boşken de preventDefault ediyoruz ki drop hiç engellenmesin.
+    if (!draggedId || (draggedItem && draggedItem.slot === slot)) {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+    }
+  }
+
+  function handleSlotDrop(e: React.DragEvent, slot: EquipmentSlot) {
+    e.preventDefault();
+    const itemId = e.dataTransfer.getData('text/plain');
+    const item = character.inventory.find((i) => i.id === itemId);
+    if (item && item.slot === slot && !item.equipped) {
+      handleEquip(itemId);
+    }
+  }
+
   function handleThrowClick(itemId: string) {
     setError(null);
     if (throwingItemId === itemId) {
@@ -149,7 +190,7 @@ export function CharacterCard({
       </p>
 
       <div className="bar-row">
-        <span>HP</span>
+        <span>❤️ HP</span>
         <div className="bar">
           <div
             className="bar-fill hp"
@@ -162,7 +203,7 @@ export function CharacterCard({
       </div>
 
       <div className="bar-row">
-        <span>Mana</span>
+        <span>🔮 Mana</span>
         <div className="bar">
           <div
             className="bar-fill mana"
@@ -185,7 +226,7 @@ export function CharacterCard({
 
       {character.mana.max > 0 && (
         <>
-          <h4>Büyüler</h4>
+          <h4>✨ Büyüler</h4>
           <div className="spell-list">
             {SPELLS.map((spell) => (
               <button
@@ -203,7 +244,7 @@ export function CharacterCard({
         </>
       )}
 
-      <h4>Ekipman</h4>
+      <h4>🎽 Ekipman</h4>
       <div className="paper-doll">
         {SLOT_ORDER.map((slot) => {
           const equippedItem = character.inventory.find((i) => i.slot === slot && i.equipped);
@@ -214,8 +255,9 @@ export function CharacterCard({
               type="button"
               className={`paper-doll-slot ${equippedItem ? 'filled' : ''}`}
               onClick={() => equippedItem && handleEquip(equippedItem.id)}
-              disabled={!equippedItem}
-              title={equippedItem ? `${equippedItem.name} (çıkarmak için tıkla)` : SLOT_LABELS[slot]}
+              onDragOver={(e) => handleSlotDragOver(e, slot)}
+              onDrop={(e) => handleSlotDrop(e, slot)}
+              title={equippedItem ? `${equippedItem.name} (çıkarmak için tıkla)` : `${SLOT_LABELS[slot]} (boş)`}
             >
               <span className="slot-icon">
                 {equippedItem?.icon ? (
@@ -224,43 +266,52 @@ export function CharacterCard({
                   glyph ?? '·'
                 )}
               </span>
-              <span className="slot-label">{SLOT_LABELS[slot]}</span>
+              <span className="slot-label">
+                {SLOT_EMOJI[slot]} {SLOT_LABELS[slot]}
+              </span>
             </button>
           );
         })}
       </div>
 
-      <h4>Envanter</h4>
+      <h4>🎒 Envanter</h4>
       {error && <p className="error">{error}</p>}
       {throwingItemId && (
         <p className="throw-hint">Fırlatmak için taktik haritada bir kareye tıkla (iptal için tekrar Fırlat'a bas).</p>
       )}
       <ul className="inventory-list">
         {character.inventory.map((item) => (
-          <li key={item.id} className={item.equipped ? 'equipped' : ''}>
+          <li
+            key={item.id}
+            className={item.equipped ? 'equipped' : ''}
+            draggable={!!item.slot && !item.equipped}
+            onDragStart={(e) => handleDragStart(e, item.id)}
+          >
             <div className="inventory-item-row">
               <span className="inventory-item-name">
                 {item.icon && <img className="inventory-icon" src={item.icon} alt="" width={20} height={20} />}
-                {item.name} {item.equipped && <span className="tag">kuşanıldı</span>}
+                {item.name} {item.equipped && <span className="tag">🎽 kuşanıldı</span>}
               </span>
               <div className="inventory-actions">
-                <button type="button" onClick={() => handleUse(item.id)}>
-                  Kullan
-                </button>
+                {!item.slot && (
+                  <button type="button" onClick={() => handleUse(item.id)}>
+                    🧪 Kullan
+                  </button>
+                )}
                 {item.slot && (
                   <button type="button" onClick={() => handleEquip(item.id)}>
-                    {item.equipped ? 'Çıkar' : 'Kuşan'}
+                    {item.equipped ? '🎽 Çıkar' : '🎽 Kuşan'}
                   </button>
                 )}
                 <button type="button" onClick={() => handleDrop(item.id)}>
-                  At
+                  🗑️ At
                 </button>
                 <button
                   type="button"
                   className={throwingItemId === item.id ? 'active' : ''}
                   onClick={() => handleThrowClick(item.id)}
                 >
-                  {throwingItemId === item.id ? 'Hedef Seçiliyor...' : 'Fırlat'}
+                  {throwingItemId === item.id ? '🎯 Hedef Seçiliyor...' : '🎯 Fırlat'}
                 </button>
               </div>
             </div>

@@ -9,6 +9,54 @@ const { DIFFICULTY_CLASS } = require("./actionResolver");
 const ENEMY_ATTACK_MODIFIER = 2;
 const ENEMY_DAMAGE_DIE = 6;
 
+// Faz 8: kullanıcı geri bildirimi - savaş mesajlarında ham zar matematiği
+// ("18+2=20 vs 12") görünmemeli, sadece betimleyici anlatım. Zar backend'de
+// hâlâ hesaplanıyor (yukarıdaki değişkenler), sadece kullanıcıya gösterilen
+// metne artık karışmıyor. Çeşitlilik için birden fazla şablon arasından
+// rastgele seçiliyor.
+function pick(templates) {
+  return templates[Math.floor(Math.random() * templates.length)];
+}
+
+function approachMessage(enemyName) {
+  return pick([
+    `${enemyName} sana doğru yaklaşıyor.`,
+    `${enemyName} adımlarını sana doğru hızlandırıyor.`,
+    `${enemyName} seni fark edip üzerine yürüyor.`,
+  ]);
+}
+
+function idleMessage(enemyName) {
+  return pick([
+    `${enemyName} olduğu yerde bekliyor.`,
+    `${enemyName} tetikte, kıpırdamadan seni izliyor.`,
+  ]);
+}
+
+function noAttackMessage(enemyName) {
+  return pick([
+    `${enemyName} yanına geldi ama saldırma fırsatı bulamadı.`,
+    `${enemyName} tam saldıracakken tereddüt ediyor.`,
+  ]);
+}
+
+function missMessage(enemyName) {
+  return pick([
+    `${enemyName} sana saldırıyor ama ıskalıyor!`,
+    `${enemyName} bir darbe indiriyor, ama boşa gidiyor.`,
+    `Son anda kenara kayınca ${enemyName}'in saldırısı seni bulamıyor.`,
+  ]);
+}
+
+function hitMessage(enemyName, damage, currentHp, maxHp) {
+  const template = pick([
+    `${enemyName} sana vuruyor! ${damage} hasar aldın.`,
+    `${enemyName}'in darbesi seni sarsıyor, ${damage} hasar aldın.`,
+    `${enemyName} tam isabet ettiriyor! ${damage} hasar aldın.`,
+  ]);
+  return `${template} (HP: ${currentHp}/${maxHp})`;
+}
+
 // Tek adimda x veya y ekseninde oyuncuya bir kare yaklasmaya calisir, o
 // eksen engelliyse diger ekseni dener. Tam pathfinding degil, basit/greedy.
 function moveEnemyToward(scene, enemy, target) {
@@ -70,11 +118,11 @@ function runEnemyTurn(scene, enemy, character) {
   const adjacent = Math.abs(dx) + Math.abs(dy) === 1;
 
   if (!adjacent) {
-    return stepsMoved > 0 ? `${enemy.name} sana doğru yaklaşıyor.` : `${enemy.name} olduğu yerde bekliyor.`;
+    return stepsMoved > 0 ? approachMessage(enemy.name) : idleMessage(enemy.name);
   }
 
   if (!enemy.actionAvailable || !character) {
-    return `${enemy.name} yanına geldi ama saldırma fırsatı bulamadı.`;
+    return noAttackMessage(enemy.name);
   }
 
   const roll = rollD20();
@@ -82,13 +130,13 @@ function runEnemyTurn(scene, enemy, character) {
   enemy.actionAvailable = false;
 
   if (roll === 1 || total < DIFFICULTY_CLASS) {
-    return `${enemy.name} sana saldırıyor ama ıskalıyor! (${roll}+${ENEMY_ATTACK_MODIFIER}=${total} vs ${DIFFICULTY_CLASS})`;
+    return missMessage(enemy.name);
   }
 
   const damage = rollDie(ENEMY_DAMAGE_DIE) + (roll === 20 ? ENEMY_DAMAGE_DIE : 0);
   character.hp.current = Math.max(0, character.hp.current - damage);
 
-  return `${enemy.name} sana vuruyor! ${damage} hasar aldın. (${roll}+${ENEMY_ATTACK_MODIFIER}=${total} vs ${DIFFICULTY_CLASS}, HP: ${character.hp.current}/${character.hp.max})`;
+  return hitMessage(enemy.name, damage, character.hp.current, character.hp.max);
 }
 
 module.exports = { runEnemyTurn, moveEnemyToward };
