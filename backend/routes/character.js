@@ -27,9 +27,21 @@ function applyBonuses(base, bonuses) {
   return result;
 }
 
+// Yaratıcı cron fikir #13 (ÖNEMLİ, oyun bütünlüğü açığı): meşru bir değer
+// D20 (1-20) + en yüksek ırk bonusu (+2, bkz. data/dnd.js) ile en fazla 22
+// olabilir - önceden sadece Number.isFinite kontrolü vardı, üst sınır yoktu
+// (client "str: 99" gönderip kabul ettirebiliyordu, prod'da doğrulandı).
+const MIN_ATTRIBUTE_VALUE = 1;
+const MAX_ATTRIBUTE_VALUE = 22;
+
 function isValidAttributeSet(attributes) {
   if (!attributes || typeof attributes !== "object") return false;
-  return ATTRIBUTE_KEYS.every((key) => Number.isFinite(attributes[key]));
+  return ATTRIBUTE_KEYS.every(
+    (key) =>
+      Number.isInteger(attributes[key]) &&
+      attributes[key] >= MIN_ATTRIBUTE_VALUE &&
+      attributes[key] <= MAX_ATTRIBUTE_VALUE,
+  );
 }
 
 router.get("/options", (_req, res) => {
