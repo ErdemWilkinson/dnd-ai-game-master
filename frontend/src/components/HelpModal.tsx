@@ -1,3 +1,5 @@
+import { useEffect, useRef } from 'react';
+
 interface Props {
   onClose: () => void;
 }
@@ -6,9 +8,23 @@ interface Props {
 // hedef-seç modu, ekipman slotları) hiçbir açıklama olmadan doğrudan
 // oyuncuya sunuluyordu - kapsamlı bir tutorial değil, sadece kısa bir özet.
 export function HelpModal({ onClose }: Props) {
+  const closeButtonRef = useRef<HTMLButtonElement>(null);
+
+  // Yaratıcı cron fikir #17: klavye desteği yoktu - Esc ile kapanmıyordu,
+  // focus yönetimi yoktu (Tab ile arkadaki sayfaya kaçılabiliyordu).
+  useEffect(() => {
+    closeButtonRef.current?.focus();
+
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === 'Escape') onClose();
+    }
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [onClose]);
+
   return (
     <div className="help-modal-overlay" onClick={onClose}>
-      <div className="help-modal" onClick={(e) => e.stopPropagation()}>
+      <div className="help-modal" role="dialog" aria-modal="true" aria-label="Nasıl Oynanır?" onClick={(e) => e.stopPropagation()}>
         <h3>🎲 Nasıl Oynanır?</h3>
         <ul>
           <li>Her turda bir <strong>Aksiyon</strong> ve bir <strong>Bonus Aksiyon</strong> hakkın var (sağ panelde ✓/✗ ile gösterilir) — saldırı, büyü ve eşya kullanma Aksiyon harcar.</li>
@@ -16,7 +32,7 @@ export function HelpModal({ onClose }: Props) {
           <li>Büyü/eşya fırlatma "hedef seç" moduna girer — grid'de bir hedefe tıklayana kadar bekler, iptal için butona tekrar bas.</li>
           <li>Sıra bittiğinde <strong>"Turu Bitir"</strong>e bas; düşmanın hareketi/saldırısı otomatik çözülüp sıra sana geri döner.</li>
         </ul>
-        <button type="button" onClick={onClose}>
+        <button type="button" ref={closeButtonRef} onClick={onClose}>
           Anladım
         </button>
       </div>
