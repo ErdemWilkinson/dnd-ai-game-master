@@ -367,6 +367,39 @@ Kullanıcı kararı: "inovasyonlara devam et". PM değerlendirmesi: tek sabit sa
 
 **Faz 7 (A+B+C) tester tarafından TAMAMEN doğrulandı** — bilinen açık bug yok. Gerçek Postgres/Render ortamı olmadığı için B/C'nin bir kısmı (gerçek bağlantı, gerçek dashboard deploy'u) mock/dry-run ile doğrulandı — gerçek doğrulama PM+kullanıcı ile deploy aşamasında yapılacak.
 
+## Faz 8 — Deploy Sonrası Geri Bildirim (bug + AI kalitesi + envanter UX + layout)
+
+**DEPLOY DURUMU:** Proje canlıda: https://dnd-game-frontend-t9hr.onrender.com/ (backend: dnd-game-backend-sz9e.onrender.com, Postgres: dnd-game-db). Kullanıcı gerçek ortamda test etti, geri bildirim verdi.
+
+**PM tanısı (önemli, coder başlamadan önce oku):** Production'da AI Game Master **mock'a düşüyor** (`curl` ile `/api/chat` denendi, `source: "mock"` döndü) — kullanıcının "DM aptal/tekdüze" şikayetinin kök nedeni bu, anlatım kalitesi kodu değil. `GEMINI_API_KEY`'in Render'daki değeri kontrol ediliyor (kullanıcıyla birlikte, PM ayrıca ilgileniyor) — coder bu maddeye dokunmadan önce PM'den "key düzeltildi" onayını bekleyebilir, ya da paralel olarak mock şablonlarının çeşitliliğini de artırabilir (ikisi de faydalı, birbirini engellemez).
+
+### A) Buglar (öncelik 1)
+- [ ] **Otomatik sayfa kaydırma bugu**: Her tur/hareket sonrası sayfa (muhtemelen chat auto-scroll mantığı) kendiliğinden aşağı kayıyor — kullanıcı bunu çok rahatsız edici buldu. Kök nedeni bul (muhtemelen `ChatPanel`'in yeni mesaj gelince `scrollIntoView`/`scrollTo` çağırması sayfa-geneli scroll'u da tetikliyor) ve sadece chat kutusunun kendi içinde scroll olacak şekilde düzelt, sayfa/body hiç kaymasın.
+
+### B) AI/DM anlatım kalitesi (öncelik 2)
+- [ ] Gerçek key ile (PM/kullanıcı düzeltince) prod'da tekrar `source:"ai"` geldiğini doğrula
+- [ ] Mock şablonlarının çeşitliliğini ve "hikaye hissini" artır — kullanıcı "sadece bir olay var, her şey onun üzerinden yürüyor" dedi, şablon havuzunu genişlet, tekrar hissini azalt (bu, key sorunundan bağımsız olarak da fallback kalitesini artırır)
+- [ ] **Savaş mesajlarında ham zar matematiği gösterme**: Şu an chat'te "18+2=20 vs 12" gibi mekanik detaylar görünüyor, kullanıcı bunun yerine SADECE betimleyici anlatım istiyor (örn. "Canavar omzuna vuruyor, acı yayılıyor" / "Saldırın hedefi ıskalıyor, canavar geri sıçrıyor"). Zar/DC verisini backend hâlâ hesaplayıp saklayabilir (debug/QA için `roll` alanı JSON'da kalabilir) ama kullanıcıya gösterilen ana metin artık salt anlatım olsun, sayılar gizlensin/en fazla küçük bir detay olarak (örn. bir tooltip/ikincil metin) kalsın.
+
+### C) Envanter/ekipman UX (öncelik 3)
+- [ ] **Kullan/Kuşan buton karmaşası**: Zırh/silah gibi ekipman (slot'u olan, `equipped` alanı anlamlı olan) eşyalarda SADECE "Kuşan/Çıkar" gösterilsin, "Kullan" butonu YALNIZCA tüketilebilir eşyalarda (iksir gibi, slotsuz) görünsün. Şu an ikisi birden gösteriliyor, kullanıcıya anlamsız geliyor.
+- [ ] **Sürükle-bırak ile kuşanma**: Envanter listesindeki bir eşyayı fare ile sürükleyip paper-doll'daki uygun slota bırakınca kuşansın (tıklama ile kuşanma da çalışmaya devam edebilir, sürükle-bırak ek bir yol olsun)
+- [ ] **Emoji kullanımı genişletilsin**: Kullanıcı slot/eşya/aksiyon gösterimlerinde (sadece ekipmanda değil, genel arayüzde) daha fazla emoji kullanılmasını istedi — ikon yüklenemeyen/olmayan yerlerde ve genel görsel netlik için emoji ekle (örn. slot etiketlerinin yanına 🪖👕🧤👢 gibi)
+
+### D) Layout (öncelik 4)
+- [ ] Genel sayfa/gövde hiçbir zaman kaymasın (scroll olmasın) — mevcut 3 panel (karakter/sohbet/harita) viewport'a sığacak şekilde sabit yükseklik/flex düzeniyle yeniden düzenlensin. Not: kullanıcı ile netleştirildi — sürükle-bırak ile TAMAMEN özelleştirilebilir panel yerleşimi İSTEMİYOR, sadece taşma/kaydırma olmayan sabit bir düzen yeterli.
+
+### Tester
+- [ ] Scroll bugu için regresyon testi/QA (birden fazla hareket/tur sonrası sayfa scrollTop'unun değişmediğini doğrula)
+- [ ] Savaş mesajlarının artık ham zar matematiği içermediğini, sadece anlatım gösterdiğini doğrula
+- [ ] Kullan/Kuşan buton mantığının doğru koşullu render edildiğini test et
+- [ ] Sürükle-bırak akışı için test (mümkünse jsdom/Testing Library ile drag event simülasyonu, zor olursa en azından Playwright ile canlı doğrulama)
+- [ ] Layout: farklı ekran boyutlarında sayfa scroll'u olmadığını Playwright ile doğrula
+
+## İnovasyon Fikirleri (yaratıcı cron)
+(Bu bölümü yaratıcı cron dolduracak — her turda bir fikir ekler.)
+
 ## Notlar
 - FRP (`C:\Users\erdem\OneDrive\Masaüstü\FRP`) yalnızca konsept referansıdır, kod kopyalanmayacak. Kök `.gitignore` ile git takibi dışında.
 - Değişiklik/karar gerektiren konularda PM'e (bu session) danışın, kullanıcıya sormadan büyük mimari karar almayın.
+- **Prod deploy bilgisi:** frontend https://dnd-game-frontend-t9hr.onrender.com/, backend https://dnd-game-backend-sz9e.onrender.com — gerçek Render/GitHub hesap işlemleri PM+kullanıcı arasında yürütülür, coder/tester'ın yetkisinde değil.
