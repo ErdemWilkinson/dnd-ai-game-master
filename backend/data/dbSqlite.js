@@ -74,8 +74,15 @@ const selectStaleSessionsStmt = db.prepare(
   "SELECT session_id, active_character_id FROM sessions WHERE updated_at IS NOT NULL AND updated_at < ?",
 );
 
+// Yaratıcı cron fikir #7: /api/health'in gerçek bir DB bağlantı kontrolü
+// yapabilmesi için basit bir ping.
+const pingStmt = db.prepare("SELECT 1");
+
 module.exports = {
   engine: "sqlite",
+  ping: () => {
+    pingStmt.get();
+  },
   // Ham better-sqlite3 Database örneği - geriye dönük uyumluluk için: mevcut
   // testler (persistence.test.js, Faz 6-B) doğrudan db.exec()/db.prepare()
   // ile beyaz-kutu doğrulama yapıyor. Testler VITEST=true altında her zaman

@@ -115,9 +115,16 @@ async function getStaleSessions(beforeMs) {
   return rows;
 }
 
+// Yaratıcı cron fikir #7: /api/health'in gerçek bir DB bağlantı kontrolü
+// yapabilmesi için basit bir ping.
+async function ping() {
+  await pool.query("SELECT 1");
+}
+
 module.exports = {
   engine: "postgres",
   init,
+  ping,
   getAllCharacters,
   upsertCharacter,
   getAllScenes,

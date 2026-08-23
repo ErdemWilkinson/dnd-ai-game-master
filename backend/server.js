@@ -3,6 +3,7 @@ require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
 
+const db = require("./data/db");
 const { loadAll, cleanupStaleSessions } = require("./services/persistence");
 const characterRouter = require("./routes/character");
 const chatRouter = require("./routes/chat");
@@ -28,8 +29,18 @@ function runStaleSessionCleanup() {
 app.use(cors());
 app.use(express.json());
 
-app.get("/api/health", (_req, res) => {
-  res.json({ status: "ok" });
+// Yaratıcı cron fikir #7: eskiden sabit {status:"ok"} dönüyordu, DB
+// bağlantısı hiç kontrol edilmiyordu - Postgres çökerse Render fark etmezdi.
+// Render'ın healthCheckPath'i (render.yaml) bu uca bağlı olduğundan artık
+// gerçek bir ping yapılıp başarısız olursa 503 dönüyor.
+app.get("/api/health", async (_req, res) => {
+  try {
+    await db.ping();
+    res.json({ status: "ok" });
+  } catch (err) {
+    console.error("Health check başarısız (DB ping):", err.message);
+    res.status(503).json({ status: "error", error: "DB bağlantısı kurulamadı." });
+  }
 });
 
 app.use("/api/character", characterRouter);
