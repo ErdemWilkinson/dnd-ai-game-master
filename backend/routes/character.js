@@ -15,6 +15,10 @@ const { trimChatHistory } = require("../services/chatHistoryLimit");
 
 const router = express.Router();
 
+// Yaratıcı cron fikir #11: isim/mesaj için hiç uzunluk üst sınırı yoktu -
+// devasa bir string DB'yi şişirebilir/frontend render sorununa yol açabilir.
+const MAX_NAME_LENGTH = 50;
+
 function applyBonuses(base, bonuses) {
   const result = { ...base };
   for (const [attr, value] of Object.entries(bonuses || {})) {
@@ -53,6 +57,9 @@ router.post("/create", publicRateLimit, (req, res) => {
 
   if (!name || typeof name !== "string" || !name.trim()) {
     return res.status(400).json({ error: "İsim gerekli." });
+  }
+  if (name.trim().length > MAX_NAME_LENGTH) {
+    return res.status(400).json({ error: `İsim en fazla ${MAX_NAME_LENGTH} karakter olabilir.` });
   }
   const race = RACES[raceId];
   const cls = CLASSES[classId];

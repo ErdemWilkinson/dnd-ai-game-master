@@ -11,6 +11,10 @@ const { trimChatHistory } = require("../services/chatHistoryLimit");
 const router = express.Router();
 
 const HISTORY_CONTEXT_SIZE = 6;
+// Yaratıcı cron fikir #11: mesaj için hiç uzunluk üst sınırı yoktu - devasa
+// bir string hem DB'yi şişirebilir hem pahalı/başarısız bir AI çağrısına
+// yol açabilir.
+const MAX_MESSAGE_LENGTH = 500;
 
 function getHistory(sessionId) {
   if (!chatHistories.has(sessionId)) {
@@ -33,6 +37,9 @@ router.post("/", async (req, res) => {
   const { message } = req.body || {};
   if (!message || typeof message !== "string" || !message.trim()) {
     return res.status(400).json({ error: "Mesaj gerekli." });
+  }
+  if (message.trim().length > MAX_MESSAGE_LENGTH) {
+    return res.status(400).json({ error: `Mesaj en fazla ${MAX_MESSAGE_LENGTH} karakter olabilir.` });
   }
 
   const sessionId = getSessionId(req);
