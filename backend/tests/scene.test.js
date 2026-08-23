@@ -643,7 +643,25 @@ describe("POST /api/scene/item/throw", () => {
     expect(res.status).toBe(400);
   });
 
-  it("belirtilen koordinata loot olarak düşer (menzil/engel kontrolü yok)", async () => {
+  it("belirtilen koordinata (menzil içindeyse) loot olarak düşer", async () => {
+    const app = buildApp();
+    const createRes = await request(app)
+      .post("/api/character/create")
+      .send({ name: "Test", raceId: "human", classId: "fighter" });
+    const item = createRes.body.inventory[0];
+
+    // Oyuncu spawn (1,1) - (2,1) menzil içinde (mesafe 1).
+    const res = await request(app)
+      .post("/api/scene/item/throw")
+      .send({ characterId: createRes.body.id, itemId: item.id, x: 2, y: 1 });
+
+    expect(res.status).toBe(200);
+    expect(res.body.scene.loot.find((l) => l.x === 2 && l.y === 1 && l.name === item.name)).toBeTruthy();
+  });
+
+  // Yaratıcı cron fikir #16: eskiden hiçbir sınır/menzil kontrolü yoktu -
+  // x:99999 gibi bir istek görünmez/kayıp bir loot yaratabiliyordu.
+  it("harita sınırlarının dışındaki koordinat 400 döner", async () => {
     const app = buildApp();
     const createRes = await request(app)
       .post("/api/character/create")
@@ -652,10 +670,26 @@ describe("POST /api/scene/item/throw", () => {
 
     const res = await request(app)
       .post("/api/scene/item/throw")
+      .send({ characterId: createRes.body.id, itemId: item.id, x: 99999, y: -500 });
+
+    expect(res.status).toBe(400);
+    expect(res.body.error).toMatch(/sınır/i);
+  });
+
+  it("sınır içi ama fırlatma menzili dışındaki koordinat 400 döner", async () => {
+    const app = buildApp();
+    const createRes = await request(app)
+      .post("/api/character/create")
+      .send({ name: "Test", raceId: "human", classId: "fighter" });
+    const item = createRes.body.inventory[0];
+
+    // (9,7) grid sınırları içinde (10x8) ama oyuncu spawn'ından (1,1) çok uzak.
+    const res = await request(app)
+      .post("/api/scene/item/throw")
       .send({ characterId: createRes.body.id, itemId: item.id, x: 9, y: 7 });
 
-    expect(res.status).toBe(200);
-    expect(res.body.scene.loot.find((l) => l.x === 9 && l.y === 7 && l.name === item.name)).toBeTruthy();
+    expect(res.status).toBe(400);
+    expect(res.body.error).toMatch(/menzil/i);
   });
 
   it("Faz 3-C: eşya fırlatmak Aksiyon hakkını tüketir", async () => {
@@ -667,7 +701,7 @@ describe("POST /api/scene/item/throw", () => {
 
     await request(app)
       .post("/api/scene/item/throw")
-      .send({ characterId: createRes.body.id, itemId: item.id, x: 5, y: 5 });
+      .send({ characterId: createRes.body.id, itemId: item.id, x: 2, y: 2 });
 
     const sceneAfter = await request(app).get("/api/scene");
     expect(sceneAfter.body.tokens.find((t) => t.id === "player").actionAvailable).toBe(false);
@@ -1404,17 +1438,19 @@ describe("POST /api/character/reset — Faz 6-C: yeniden başlama akışı", () 
     expect(freshPlayer.x).toBe(1); // başlangıç konumu
   });
 
-  it("reset, karakterin kendisini SİLMEZ - eski karakter hâlâ ID ile erişilebilir", async () => {
+  // Faz 9 (yaratıcı cron fikir #1, orphan temizliği): reset artık orphan
+  // karakter satırını da gerçekten siliyor - eskiden sadece session bağı
+  // kesiliyordu, karakter kalıcı olarak "sahipsiz" DB'de kalıyordu.
+  it("reset, orphan kalan karakteri de gerçekten siler - eski karakter artık ID ile erişilemez", async () => {
     const app = buildApp();
     const createRes = await request(app)
       .post("/api/character/create")
-      .send({ name: "SilinmeyenKarakter", raceId: "human", classId: "fighter" });
+      .send({ name: "SilinenKarakter", raceId: "human", classId: "fighter" });
 
     await request(app).post("/api/character/reset").send({});
 
     const byIdRes = await request(app).get(`/api/character/${createRes.body.id}`);
-    expect(byIdRes.status).toBe(200);
-    expect(byIdRes.body.name).toBe("SilinmeyenKarakter");
+    expect(byIdRes.status).toBe(404);
   });
 
   it("reset sonrası sohbet geçmişi de temizlenir", async () => {
