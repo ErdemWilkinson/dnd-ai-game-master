@@ -6,6 +6,7 @@ import { ChatPanel } from './components/ChatPanel';
 import { TacticalGrid } from './components/TacticalGrid';
 import { IntroScreen } from './components/IntroScreen';
 import { GameOverScreen } from './components/GameOverScreen';
+import { HelpModal } from './components/HelpModal';
 import { getCurrentCharacter, resetSession, NetworkError } from './api';
 import type { Character, SpellId } from './types';
 
@@ -14,6 +15,27 @@ import type { Character, SpellId } from './types';
 // geri bildirimi verip birkaç kez otomatik deniyoruz.
 const CONNECT_RETRY_COUNT = 3;
 const CONNECT_RETRY_DELAY_MS = 4000;
+
+// Yaratıcı cron fikir #5: "Nasıl Oynanır?" modalını bir kez gösterip bir
+// daha göstermemek için localStorage'da işaretliyoruz - erişilemezse
+// (gizli sekme vb.) modal her seferinde gösterilir, çökmez.
+const HELP_SEEN_KEY = 'dnd-help-seen';
+
+function hasSeenHelp() {
+  try {
+    return localStorage.getItem(HELP_SEEN_KEY) === '1';
+  } catch {
+    return false;
+  }
+}
+
+function markHelpSeen() {
+  try {
+    localStorage.setItem(HELP_SEEN_KEY, '1');
+  } catch {
+    // yoksay
+  }
+}
 
 function App() {
   const [character, setCharacter] = useState<Character | null>(null);
@@ -24,6 +46,7 @@ function App() {
   const [castingSpellId, setCastingSpellId] = useState<SpellId | null>(null);
   const [sceneRefreshTick, setSceneRefreshTick] = useState(0);
   const [chatRefreshTick, setChatRefreshTick] = useState(0);
+  const [showHelp, setShowHelp] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -60,6 +83,16 @@ function App() {
     setCharacter(newCharacter);
     setPendingIntro(intro);
   }
+
+  // Oyun ekranına ilk defa (ister yeni karakterle intro'dan sonra, ister
+  // var olan bir session ile sayfa yenilendiğinde) ulaşıldığında bir kerelik
+  // yardım modalını göster.
+  useEffect(() => {
+    if (character && !pendingIntro && character.hp.current > 0 && !hasSeenHelp()) {
+      setShowHelp(true);
+      markHelpSeen();
+    }
+  }, [character, pendingIntro]);
 
   function handleCharacterChange(updated: Character) {
     setCharacter(updated);
@@ -135,7 +168,11 @@ function App() {
     <div className="app app-game">
       <header className="app-header">
         <h1>D&D AI Game Master</h1>
+        <button type="button" className="help-button" onClick={() => setShowHelp(true)} title="Nasıl Oynanır?">
+          ❓
+        </button>
       </header>
+      {showHelp && <HelpModal onClose={() => setShowHelp(false)} />}
       <main className="app-main">
         <CharacterCard
           character={character}
