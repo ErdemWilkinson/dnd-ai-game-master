@@ -11,6 +11,7 @@ const { allowRequest } = require("../services/rateLimiter");
 const { getSessionId } = require("../services/sessionId");
 const { saveCharacter, saveChatHistory, saveActiveCharacterId, clearSession } = require("../services/persistence");
 const { publicRateLimit } = require("../services/publicRateLimit");
+const { trimChatHistory } = require("../services/chatHistoryLimit");
 
 const router = express.Router();
 
@@ -140,6 +141,7 @@ router.post("/intro", async (req, res) => {
   const history = chatHistories.get(sessionId);
   const introMessage = { id: nanoid(), role: "gm", text, source, timestamp: Date.now() };
   history.push(introMessage);
+  trimChatHistory(history);
   saveChatHistory(sessionId, history);
 
   res.json({ text, source });

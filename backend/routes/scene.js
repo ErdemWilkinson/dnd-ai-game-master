@@ -12,6 +12,7 @@ const { awardXp } = require("../services/leveling");
 const { SPELLS } = require("../data/spells");
 const { CLASSES } = require("../data/dnd");
 const { advanceToNextEncounter } = require("../data/sceneFactory");
+const { trimChatHistory } = require("../services/chatHistoryLimit");
 
 const router = express.Router();
 const ATTACK_DAMAGE_DIE = 6;
@@ -68,6 +69,7 @@ function pushGmMessage(sessionId, text, source, roll = null) {
   const message = { id: nanoid(), role: "gm", text, source, timestamp: Date.now() };
   if (roll) message.roll = roll;
   history.push(message);
+  trimChatHistory(history);
   saveChatHistory(sessionId, history);
 }
 

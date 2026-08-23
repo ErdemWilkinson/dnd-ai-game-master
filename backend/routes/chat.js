@@ -6,6 +6,7 @@ const { resolveAction } = require("../services/actionResolver");
 const { generateNarration } = require("../services/narrationService");
 const { getSessionId } = require("../services/sessionId");
 const { saveChatHistory } = require("../services/persistence");
+const { trimChatHistory } = require("../services/chatHistoryLimit");
 
 const router = express.Router();
 
@@ -64,6 +65,7 @@ router.post("/", async (req, res) => {
     timestamp: Date.now(),
   };
   history.push(gmMessage);
+  trimChatHistory(history);
   saveChatHistory(sessionId, history);
 
   res.status(201).json({ playerMessage, gmMessage });
