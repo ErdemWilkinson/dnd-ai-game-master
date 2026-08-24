@@ -287,9 +287,19 @@ router.post("/end-turn", (req, res) => {
   res.json({ ...scene, enemyMessages });
 });
 
+// Yaratıcı cron fikir #35: Aksiyon/Bonus Aksiyon ekonomisi (bu fonksiyon)
+// sadece `/end-turn`'den sıfırlanıyor, ama "Turu Bitir" butonu SADECE
+// TacticalGrid'te (sahnede düşman varken, mode-combat) render ediliyor.
+// Savaş dışında (metin modu, düşman yok) bir iksir içen/eşya fırlatan/
+// büyü kullanan oyuncu `actionAvailable`'ı bir daha hiç sıfırlayamayıp
+// bir sonraki savaşa kadar KALICI olarak kilitleniyordu - gerçek bir
+// soft-lock. Sahnede hiç düşman yoksa bu ekonomi kontrolünü tamamen
+// atlıyoruz; Aksiyon ekonomisi sadece gerçek savaşta anlamlı.
 function requirePlayerAction(sessionId, res) {
   const scene = getScene(sessionId);
   const playerToken = scene.tokens.find((t) => t.id === "player");
+  const hasEnemies = scene.tokens.some((t) => t.type === "enemy");
+  if (!hasEnemies) return playerToken;
   if (scene.activeTokenId !== "player") {
     res.status(400).json({ error: "Sıra sende değil." });
     return null;

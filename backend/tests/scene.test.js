@@ -538,6 +538,30 @@ describe("POST /api/scene/item/use", () => {
     expect(charAfter.body.inventory.find((i) => i.id === item2.id)).toBeTruthy();
   });
 
+  it("yaratıcı cron fikir #35: sahnede düşman yokken (savaş dışı) Aksiyon ekonomisi uygulanmaz, arka arkaya eşya kullanımı kilitlenmez", async () => {
+    const app = buildApp();
+    const createRes = await request(app)
+      .post("/api/character/create")
+      .send({ name: "Test", raceId: "human", classId: "fighter" });
+    await request(app).get("/api/scene"); // lazy-init ettir
+    const scene = scenes.get("default");
+    scene.tokens = scene.tokens.filter((t) => t.type === "player"); // düşman yok - savaş dışı
+    const player = scene.tokens.find((t) => t.id === "player");
+    player.actionAvailable = false; // eskiden bu durumda bir daha ASLA sıfırlanamıyordu (soft-lock)
+
+    const [item1, item2] = createRes.body.inventory;
+
+    const firstUse = await request(app)
+      .post("/api/scene/item/use")
+      .send({ characterId: createRes.body.id, itemId: item1.id });
+    expect(firstUse.status).toBe(200);
+
+    const secondUse = await request(app)
+      .post("/api/scene/item/use")
+      .send({ characterId: createRes.body.id, itemId: item2.id });
+    expect(secondUse.status).toBe(200); // düşman yok, ekonomi devre dışı - ikinci kullanım da başarılı
+  });
+
   it("Faz 3-C: sıra oyuncuda değilken eşya kullanımı 400 döner", async () => {
     // Faz 4-D REGRESYON NOTU: end-turn artık düşman turunu otomatik çözüp
     // sırayı hemen oyuncuya döndürdüğü için "goblin'in sırası" normal API
@@ -967,7 +991,7 @@ describe("POST /api/scene/attack — Faz 5 madde 1: gerçek saldırı aksiyonu",
     expect(res.body.narration.text).toMatch(/yenildi/i);
   });
 
-  it("yenilmiş bir düşmana tekrar saldırmaya çalışmak 400 döner (aksiyon zaten kullanıldı)", async () => {
+  it("yenilmiş bir düşmana tekrar saldırmaya çalışmak 404 döner (artık sahnede yok)", async () => {
     vi.spyOn(Math, "random").mockReturnValue(0.999999);
     const app = buildApp();
     const createRes = await request(app)
@@ -984,15 +1008,17 @@ describe("POST /api/scene/attack — Faz 5 madde 1: gerçek saldırı aksiyonu",
 
     // Faz 11 (PM kararı): goblin sahnedeki TEK düşmandı, öldürülünce
     // checkEncounterCleared artık YENİ karşılaşmaya HEMEN geçmiyor - sadece
-    // pendingEncounterIndex işaretliyor ("nefes alma" penceresi). Yani oyuncu
-    // token'ı aynı kalıyor, actionAvailable hâlâ false - ikinci saldırı hedef
-    // bulunamadı (404) değil, "aksiyon hakkın kalmadı" (400) ile reddediliyor.
+    // pendingEncounterIndex işaretliyor ("nefes alma" penceresi), sahne
+    // düşmansız kalıyor. Yaratıcı cron fikir #35: `requirePlayerAction`
+    // artık sahnede düşman yokken Aksiyon ekonomisini tamamen atlıyor (soft-
+    // lock düzeltmesi) - yani ikinci saldırı "aksiyon hakkın kalmadı" (400)
+    // ile değil, hedef sahnede hiç yok diye 404 ile reddediliyor.
     const res = await request(app)
       .post("/api/scene/attack")
       .send({ characterId: createRes.body.id, targetTokenId: "goblin-1" });
 
-    expect(res.status).toBe(400);
-    expect(res.body.error).toMatch(/aksiyon/i);
+    expect(res.status).toBe(404);
+    expect(res.body.error).toMatch(/bulunamadı/i);
   });
 
   it("saldırı sonucu sohbet geçmişine ekleniyor", async () => {
