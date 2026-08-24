@@ -27,10 +27,13 @@ export function HelpModal({ onClose }: Props) {
       <div className="help-modal" role="dialog" aria-modal="true" aria-label="Nasıl Oynanır?" onClick={(e) => e.stopPropagation()}>
         <h3>🎲 Nasıl Oynanır?</h3>
         <ul>
-          <li>Her turda bir <strong>Aksiyon</strong> ve bir <strong>Bonus Aksiyon</strong> hakkın var (sağ panelde ✓/✗ ile gösterilir) — saldırı, büyü ve eşya kullanma Aksiyon harcar.</li>
+          <li>Ana ekran normalde <strong>tam ekran metin/sohbet</strong> gösterir; sahnede bir düşman belirince taktik grid otomatik açılır, temizlenince tekrar metne döner.</li>
+          <li>Karakter kartına (envanter, ekipman, büyüler) her zaman header'daki <strong>🎒 butonuyla</strong> ulaşırsın — savaş sırasında da açık kalır.</li>
+          <li>Her turda bir <strong>Aksiyon</strong> ve bir <strong>Bonus Aksiyon</strong> hakkın var (grid'in üstünde ✓/✗ ile gösterilir) — saldırı, büyü ve eşya kullanma Aksiyon harcar.</li>
           <li>Bitişik bir düşmana <strong>tıklayarak saldırırsın</strong>; boş bir kareye tıklamak yerine hareket ettirir.</li>
           <li>Büyü/eşya fırlatma "hedef seç" moduna girer — grid'de bir hedefe tıklayana kadar bekler, iptal için butona tekrar bas.</li>
           <li>Sıra bittiğinde <strong>"Turu Bitir"</strong>e bas; düşmanın hareketi/saldırısı otomatik çözülüp sıra sana geri döner.</li>
+          <li>Bir karşılaşmayı temizleyince kısa bir <strong>"Devam Et"</strong> anı yaşarsın — tıklayınca bir sonraki alana geçersin.</li>
           <li><strong>Zırh/silah kuşanmak savaşı gerçekten etkiler</strong> — farklı silahlar farklı hasar zarı verir, kuşanılı zırh gelen hasarı azaltır.</li>
           <li>Yerdeki eşyaların üzerine <strong>hareket edince otomatik envanterine eklenir</strong>.</li>
         </ul>
