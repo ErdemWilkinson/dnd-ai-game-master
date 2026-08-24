@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import { createRequire } from "module";
 
 const require = createRequire(import.meta.url);
-const { awardXp, xpToNextLevel, XP_PER_KILL } = require("../services/leveling.js");
+const { awardXp, xpToNextLevel, XP_PER_KILL, MAX_LEVEL } = require("../services/leveling.js");
 
 function freshCharacter(overrides = {}) {
   return {
@@ -92,5 +92,30 @@ describe("awardXp", () => {
     expect(levelsGained).toBe(1);
     expect(character.level).toBe(2);
     expect(character.xp).toBe(10);
+  });
+
+  // Yaratıcı cron fikir #31: seviye üst sınırı yoktu, sonsuz döngüdeki
+  // karşılaşmalarla teorik olarak sınırsız büyüyebilirdi.
+  it("MAX_LEVEL'de (20) zaten olan bir karakter seviye atlamaz, XP de kazanmaz", () => {
+    const character = freshCharacter({ level: MAX_LEVEL, xp: 0 });
+    const levelsGained = awardXp(character, "str", 100000);
+
+    expect(levelsGained).toBe(0);
+    expect(character.level).toBe(MAX_LEVEL);
+    expect(character.xp).toBe(0); // XP bile eklenmedi
+  });
+
+  it("MAX_LEVEL'e tam ulaştıran büyük bir XP ödülü tam MAX_LEVEL'de durur, aşmaz", () => {
+    const character = freshCharacter({ level: MAX_LEVEL - 1, xp: 0 });
+    const levelsGained = awardXp(character, "str", 100000); // devasa miktar
+
+    expect(levelsGained).toBe(1);
+    expect(character.level).toBe(MAX_LEVEL);
+    // Döngü MAX_LEVEL'e ulaşır ulaşmaz durur, kalan xp devrolmuş olarak kalır (harcanmamış).
+    expect(character.xp).toBeGreaterThan(0);
+  });
+
+  it("MAX_LEVEL 20'dir (5e geleneksel tavanı)", () => {
+    expect(MAX_LEVEL).toBe(20);
   });
 });
