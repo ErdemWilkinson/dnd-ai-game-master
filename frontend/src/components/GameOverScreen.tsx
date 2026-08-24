@@ -11,7 +11,7 @@ interface Props {
 // sadece kullanıcıya hiç gösterilmiyordu.
 export function GameOverScreen({ characterName, level, xp = 0, encountersCleared = null, onRestart }: Props) {
   return (
-    <div className="game-over-screen">
+    <div className="game-over-screen" role="alertdialog" aria-modal="true" aria-label="Oyun Bitti">
       <h2>Oyun Bitti</h2>
       <p className="game-over-text">
         <strong>{characterName}</strong>, seviye {level}'de düştü. Macera burada sona erdi.
