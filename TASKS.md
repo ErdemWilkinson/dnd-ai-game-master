@@ -437,6 +437,30 @@ Aşağıdaki "İnovasyon Fikirleri" bölümündeki 1-4 numaralı maddeler PM tar
 - [x] Zırh kuşanan bir karaktere düşman saldırısında hasarın azaldığını, kuşanmayana azalmadığını doğrula
 - [x] 0'ın altına inmediğini (negatif hasar/heal olmadığını) doğrula
 
+## Faz 11 — Büyük UI Yeniden Tasarımı: Metin-Öncelikli Deneyim, Grid Sadece Savaşta
+
+Kullanıcının doğrudan geri bildirimi (2026-08-24): mevcut sürekli görünen 3-panelli (karakter/sohbet/harita) düzen "direkt bir vs oyunu" gibi hissettiriyor, istenilen klasik bir D&D masaüstü RP deneyimi (metin ağırlıklı). Kullanıcı kararları netleşti:
+
+### Coder — sırayla
+- [ ] **Ana görünüm artık tam ekran metin/sohbet** — `App.tsx`'teki her zaman görünen 3 sütunlu grid (`.app-main`) kaldırılıp, karşılaşmada düşman YOKKEN (`scene.tokens.some(t=>t.type==="enemy")` false) sadece `ChatPanel` tam ekran gösterilsin.
+- [ ] **Taktik grid sadece karşılaşmada düşman VARKEN otomatik görünsün** — mevcut sahne verisi zaten bunu biliyor (`scene.tokens`'ta `type==="enemy"` olan var mı), ekstra bir "savaş modu" state'i tutmaya gerek yok, doğrudan sahne verisinden türet. Düşmanlar temizlenince (karşılaşma geçişi zaten bunu tetikliyor) otomatik olarak tekrar tam-ekran metne dönülsün.
+- [ ] **Karakter kartı artık sürekli görünen bir sütun değil** — bir köşede (örn. header'da) küçük bir simge/buton olsun, tıklanınca karakter bilgisi/envanter (mevcut CharacterCard içeriği) bir panel/modal olarak açılsın, tekrar tıklanınca kapansın. Grid göründüğü sırada da bu buton erişilebilir kalmalı (savaşta da envanter kullanılabilmeli — item kullan/kuşan/fırlat).
+- [ ] **Layout geçişleri (metin↔grid) ani olmasın, yumuşak bir CSS transition/fade ile olsun** — kullanıcının "animasyon yok" şikayetiyle ilgili, bu geçiş en azından bir başlangıç.
+- [ ] Mevcut mobil breakpoint (Faz 9) bu yeni düzene göre yeniden değerlendirilmeli — tam ekran metin zaten mobilde daha basit olur, ama test edilmeli.
+
+### Coder — animasyon/his iyileştirmeleri (ayrı, küçük parçalar halinde ele alınabilir)
+- [ ] Saldırı/hasar anlarında görsel bir tepki (örn. hedef token'da kısa bir "sallanma"/flaş CSS animasyonu, hasar sayısının belirip kaybolduğu bir "damage popup")
+- [ ] Token hareketi anlık "zıplama" yerine CSS transition ile kareler arası kayarak hareket etsin (grid göründüğünde)
+- [ ] Chat'e yeni bir GM/oyuncu mesajı geldiğinde satırın yumuşak bir fade-in ile belirmesi
+
+**Not:** Bu, projenin en büyük görsel/yapısal değişikliklerinden biri — mevcut testlerin çoğu (App.test.tsx, TacticalGrid.test.tsx, layout ile ilgili testler) muhtemelen kırılacak, bu KASITLI ve beklenen, coder ilerledikçe güncellemeli. Tester ile yakın koordinasyon önemli, büyük bir görsel QA turu gerekecek.
+
+### Tester
+- [ ] Metin↔grid geçişinin doğru tetiklendiğini (düşman varken grid, yokken tam-ekran metin) doğrula
+- [ ] Karakter kartı butonunun her durumda (metin modunda ve savaşta) erişilebilir olduğunu, envanter aksiyonlarının savaşta hâlâ çalıştığını doğrula
+- [ ] Geçiş animasyonlarının/CSS transition'ların gerçek tarayıcıda düzgün göründüğünü (takılma, flash olmadan) doğrula
+- [ ] Mobil breakpoint'i yeni düzene göre tekrar test et
+
 ## İnovasyon Fikirleri (yaratıcı cron)
 (Bu bölümü yaratıcı cron dolduracak — her turda bir fikir ekler. Yukarıdaki maddeler Faz 9'a taşındı.)
 
