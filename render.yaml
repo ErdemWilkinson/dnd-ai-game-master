@@ -42,16 +42,15 @@ services:
     buildCommand: npm install && npm run build
     staticPublishPath: dist
     envVars:
+      # ONEMLI: "fromService: hostport" KULLANMA - Render'in hostport ozelligi
+      # sadece "host:port" (semasiz, yanlis port) donduruyor, tarayicidan
+      # erisilebilir bir https URL degil. Bu deger Blueprint sync'inde her
+      # deploy'da dashboard'daki manuel duzeltmeyi EZIYORDU (2026-08-24'te
+      # PM tarafindan canli olarak tespit edildi - karakter olusturma
+      # prod'da sessizce calismiyordu). Backend'in gercek public URL'i
+      # sabit deger olarak yazildi, boylece her deploy'da ayni kaliyor.
       - key: VITE_API_BASE
-        fromService:
-          type: web
-          name: dnd-game-backend
-          property: hostport
-        # Render "hostport" degeri sadece host:port dondurur; asagidaki gibi
-        # tam URL + /api yolu icin deploy sonrasi bu degeri elle
-        # "https://dnd-game-backend.onrender.com/api" ile guncellemek gerekebilir
-        # (Render Blueprint'lerde servisler-arasi tam URL referansi surum
-        # bagimli olabilir - dashboard'da dogrulayin).
+        value: https://dnd-game-backend-sz9e.onrender.com/api
     routes:
       - type: rewrite
         source: /*
