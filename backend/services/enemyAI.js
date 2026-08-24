@@ -5,6 +5,7 @@
 const { rollD20, rollDie } = require("./dice");
 const { isBlocked } = require("./sceneState");
 const { DIFFICULTY_CLASS } = require("./actionResolver");
+const { getTotalArmorReduction } = require("../data/armorReduction");
 
 const ENEMY_ATTACK_MODIFIER = 2;
 const ENEMY_DAMAGE_DIE = 6;
@@ -133,7 +134,9 @@ function runEnemyTurn(scene, enemy, character) {
     return missMessage(enemy.name);
   }
 
-  const damage = rollDie(ENEMY_DAMAGE_DIE) + (roll === 20 ? ENEMY_DAMAGE_DIE : 0);
+  const rawDamage = rollDie(ENEMY_DAMAGE_DIE) + (roll === 20 ? ENEMY_DAMAGE_DIE : 0);
+  const armorReduction = getTotalArmorReduction(character);
+  const damage = Math.max(0, rawDamage - armorReduction);
   character.hp.current = Math.max(0, character.hp.current - damage);
 
   return hitMessage(enemy.name, damage, character.hp.current, character.hp.max);

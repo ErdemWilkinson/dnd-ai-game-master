@@ -818,6 +818,11 @@ describe("POST /api/scene/attack — Faz 5 madde 1: gerçek saldırı aksiyonu",
     const createRes = await request(app)
       .post("/api/character/create")
       .send({ name: "Test", raceId: "human", classId: "fighter" }); // fighter primary: str
+    // Faz 10: hasar zarı artık kuşanılı silaha bağlı - Kısa Kılıç (d6) kuşanılmazsa
+    // silahsız varsayılan (d4) kullanılır, bu testin beklediği d6 matematiği bozulur.
+    await request(app)
+      .post("/api/scene/item/equip")
+      .send({ characterId: createRes.body.id, itemId: createRes.body.inventory[0].id });
     await teleportGoblinAdjacentToPlayer(app);
 
     const res = await request(app)
@@ -860,6 +865,9 @@ describe("POST /api/scene/attack — Faz 5 madde 1: gerçek saldırı aksiyonu",
     const createRes = await request(app)
       .post("/api/character/create")
       .send({ name: "Test", raceId: "human", classId: "fighter" });
+    await request(app) // Faz 10: Kısa Kılıç (d6) kuşan - silahsız varsayılan d4 olurdu
+      .post("/api/scene/item/equip")
+      .send({ characterId: createRes.body.id, itemId: createRes.body.inventory[0].id });
     await teleportGoblinAdjacentToPlayer(app);
 
     const res = await request(app)
@@ -876,6 +884,9 @@ describe("POST /api/scene/attack — Faz 5 madde 1: gerçek saldırı aksiyonu",
     const createRes = await request(app)
       .post("/api/character/create")
       .send({ name: "Test", raceId: "human", classId: "fighter" });
+    await request(app) // Faz 10: Kısa Kılıç (d6) kuşan - silahsız varsayılan d4 olurdu
+      .post("/api/scene/item/equip")
+      .send({ characterId: createRes.body.id, itemId: createRes.body.inventory[0].id });
     await teleportGoblinAdjacentToPlayer(app);
     // goblin HP 10, kritik vuruş 12 hasar -> ölür (tek saldırıda)
 
@@ -894,6 +905,9 @@ describe("POST /api/scene/attack — Faz 5 madde 1: gerçek saldırı aksiyonu",
     const createRes = await request(app)
       .post("/api/character/create")
       .send({ name: "Test", raceId: "human", classId: "fighter" });
+    await request(app) // Faz 10: Kısa Kılıç (d6) kuşan - silahsız varsayılan d4 olurdu
+      .post("/api/scene/item/equip")
+      .send({ characterId: createRes.body.id, itemId: createRes.body.inventory[0].id });
     await teleportGoblinAdjacentToPlayer(app);
 
     await request(app)
@@ -1041,6 +1055,9 @@ describe("POST /api/scene/attack — Faz 6-C: XP/seviye entegrasyonu", () => {
     const createRes = await request(app)
       .post("/api/character/create")
       .send({ name: "Test", raceId: "human", classId: "fighter" });
+    await request(app) // Faz 10: Kısa Kılıç (d6) kuşan - silahsız varsayılan d4 olurdu
+      .post("/api/scene/item/equip")
+      .send({ characterId: createRes.body.id, itemId: createRes.body.inventory[0].id });
     await teleportGoblinAdjacentToPlayer(app);
 
     const res = await request(app)
@@ -1062,6 +1079,9 @@ describe("POST /api/scene/attack — Faz 6-C: XP/seviye entegrasyonu", () => {
     const character = characters.get(createRes.body.id);
     character.xp = 40; // +20 = 60 >= 50, seviye atlayacak
 
+    await request(app) // Faz 10: Kısa Kılıç (d6) kuşan - silahsız varsayılan d4 olurdu
+      .post("/api/scene/item/equip")
+      .send({ characterId: createRes.body.id, itemId: createRes.body.inventory[0].id });
     await teleportGoblinAdjacentToPlayer(app);
 
     const res = await request(app)
@@ -1072,6 +1092,77 @@ describe("POST /api/scene/attack — Faz 6-C: XP/seviye entegrasyonu", () => {
     expect(res.body.levelsGained).toBe(1);
     expect(res.body.character.level).toBe(2);
     expect(res.body.narration.text).toMatch(/seviye 2/i);
+  });
+});
+
+describe("POST /api/scene/attack — Faz 10: kuşanılı silaha göre hasar zarı", () => {
+  beforeEach(() => {
+    scenes.clear();
+    characters.clear();
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  async function teleportGoblinAdjacentToPlayer(app) {
+    await request(app).get("/api/scene");
+    const scene = scenes.get("default");
+    const goblin = scene.tokens.find((t) => t.id === "goblin-1");
+    const player = scene.tokens.find((t) => t.id === "player");
+    goblin.x = player.x + 1;
+    goblin.y = player.y;
+  }
+
+  it("Kısa Kılıç (d6) kuşanan bir Savaşçı ile Hançer x2 (d4) kuşanan bir Hırsız farklı hasar verir", async () => {
+    vi.spyOn(Math, "random").mockReturnValue(0.71); // d6 -> 5, d4 -> 3
+
+    const fighterApp = buildApp();
+    const fighterRes = await request(fighterApp)
+      .post("/api/character/create")
+      .send({ name: "Savaşçı", raceId: "human", classId: "fighter" });
+    await request(fighterApp)
+      .post("/api/scene/item/equip")
+      .send({ characterId: fighterRes.body.id, itemId: fighterRes.body.inventory[0].id }); // Kısa Kılıç
+    await teleportGoblinAdjacentToPlayer(fighterApp);
+    const fighterAttack = await request(fighterApp)
+      .post("/api/scene/attack")
+      .send({ characterId: fighterRes.body.id, targetTokenId: "goblin-1" });
+
+    scenes.clear();
+    characters.clear();
+
+    const rogueApp = buildApp();
+    const rogueRes = await request(rogueApp)
+      .post("/api/character/create")
+      .send({ name: "Hırsız", raceId: "human", classId: "rogue" });
+    await request(rogueApp)
+      .post("/api/scene/item/equip")
+      .send({ characterId: rogueRes.body.id, itemId: rogueRes.body.inventory[0].id }); // Hançer x2
+    await teleportGoblinAdjacentToPlayer(rogueApp);
+    const rogueAttack = await request(rogueApp)
+      .post("/api/scene/attack")
+      .send({ characterId: rogueRes.body.id, targetTokenId: "goblin-1" });
+
+    expect(fighterAttack.body.damage).toBe(5); // Kısa Kılıç: d6 -> 5
+    expect(rogueAttack.body.damage).toBe(3); // Hançer x2: d4 -> 3
+    expect(fighterAttack.body.damage).not.toBe(rogueAttack.body.damage);
+  });
+
+  it("hiç silah kuşanılmadıysa silahsız varsayılan zar (d4) kullanılır", async () => {
+    vi.spyOn(Math, "random").mockReturnValue(0.71); // d4 -> 3
+    const app = buildApp();
+    const createRes = await request(app)
+      .post("/api/character/create")
+      .send({ name: "Silahsız", raceId: "human", classId: "fighter" });
+    // Kısa Kılıç bilerek kuşanılmıyor.
+    await teleportGoblinAdjacentToPlayer(app);
+
+    const res = await request(app)
+      .post("/api/scene/attack")
+      .send({ characterId: createRes.body.id, targetTokenId: "goblin-1" });
+
+    expect(res.body.damage).toBe(3);
   });
 });
 
@@ -1247,6 +1338,9 @@ describe("Faz 7-A: karşılaşma temizlenince yeni alana geçiş", () => {
     const createRes = await request(app)
       .post("/api/character/create")
       .send({ name: "Test", raceId: "human", classId: "fighter" });
+    await request(app) // Faz 10: Kısa Kılıç (d6) kuşan - silahsız varsayılan d4 olurdu
+      .post("/api/scene/item/equip")
+      .send({ characterId: createRes.body.id, itemId: createRes.body.inventory[0].id });
     await teleportGoblinAdjacentToPlayer(app);
 
     const res = await request(app)
@@ -1265,6 +1359,9 @@ describe("Faz 7-A: karşılaşma temizlenince yeni alana geçiş", () => {
     const createRes = await request(app)
       .post("/api/character/create")
       .send({ name: "Test", raceId: "human", classId: "fighter" });
+    await request(app) // Faz 10: Kısa Kılıç (d6) kuşan - silahsız varsayılan d4 olurdu
+      .post("/api/scene/item/equip")
+      .send({ characterId: createRes.body.id, itemId: createRes.body.inventory[0].id });
     await teleportGoblinAdjacentToPlayer(app);
 
     const res = await request(app)
@@ -1281,6 +1378,9 @@ describe("Faz 7-A: karşılaşma temizlenince yeni alana geçiş", () => {
     const createRes = await request(app)
       .post("/api/character/create")
       .send({ name: "Test", raceId: "human", classId: "fighter" });
+    await request(app) // Faz 10: Kısa Kılıç (d6) kuşan - silahsız varsayılan d4 olurdu
+      .post("/api/scene/item/equip")
+      .send({ characterId: createRes.body.id, itemId: createRes.body.inventory[0].id });
     await teleportGoblinAdjacentToPlayer(app);
 
     const res = await request(app)
@@ -1349,6 +1449,9 @@ describe("Faz 7-A: karşılaşma temizlenince yeni alana geçiş", () => {
     const createRes = await request(app)
       .post("/api/character/create")
       .send({ name: "Test", raceId: "human", classId: "fighter" });
+    await request(app) // Faz 10: Kısa Kılıç (d6) kuşan - silahsız varsayılan d4 olurdu
+      .post("/api/scene/item/equip")
+      .send({ characterId: createRes.body.id, itemId: createRes.body.inventory[0].id });
     await teleportGoblinAdjacentToPlayer(app);
 
     await request(app)

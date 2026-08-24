@@ -13,9 +13,9 @@ const { SPELLS } = require("../data/spells");
 const { CLASSES } = require("../data/dnd");
 const { advanceToNextEncounter } = require("../data/sceneFactory");
 const { trimChatHistory } = require("../services/chatHistoryLimit");
+const { getWeaponDamageDie } = require("../data/weaponDamage");
 
 const router = express.Router();
-const ATTACK_DAMAGE_DIE = 6;
 // Yaratıcı cron fikir #16: /item/throw grid sınırını/menzili hiç doğrulamıyordu
 // (x:99999 gibi bir değer görünmez/kayıp bir loot yaratabiliyordu). Ateş
 // Topu'nun range:3'üyle tutarlı bir fırlatma menzili.
@@ -233,10 +233,13 @@ router.post("/attack", async (req, res) => {
 
   playerToken.actionAvailable = false;
 
+  const equippedWeapon = character.inventory.find((i) => i.slot === "hand" && i.equipped);
+  const attackDamageDie = getWeaponDamageDie(equippedWeapon?.name);
+
   let damage = 0;
   let defeated = false;
   if (outcome === "success" || outcome === "critical-success") {
-    damage = rollDie(ATTACK_DAMAGE_DIE) + (outcome === "critical-success" ? rollDie(ATTACK_DAMAGE_DIE) : 0);
+    damage = rollDie(attackDamageDie) + (outcome === "critical-success" ? rollDie(attackDamageDie) : 0);
     target.hp = Math.max(0, (target.hp ?? 0) - damage);
     if (target.hp <= 0) {
       defeated = true;
