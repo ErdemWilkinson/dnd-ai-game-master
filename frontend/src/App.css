@@ -879,6 +879,7 @@
   border-radius: 4px;
   background: var(--bg-inset);
   font-size: 0.85rem;
+  animation: fade-in 0.3s ease;
 }
 
 .chat-message.gm {

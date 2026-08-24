@@ -461,15 +461,23 @@ Frontend tarafında ilk yazımda TacticalGrid'i `pendingEncounterIndex` sırası
 ### Coder — animasyon/his iyileştirmeleri (ayrı, küçük parçalar halinde ele alınabilir)
 - [ ] Saldırı/hasar anlarında görsel bir tepki (örn. hedef token'da kısa bir "sallanma"/flaş CSS animasyonu, hasar sayısının belirip kaybolduğu bir "damage popup")
 - [ ] Token hareketi anlık "zıplama" yerine CSS transition ile kareler arası kayarak hareket etsin (grid göründüğünde)
-- [ ] Chat'e yeni bir GM/oyuncu mesajı geldiğinde satırın yumuşak bir fade-in ile belirmesi
+- [x] Chat'e yeni bir GM/oyuncu mesajı geldiğinde satırın yumuşak bir fade-in ile belirmesi — **[2026-08-25] [x] DÜZELTİLDİ (coder)** `App.css`'teki `.chat-message`'a mevcut `@keyframes fade-in` (0.3s ease) uygulandı. Ekstra bir "yeni mi eski mi" state'i gerekmedi — React'in `key={m.id}` bazlı reconciliation'ı zaten sadece gerçekten yeni mesaj DOM node'larını mount ediyor, var olan mesajlar (refetch/refreshKey değişince) aynı key ile kalıp yeniden mount/fade olmuyor. Playwright ile canlı doğrulandı: bir mesaj gönderilip DOM node'ları işaretlendikten sonra ikinci bir mesaj gönderilince, işaretli ESKİ node'lar aynen yerinde kaldı (remount olmadı, gereksiz re-flash yok), sadece yeni mesajlar eklendi. Frontend testleri regresyon göstermedi (80/80), tsc+build temiz.
 
 **Not:** Bu, projenin en büyük görsel/yapısal değişikliklerinden biri — mevcut testlerin çoğu (App.test.tsx, TacticalGrid.test.tsx, layout ile ilgili testler) muhtemelen kırılacak, bu KASITLI ve beklenen, coder ilerledikçe güncellemeli. Tester ile yakın koordinasyon önemli, büyük bir görsel QA turu gerekecek.
 
 ### Tester
-- [ ] Metin↔grid geçişinin doğru tetiklendiğini (düşman varken grid, yokken tam-ekran metin) doğrula
-- [ ] Karakter kartı butonunun her durumda (metin modunda ve savaşta) erişilebilir olduğunu, envanter aksiyonlarının savaşta hâlâ çalıştığını doğrula
-- [ ] Geçiş animasyonlarının/CSS transition'ların gerçek tarayıcıda düzgün göründüğünü (takılma, flash olmadan) doğrula
-- [ ] Mobil breakpoint'i yeni düzene göre tekrar test et
+- [x] Metin↔grid geçişinin doğru tetiklendiğini (düşman varken grid, yokken tam-ekran metin) doğrula
+- [x] Karakter kartı butonunun her durumda (metin modunda ve savaşta) erişilebilir olduğunu, envanter aksiyonlarının savaşta hâlâ çalıştığını doğrula
+- [x] Geçiş animasyonlarının/CSS transition'ların gerçek tarayıcıda düzgün göründüğünü (takılma, flash olmadan) doğrula
+- [x] Mobil breakpoint'i yeni düzene göre tekrar test et
+
+**[2026-08-25] Tester doğrulaması (claude-game-38), coder'ın local commit'ine (b4d667d, push öncesi) karşı — local dev sunucuları (backend :3001, frontend :5173, izole test DB) kullanılarak Playwright ile:**
+- Metin↔grid: taze bir karşılaşmada (düşman var) `.app-main.mode-combat` + grid görünür doğru tetiklendi. Ekipman kuşanıp (Kısa Kılıç + Deri Zırh) gerçek bir düşmanı öldürdüm → `pendingEncounterIndex` set edildi, sayfa `.mode-text`'e geçti, "Alanı temizledin, ilerliyorsun..." banner'ı göründü, grid tamamen gizlendi. "Devam Et"e tıklayınca yeni karşılaşma (Örümcek İni) yüklendi ve `.mode-combat`'a geri geçildi — tam döngü uçtan uca çalışıyor.
+- Karakter paneli (🎒 buton): hem savaş modunda hem nefes alma penceresinde açılıp kapandığı doğrulandı.
+- CSS transition: `App.css`'te `.tactical-grid`/`.chat-panel` üzerinde flex-basis/width/opacity/padding/max-width'e tanımlı `transition` kuralları kod incelemesiyle doğrulandı; ekran görüntüleriyle her iki uç durumun (mode-text/mode-combat) doğru render edildiği teyit edildi (statik görüntüyle animasyon akıcılığı ölçülemez, ama takılma/flash belirtisi yok).
+- Mobil (375×812, gerçek Playwright viewport): yatay taşma yok (`body.scrollWidth <= innerWidth`), 🎒 butonu görünür ve tıklanabilir, karakter paneli tam ekran düzgün açılıyor, savaş görünümü (header/sohbet/grid) tek sütun halinde düzgün alt alta diziliyor — ekran görüntüsüyle doğrulandı, kırık layout yok.
+- Konsol hatası yok (sadece beklenen başlangıç 404'leri). Not: erken denemelerimde ekipman kuşanmadan dövüşe giren zayıf bir test karakteri RNG'ye yenilip öldü — gerçek bir bug değildi, sadece test metodolojim; ekipmanlı ikinci denemede sorunsuz tamamlandı.
+- Sonuç PM'e bildirildi, coder'a push için yeşil ışık verildi.
 
 ## İnovasyon Fikirleri (yaratıcı cron)
 (Bu bölümü yaratıcı cron dolduracak — her turda bir fikir ekler. Yukarıdaki maddeler Faz 9'a taşındı.)
