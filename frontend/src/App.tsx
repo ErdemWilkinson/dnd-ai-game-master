@@ -63,6 +63,10 @@ function App() {
   const [pendingEncounter, setPendingEncounter] = useState(false);
   const [continueError, setContinueError] = useState<string | null>(null);
   const [continuing, setContinuing] = useState(false);
+  // Yaratıcı cron fikir #33: canlıyken karakterden vazgeçip yeniden başlamanın
+  // tek yolu ölmekti - karakter panelinde bir "Yeni Karaktere Başla" seçeneği
+  // ekliyoruz, yanlışlıkla silmeyi önlemek için önce inline bir onay istiyor.
+  const [confirmingRestart, setConfirmingRestart] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -178,6 +182,12 @@ function App() {
     setEncountersCleared(null);
     setPendingEncounter(false);
     setContinueError(null);
+    setConfirmingRestart(false);
+  }
+
+  function closeCharacterPanel() {
+    setShowCharacterPanel(false);
+    setConfirmingRestart(false);
   }
 
   if (loading) {
@@ -259,12 +269,12 @@ function App() {
       </header>
       {showHelp && <HelpModal onClose={() => setShowHelp(false)} />}
       {showCharacterPanel && (
-        <div className="character-panel-overlay" onClick={() => setShowCharacterPanel(false)}>
+        <div className="character-panel-overlay" onClick={closeCharacterPanel}>
           <div className="character-panel" onClick={(e) => e.stopPropagation()}>
             <button
               type="button"
               className="character-panel-close"
-              onClick={() => setShowCharacterPanel(false)}
+              onClick={closeCharacterPanel}
               aria-label="Karakter panelini kapat"
             >
               ✕
@@ -280,6 +290,29 @@ function App() {
               onCancelCast={() => setCastingSpellId(null)}
               onChatActivity={handleChatActivity}
             />
+            <div className="restart-character-section">
+              {confirmingRestart ? (
+                <div className="restart-confirm">
+                  <span>Mevcut karakterin silinecek, emin misin?</span>
+                  <div className="restart-confirm-actions">
+                    <button type="button" className="restart-confirm-yes" onClick={handleRestart}>
+                      Evet, Sil
+                    </button>
+                    <button type="button" onClick={() => setConfirmingRestart(false)}>
+                      Vazgeç
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  className="restart-character-button"
+                  onClick={() => setConfirmingRestart(true)}
+                >
+                  Yeni Karaktere Başla
+                </button>
+              )}
+            </div>
           </div>
         </div>
       )}

@@ -129,6 +129,57 @@
   box-shadow: 0 0 8px rgba(242, 193, 78, 0.35);
 }
 
+/* Yaratıcı cron fikir #33: canlıyken karakterden vazgeçip yeniden başlama. */
+.restart-character-section {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid rgba(201, 163, 92, 0.15);
+}
+
+.restart-character-button {
+  width: 100%;
+  padding: 0.5rem;
+  border-radius: 4px;
+  border: 1px solid rgba(201, 163, 92, 0.3);
+  background: transparent;
+  color: var(--parchment-dim);
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+
+.restart-character-button:hover {
+  border-color: var(--blood);
+  color: var(--parchment);
+}
+
+.restart-confirm {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  font-size: 0.8rem;
+  color: var(--parchment);
+}
+
+.restart-confirm-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.restart-confirm-actions button {
+  flex: 1;
+  padding: 0.4rem;
+  border-radius: 4px;
+  border: 1px solid var(--bronze-bright);
+  background: var(--bg-inset);
+  color: var(--parchment);
+  cursor: pointer;
+}
+
+.restart-confirm-yes {
+  border-color: var(--blood) !important;
+  background: linear-gradient(180deg, var(--blood), #5a2a20) !important;
+}
+
 @keyframes fade-in {
   from {
     opacity: 0;
