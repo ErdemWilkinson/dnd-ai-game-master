@@ -55,3 +55,27 @@ services:
       - type: rewrite
         source: /*
         destination: /index.html
+    # Yaratıcı cron fikir #24: backend'e helmet (#23) eklendi ama statik
+    # frontend site hiç güvenlik header'ı kullanmıyordu. Google Fonts
+    # (index.html'de fonts.googleapis.com/fonts.gstatic.com) ve React'in
+    # inline style prop'ları (CharacterCard/TacticalGrid'deki HP/mana barları,
+    # grid-template-columns) CSP'yi kırmasın diye style-src'te 'unsafe-inline'
+    # + fonts.googleapis.com, font-src'te fonts.gstatic.com açıkça izinli.
+    # connect-src'e prod backend origin'i eklendi (VITE_API_BASE - yukarıdaki
+    # sabit değer - bu URL'e gidiyor); ilk denemede (2026-08-24) VITE_API_BASE
+    # henüz bozukken (fikir #25) bu CSP gerçek bir prod sorununu ortaya
+    # çıkarmıştı, VITE_API_BASE düzeltildikten sonra tekrar eklendi.
+    headers:
+      - path: /*
+        name: X-Frame-Options
+        value: SAMEORIGIN
+      - path: /*
+        name: Content-Security-Policy
+        value: >-
+          default-src 'self';
+          style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
+          font-src 'self' https://fonts.gstatic.com;
+          img-src 'self' data:;
+          script-src 'self';
+          connect-src 'self' https://dnd-game-backend-sz9e.onrender.com;
+          frame-ancestors 'none'
