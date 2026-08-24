@@ -33,6 +33,11 @@ services:
         value: gemini-3.6-flash
       - key: AI_HOURLY_LIMIT
         value: "30"
+      # Yaratıcı cron fikir #34: cors() artık allowlist bazlı - backend'e
+      # sadece bu origin'den (+ yerel dev) gelen tarayıcı istekleri kabul
+      # ediliyor. Sabit değer, VITE_API_BASE'deki aynı desenle tutarlı.
+      - key: FRONTEND_ORIGIN
+        value: https://dnd-game-frontend-t9hr.onrender.com
 
   # Frontend - statik site (Vite build çıktısı)
   - type: web

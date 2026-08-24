@@ -31,7 +31,35 @@ function runStaleSessionCleanup() {
 // Express framework bilgisini sızdırıyordu) - helmet standart bir hardening
 // header seti ekliyor (X-Content-Type-Options, X-Frame-Options, vb.).
 app.use(helmet());
-app.use(cors());
+
+// Yaratıcı cron fikir #34: `cors()` argümansız TÜM origin'lere açıktı -
+// herhangi bir üçüncü taraf site backend'e doğrudan (kullanıcının
+// tarayıcısı üzerinden, credential'sız da olsa) istek atabiliyordu.
+// `FRONTEND_ORIGIN` (virgülle ayrılmış, render.yaml'da sabit prod URL'i
+// olarak ayarlanacak) izinli origin listesini belirliyor - hiç
+// ayarlanmazsa sadece yerel dev origin'lerine (Vite varsayılan portu)
+// izin veriliyor. Origin header'ı OLMAYAN istekler (curl, supertest,
+// sunucu-sunucu çağrıları, health check) `cors` paketinin standart
+// davranışıyla tutarlı şekilde her zaman geçiyor - tarayıcı DIŞI
+// istemcileri kırmak bu değişikliğin amacı değil.
+const DEV_ORIGINS = ["http://localhost:5173", "http://127.0.0.1:5173"];
+const configuredOrigins = (process.env.FRONTEND_ORIGIN || "")
+  .split(",")
+  .map((o) => o.trim())
+  .filter(Boolean);
+const ALLOWED_ORIGINS = [...new Set([...DEV_ORIGINS, ...configuredOrigins])];
+
+app.use(
+  cors({
+    origin(origin, callback) {
+      if (!origin || ALLOWED_ORIGINS.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error("CORS: izinli olmayan origin."));
+      }
+    },
+  }),
+);
 app.use(express.json());
 
 // Yaratıcı cron fikir #7: eskiden sabit {status:"ok"} dönüyordu, DB
@@ -51,6 +79,14 @@ app.get("/api/health", async (_req, res) => {
 app.use("/api/character", characterRouter);
 app.use("/api/chat", chatRouter);
 app.use("/api/scene", sceneRouter);
+
+// eslint-disable-next-line no-unused-vars
+app.use((err, _req, res, next) => {
+  if (err && err.message === "CORS: izinli olmayan origin.") {
+    return res.status(403).json({ error: err.message });
+  }
+  next(err);
+});
 
 async function start() {
   // Postgres kullanılıyorsa (Faz 7-B) şema/veri yükleme asenkron olur -
