@@ -32,6 +32,11 @@ export function TacticalGrid({
 }: Props) {
   const [scene, setSceneState] = useState<Scene | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // Faz 11 polish: saldırı isabet edince hedefin bulunduğu karede kısa bir
+  // "sallanma/flaş" + üzerinde beliren bir hasar sayısı göstermek için. Hedef
+  // ölürse token sahneden kalkıyor ama koordinatı burada yakaladığımız için
+  // popup yine de doğru karede beliriyor.
+  const [damageFx, setDamageFx] = useState<{ x: number; y: number; damage: number; key: number } | null>(null);
 
   function setScene(updated: Scene) {
     setSceneState(updated);
@@ -88,14 +93,24 @@ export function TacticalGrid({
 
   async function handleAttack(targetTokenId: string) {
     setError(null);
+    const target = scene?.tokens.find((t) => t.id === targetTokenId);
     try {
-      const { character, scene: updated } = await attackTarget(characterId, targetTokenId);
+      const { character, scene: updated, damage } = await attackTarget(characterId, targetTokenId);
       setScene(updated);
+      if (target && damage > 0) triggerDamageFx(target.x, target.y, damage);
       onCharacterChange?.(character);
       onChatActivity?.();
     } catch (e) {
       setError((e as Error).message);
     }
+  }
+
+  function triggerDamageFx(x: number, y: number, damage: number) {
+    const key = Date.now();
+    setDamageFx({ x, y, damage, key });
+    window.setTimeout(() => {
+      setDamageFx((current) => (current?.key === key ? null : current));
+    }, 700);
   }
 
   function handleCellClick(x: number, y: number) {
@@ -186,6 +201,8 @@ export function TacticalGrid({
             if (blocked) className += ' obstacle';
             if (token) className += token.type === 'player' ? ' player-token' : ' enemy-token';
             if (loot) className += ' loot';
+            const isDamageFxCell = damageFx && damageFx.x === x && damageFx.y === y;
+            if (isDamageFxCell) className += ' damage-flash';
 
             const cellLabel = token
               ? `${token.name}${token.hp !== undefined ? ` (${token.hp}/${token.maxHp} HP)` : ''}`
@@ -202,6 +219,11 @@ export function TacticalGrid({
                 aria-label={cellLabel}
               >
                 {token ? token.name[0] : loot ? '◆' : ''}
+                {isDamageFxCell && (
+                  <span key={damageFx!.key} className="damage-popup">
+                    -{damageFx!.damage}
+                  </span>
+                )}
               </button>
             );
           }),
