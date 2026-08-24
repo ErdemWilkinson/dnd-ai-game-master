@@ -31,6 +31,8 @@ export function HelpModal({ onClose }: Props) {
           <li>Bitişik bir düşmana <strong>tıklayarak saldırırsın</strong>; boş bir kareye tıklamak yerine hareket ettirir.</li>
           <li>Büyü/eşya fırlatma "hedef seç" moduna girer — grid'de bir hedefe tıklayana kadar bekler, iptal için butona tekrar bas.</li>
           <li>Sıra bittiğinde <strong>"Turu Bitir"</strong>e bas; düşmanın hareketi/saldırısı otomatik çözülüp sıra sana geri döner.</li>
+          <li><strong>Zırh/silah kuşanmak savaşı gerçekten etkiler</strong> — farklı silahlar farklı hasar zarı verir, kuşanılı zırh gelen hasarı azaltır.</li>
+          <li>Yerdeki eşyaların üzerine <strong>hareket edince otomatik envanterine eklenir</strong>.</li>
         </ul>
         <button type="button" ref={closeButtonRef} onClick={onClose}>
           Anladım
