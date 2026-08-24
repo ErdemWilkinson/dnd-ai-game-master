@@ -48,6 +48,11 @@ function createScene(encounterIndex = 0) {
     activeTokenId: "player",
     encounterIndex,
     totalEncounters: ENCOUNTERS.length,
+    // Faz 11 (PM kararı): karşılaşma temizlenince bir sonraki karşılaşmanın
+    // düşmanları HEMEN sahneye girmiyor - oyuncu bir sonraki hareketinde
+    // (routes/scene.js: resolvePendingEncounter) "yürüyerek giriyor". `null`
+    // = bekleyen bir geçiş yok.
+    pendingEncounterIndex: null,
     obstacles: encounter.obstacles.map((o) => ({ ...o })),
     loot: encounter.loot.map((l) => ({ id: nanoid(), ...l })),
     tokens: [buildPlayerToken(), ...encounter.enemies.map(buildEnemyToken)],

@@ -11,6 +11,10 @@ interface Props {
   onTurnResolved?: (enemyMessages: string[]) => void;
   onCharacterChange?: (character: Character) => void;
   onChatActivity?: () => void;
+  // Faz 11: App'in "savaş modu" (grid görünür/gizli) kararını verebilmesi
+  // için - ekstra bir "savaş modu" state'i TUTMUYORUZ, App bu callback'ten
+  // gelen sahneden `scene.tokens.some(t => t.type === 'enemy')` ile türetiyor.
+  onSceneUpdate?: (scene: Scene) => void;
   refreshKey?: number;
 }
 
@@ -23,13 +27,20 @@ export function TacticalGrid({
   onTurnResolved,
   onCharacterChange,
   onChatActivity,
+  onSceneUpdate,
   refreshKey = 0,
 }: Props) {
-  const [scene, setScene] = useState<Scene | null>(null);
+  const [scene, setSceneState] = useState<Scene | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  function setScene(updated: Scene) {
+    setSceneState(updated);
+    onSceneUpdate?.(updated);
+  }
 
   useEffect(() => {
     getScene().then(setScene);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [refreshKey]);
 
   async function handleThrowTarget(x: number, y: number) {

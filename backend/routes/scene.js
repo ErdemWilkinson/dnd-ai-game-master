@@ -56,21 +56,57 @@ function requireOwnedCharacter(req, res, characterId) {
 }
 
 // Faz 7-A: sahnedeki son düşman da düşünce sıradaki karşılaşmaya geçilir.
-// Bir sonraki karşılaşmanın adını içeren bir anlatım eki döner (yoksa null).
-// Yaratıcı cron fikir #14: liste sonundaki (en zor) karşılaşma temizlenip
-// başa dönüldüğünde (tam bir tur tamamlandığında) özel bir tebrik cümlesi
-// dönüyor - eskiden bu da diğerleriyle aynı genel mesajı alıyordu.
+// Faz 11 (PM kararı): eskiden bu geçiş ANINDA (aynı /attack-/cast cevabında)
+// gerçekleşiyordu - yeni karşılaşmanın düşmanları hiç ara vermeden sahneye
+// giriyordu, bu da "savaş sadece düşman varken görünür" UI'ının pratikte hiç
+// düşmansız bir an yaşamamasına yol açıyordu (sonsuz zindan tasarımı). Artık
+// temizlenince sahne SADECE oyuncuyla kalıyor (`pendingEncounterIndex`
+// işaretleniyor, `advanceToNextEncounter` HENÜZ çağrılmıyor) - oyuncu bir-iki
+// hamlelik düşmansız/metin-modu bir an yaşıyor, asıl geçiş oyuncunun
+// SIRADAKİ `/move` çağrısında (aşağıdaki `resolvePendingEncounter`)
+// "yürüyerek yeni alana giriyor" hissiyle gerçekleşiyor.
 function checkEncounterCleared(scene) {
   const hasEnemies = scene.tokens.some((t) => t.type === "enemy");
-  if (hasEnemies) return null;
+  if (hasEnemies || scene.pendingEncounterIndex != null) return null;
   const clearedIndex = scene.encounterIndex;
   const totalEncounters = scene.totalEncounters;
-  advanceToNextEncounter(scene);
+  scene.pendingEncounterIndex = clearedIndex + 1;
   const completedFullLap = (clearedIndex + 1) % totalEncounters === 0;
   if (completedFullLap) {
-    return ` Tüm bölgeyi temizledin! Kahramanlığın efsaneleşiyor... ama tehlike hiç bitmiyor, yeni bir tehdit beliriyor: ${scene.name}.`;
+    return " Tüm bölgeyi temizledin! Kahramanlığın efsaneleşiyor... ama tehlike hiç bitmiyor, biraz ilerleyince yeni bir tehdit seni bekliyor.";
   }
-  return ` Karşılaşma temizlendi! Yeni bir alana geçiliyor: ${scene.name}.`;
+  return " Alanı temizledin, ilerliyorsun...";
+}
+
+// Faz 11: bekleyen bir karşılaşma geçişi varsa, oyuncunun bu hareketini asıl
+// hedefe (x,y) uygulamak yerine "yeni alana giriş" olarak yorumlar - yeni
+// karşılaşmayı kurar (spawn/tur/aksiyon sıfırlanır) ve buna göre bir anlatım
+// döner. `true` dönerse çağıran taraf normal hareket mantığını ATLAMALI.
+async function resolvePendingEncounter(sessionId, scene, character, res) {
+  if (scene.pendingEncounterIndex == null) return false;
+
+  advanceToNextEncounter(scene);
+  scene.pendingEncounterIndex = null;
+
+  const history = getChatHistoryList(sessionId);
+  const { text, source } = await generateNarration({
+    character,
+    scene,
+    recentMessages: history.slice(-6),
+    playerMessage: `${character?.name ?? "Oyuncu"} yeni bir alana giriyor.`,
+  });
+  const narrationText = `${text} Yeni alan: ${scene.name}.`;
+  pushGmMessage(sessionId, narrationText, source);
+
+  saveScene(sessionId, scene);
+  res.json({
+    scene,
+    collectedLoot: null,
+    inventoryFull: false,
+    narration: { text: narrationText, source },
+    character,
+  });
+  return true;
 }
 
 function getChatHistoryList(sessionId) {
@@ -107,13 +143,21 @@ router.post("/move", async (req, res) => {
   if (scene.activeTokenId !== tokenId) {
     return res.status(400).json({ error: "Sıra bu token'da değil." });
   }
+  let activeCharacterForMove = null;
   if (token.type === "player") {
     // Tester'ın (claude-game-38) bulduğu tutarsızlık: /attack, /cast, /item
     // requireOwnedCharacter() ile karakter ölüyse (HP<=0) reddediliyordu ama
     // /move hiç kontrol etmiyordu.
-    const character = getActiveCharacter(sessionId);
-    if (character && character.hp.current <= 0) {
+    activeCharacterForMove = getActiveCharacter(sessionId);
+    if (activeCharacterForMove && activeCharacterForMove.hp.current <= 0) {
       return res.status(400).json({ error: "Karakter ölü, oyun bitti." });
+    }
+
+    // Faz 11: bekleyen bir karşılaşma geçişi varsa bu hareket isteğini
+    // "yeni alana giriş" olarak yorumla, normal hedef-koordinat mantığını
+    // hiç çalıştırma (yeni haritada anlamsız olurdu).
+    if (await resolvePendingEncounter(sessionId, scene, activeCharacterForMove, res)) {
+      return;
     }
   }
   if (typeof x !== "number" || typeof y !== "number") {
@@ -141,7 +185,7 @@ router.post("/move", async (req, res) => {
   let narration = null;
   let updatedCharacter = null;
   if (token.type === "player") {
-    const character = getActiveCharacter(sessionId);
+    const character = activeCharacterForMove;
     updatedCharacter = character;
 
     // Yaratıcı cron fikir #20 (coder'ın Faz 10'da bulduğu yan bug): loot

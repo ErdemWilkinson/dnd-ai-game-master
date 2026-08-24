@@ -118,4 +118,8 @@ export interface Scene {
   obstacles: { x: number; y: number }[];
   loot: SceneLoot[];
   tokens: SceneToken[];
+  // Faz 11 (PM kararı): karşılaşma temizlenince bir sonraki karşılaşma
+  // hemen sahneye girmiyor - oyuncu bir sonraki hareketinde "yürüyerek
+  // giriyor" (backend: resolvePendingEncounter). null = bekleyen geçiş yok.
+  pendingEncounterIndex: number | null;
 }

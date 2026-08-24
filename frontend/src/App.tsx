@@ -7,8 +7,8 @@ import { TacticalGrid } from './components/TacticalGrid';
 import { IntroScreen } from './components/IntroScreen';
 import { GameOverScreen } from './components/GameOverScreen';
 import { HelpModal } from './components/HelpModal';
-import { getCurrentCharacter, getScene, resetSession, NetworkError } from './api';
-import type { Character, SpellId } from './types';
+import { getCurrentCharacter, getScene, moveToken, resetSession, NetworkError } from './api';
+import type { Character, Scene, SpellId } from './types';
 
 // Faz 9 (yaratıcı cron fikir #4): Render'ın soğuk başlangıcında ilk istek
 // 30-60sn sürebiliyor - sessizce hata yutmak yerine kullanıcıya "bağlanılıyor"
@@ -48,6 +48,21 @@ function App() {
   const [chatRefreshTick, setChatRefreshTick] = useState(0);
   const [showHelp, setShowHelp] = useState(false);
   const [encountersCleared, setEncountersCleared] = useState<number | null>(null);
+  // Faz 11: kullanıcı geri bildirimi - sürekli görünen 3-panelli düzen "vs
+  // oyunu" gibi hissettiriyordu. Ana görünüm artık tam ekran metin/sohbet,
+  // taktik grid SADECE sahnede düşman varken otomatik görünüyor. Ekstra bir
+  // "savaş modu" state'i TUTMUYORUZ - hasEnemies doğrudan TacticalGrid'in
+  // en son çektiği sahne verisinden türetiliyor (onSceneUpdate callback'i).
+  const [hasEnemies, setHasEnemies] = useState(false);
+  const [showCharacterPanel, setShowCharacterPanel] = useState(false);
+  // Faz 11 (PM kararı): karşılaşma temizlenince yeni karşılaşma HEMEN sahneye
+  // girmiyor - sahne "nefes alma" penceresine giriyor (backend:
+  // pendingEncounterIndex). Bu sırada gerçekten düşman yok, o yüzden
+  // hasEnemies'e KARIŞTIRMIYORUZ - grid gizlenip tam ekran metin moduna
+  // dönülüyor. Devam etmek için ayrı bir "Devam Et" butonu gösteriyoruz.
+  const [pendingEncounter, setPendingEncounter] = useState(false);
+  const [continueError, setContinueError] = useState<string | null>(null);
+  const [continuing, setContinuing] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -107,6 +122,31 @@ function App() {
     }
   }, [character]);
 
+  function handleSceneUpdate(scene: Scene) {
+    setHasEnemies(scene.tokens.some((t) => t.type === 'enemy'));
+    setPendingEncounter(scene.pendingEncounterIndex != null);
+  }
+
+  // Faz 11: "nefes alma" penceresinde (pendingEncounterIndex set) grid gizli -
+  // oyuncu bir kareye tıklayamıyor, o yüzden geçişi tetiklemek için ayrı bir
+  // buton kullanıyoruz. Backend'de resolvePendingEncounter koordinatlara
+  // bakmadan devreye giriyor, bu yüzden (0,0) ile çağırmak yeterli.
+  async function handleContinueToNextArea() {
+    setContinueError(null);
+    setContinuing(true);
+    try {
+      const { scene: updated, narration, character: updatedCharacter } = await moveToken('player', 0, 0);
+      handleSceneUpdate(updated);
+      if (updatedCharacter) setCharacter(updatedCharacter);
+      if (narration) setChatRefreshTick((tick) => tick + 1);
+      setSceneRefreshTick((tick) => tick + 1);
+    } catch (e) {
+      setContinueError((e as Error).message);
+    } finally {
+      setContinuing(false);
+    }
+  }
+
   function handleCharacterChange(updated: Character) {
     setCharacter(updated);
     // CharacterCard'daki eylemler (kullan/kuşan/at) sahnedeki Aksiyon/Bonus
@@ -136,6 +176,8 @@ function App() {
     setSceneRefreshTick(0);
     setChatRefreshTick(0);
     setEncountersCleared(null);
+    setPendingEncounter(false);
+    setContinueError(null);
   }
 
   if (loading) {
@@ -184,39 +226,80 @@ function App() {
     );
   }
 
+  // Fırlatma/büyü hedef-seçimi grid'e tıklamayı gerektiriyor - düşman yokken
+  // bile (örn. boş bir kareye eşya fırlatmak) grid'in geçici olarak görünmesi
+  // gerekiyor, aksi halde hedef seçilemez.
+  const showGrid = hasEnemies || Boolean(throwingItemId || castingSpellId);
+
   return (
     <div className="app app-game">
       <header className="app-header">
         <h1>D&D AI Game Master</h1>
-        <button
-          type="button"
-          className="help-button"
-          onClick={() => setShowHelp(true)}
-          title="Nasıl Oynanır?"
-          aria-label="Nasıl Oynanır? yardım penceresini aç"
-        >
-          ❓
-        </button>
+        <div className="app-header-actions">
+          <button
+            type="button"
+            className="character-toggle-button"
+            onClick={() => setShowCharacterPanel((v) => !v)}
+            title={`${character.name} (karakter/envanter)`}
+            aria-label={`${character.name} - karakter ve envanteri aç/kapat`}
+            aria-pressed={showCharacterPanel}
+          >
+            <span aria-hidden="true">🎒</span> <span>{character.name}</span>
+          </button>
+          <button
+            type="button"
+            className="help-button"
+            onClick={() => setShowHelp(true)}
+            title="Nasıl Oynanır?"
+            aria-label="Nasıl Oynanır? yardım penceresini aç"
+          >
+            ❓
+          </button>
+        </div>
       </header>
       {showHelp && <HelpModal onClose={() => setShowHelp(false)} />}
-      <main className="app-main">
-        <CharacterCard
-          character={character}
-          onCharacterChange={handleCharacterChange}
-          throwingItemId={throwingItemId}
-          onStartThrow={setThrowingItemId}
-          onCancelThrow={() => setThrowingItemId(null)}
-          castingSpellId={castingSpellId}
-          onStartCast={setCastingSpellId}
-          onCancelCast={() => setCastingSpellId(null)}
-          onChatActivity={handleChatActivity}
-        />
+      {showCharacterPanel && (
+        <div className="character-panel-overlay" onClick={() => setShowCharacterPanel(false)}>
+          <div className="character-panel" onClick={(e) => e.stopPropagation()}>
+            <button
+              type="button"
+              className="character-panel-close"
+              onClick={() => setShowCharacterPanel(false)}
+              aria-label="Karakter panelini kapat"
+            >
+              ✕
+            </button>
+            <CharacterCard
+              character={character}
+              onCharacterChange={handleCharacterChange}
+              throwingItemId={throwingItemId}
+              onStartThrow={setThrowingItemId}
+              onCancelThrow={() => setThrowingItemId(null)}
+              castingSpellId={castingSpellId}
+              onStartCast={setCastingSpellId}
+              onCancelCast={() => setCastingSpellId(null)}
+              onChatActivity={handleChatActivity}
+            />
+          </div>
+        </div>
+      )}
+      <main className={`app-main ${showGrid ? 'mode-combat' : 'mode-text'}`}>
+        {pendingEncounter && !showGrid && (
+          <div className="pending-encounter-banner">
+            <span>Alanı temizledin, ilerliyorsun...</span>
+            <button type="button" onClick={handleContinueToNextArea} disabled={continuing}>
+              {continuing ? 'İlerleniyor...' : 'Devam Et'}
+            </button>
+            {continueError && <span className="error">{continueError}</span>}
+          </div>
+        )}
         <ChatPanel refreshKey={chatRefreshTick} />
         <TacticalGrid
           characterId={character.id}
           throwingItemId={throwingItemId}
           castingSpellId={castingSpellId}
           refreshKey={sceneRefreshTick}
+          onSceneUpdate={handleSceneUpdate}
           onThrowComplete={(updated) => {
             setCharacter(updated);
             setThrowingItemId(null);

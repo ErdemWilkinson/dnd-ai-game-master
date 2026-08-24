@@ -19,6 +19,7 @@ function sceneWith(
     activeTokenId,
     encounterIndex: 0,
     totalEncounters: 4,
+    pendingEncounterIndex: null,
     obstacles: [],
     loot: [],
     tokens: [

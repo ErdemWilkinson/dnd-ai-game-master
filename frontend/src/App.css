@@ -34,6 +34,12 @@
   letter-spacing: 0.12em;
 }
 
+.app-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
 .help-button {
   width: 2rem;
   height: 2rem;
@@ -49,6 +55,98 @@
 
 .help-button:hover {
   box-shadow: 0 0 10px rgba(242, 193, 78, 0.35);
+}
+
+/* Faz 11: karakter kartı artık sürekli bir sütun değil, header'daki bu
+   butonla açılıp kapanan bir overlay panel. Savaşta (grid görünürken) da
+   erişilebilir kalması gerekiyor (envanter kullanımı için) - App.tsx bu
+   butonu her zaman render ediyor, layout moduna bağlı değil. */
+.character-toggle-button {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.4rem 0.75rem;
+  border-radius: 999px;
+  border: 1px solid var(--bronze-bright);
+  background: var(--bg-inset);
+  color: var(--parchment);
+  cursor: pointer;
+  font-size: 0.8rem;
+  font-family: var(--font-body);
+}
+
+.character-toggle-button:hover,
+.character-toggle-button[aria-pressed='true'] {
+  box-shadow: 0 0 10px rgba(242, 193, 78, 0.35);
+  border-color: var(--gold);
+}
+
+.character-panel-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: flex-start;
+  z-index: 90;
+  animation: fade-in 0.2s ease;
+}
+
+.character-panel {
+  position: relative;
+  width: min(360px, 90vw);
+  height: 100%;
+  overflow-y: auto;
+  padding: 1rem;
+  background: linear-gradient(180deg, var(--bg-panel), var(--bg-inset));
+  border-right: 1px solid var(--bronze);
+  box-shadow: 4px 0 24px rgba(0, 0, 0, 0.5);
+  animation: slide-in-left 0.2s ease;
+}
+
+.character-panel .character-card {
+  border: none;
+  box-shadow: none;
+  background: none;
+  padding: 0;
+  overflow-y: visible;
+}
+
+.character-panel-close {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: 50%;
+  border: 1px solid var(--bronze-bright);
+  background: var(--bg-inset);
+  color: var(--parchment);
+  cursor: pointer;
+  line-height: 1;
+}
+
+.character-panel-close:hover {
+  box-shadow: 0 0 8px rgba(242, 193, 78, 0.35);
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slide-in-left {
+  from {
+    transform: translateX(-16px);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
 }
 
 .help-modal-overlay {
@@ -109,29 +207,117 @@
   opacity: 0.6;
 }
 
+/* Faz 11: kullanıcı geri bildirimi - sürekli 3 panelli düzen "vs oyunu"
+   gibi hissettiriyordu. Ana görünüm artık tam ekran metin/sohbet
+   (.mode-text), taktik grid SADECE sahnede düşman varken (ya da fırlatma/
+   büyü hedef-seçimi sırasında) otomatik açılıp yanına ekleniyor
+   (.mode-combat). Grid her zaman mount'lu kalıyor (TacticalGrid kendi sahne
+   state'ini/refetch mantığını kaybetmesin diye), CSS ile flex-basis/opacity
+   üzerinden yumuşak bir geçişle gösterilip gizleniyor.*/
 .app-main {
-  display: grid;
-  /* sol: karakter, orta: sohbet/gunluk (genis), sag: taktik harita */
-  grid-template-columns: 280px 1fr 380px;
+  position: relative;
+  display: flex;
   gap: 1rem;
   padding: 1rem;
-  align-items: stretch;
   flex: 1;
   min-height: 0;
   overflow: hidden;
 }
 
-/* Faz 9 (yaratıcı cron fikir #3, PM kararı): tam özel mobil tasarım değil,
-   minimal bir çözüm - 3 sütun tek sütuna düşer (karakter üstte, sohbet
-   ortada, harita altta), her biri kendi yüksekliği içinde scroll eder,
-   panel gruplarının kendisi arasında da dikey scroll mümkün olur. */
+.pending-encounter-banner {
+  position: absolute;
+  top: 0.5rem;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.5rem 1rem;
+  border-radius: 999px;
+  background: rgba(20, 15, 10, 0.9);
+  border: 1px solid #8a6a3a;
+  color: #e8d9b8;
+  font-size: 0.9rem;
+  animation: fade-in 0.3s ease;
+}
+
+.pending-encounter-banner button {
+  border-radius: 999px;
+  border: 1px solid #8a6a3a;
+  background: #3a2c18;
+  color: #e8d9b8;
+  padding: 0.25rem 0.9rem;
+  cursor: pointer;
+}
+
+.pending-encounter-banner button:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.app-main .chat-panel {
+  flex: 1;
+  min-width: 0;
+  transition: max-width 0.3s ease;
+}
+
+.app-main.mode-text .chat-panel {
+  max-width: 800px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+.app-main .tactical-grid {
+  flex-basis: 0;
+  width: 0;
+  min-width: 0;
+  opacity: 0;
+  padding: 0;
+  border-width: 0;
+  overflow: hidden;
+  pointer-events: none;
+  transition: flex-basis 0.3s ease, width 0.3s ease, opacity 0.25s ease, padding 0.3s ease;
+}
+
+.app-main.mode-combat .tactical-grid {
+  flex-basis: 380px;
+  width: 380px;
+  min-width: 260px;
+  opacity: 1;
+  padding: 1rem;
+  border-width: 1px;
+  pointer-events: auto;
+}
+
+/* Faz 9 (yaratıcı cron fikir #3, PM kararı) - Faz 11 sonrası yeniden
+   değerlendirildi: artık sadece 2 eleman (sohbet + grid) var, karakter
+   kartı ayrı bir overlay panel. Dar ekranlarda savaş modunda dikey
+   istifleniyor, metin modunda zaten tek panel (sohbet) var. */
 @media (max-width: 768px) {
   .app-main {
-    grid-template-columns: 1fr;
-    grid-auto-rows: 42vh;
-    overflow-y: auto;
     padding: 0.75rem;
     gap: 0.75rem;
+  }
+
+  .app-main.mode-combat {
+    flex-direction: column;
+    overflow-y: auto;
+  }
+
+  .app-main.mode-combat .chat-panel {
+    flex: none;
+    height: 45vh;
+  }
+
+  .app-main.mode-combat .tactical-grid {
+    flex-basis: auto;
+    width: 100%;
+    height: 45vh;
+  }
+
+  .character-panel {
+    width: 100%;
   }
 
   .app-centered {
