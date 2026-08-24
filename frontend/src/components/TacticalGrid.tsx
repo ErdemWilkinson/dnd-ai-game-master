@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { attackTarget, castSpell, endTurn, getScene, moveToken, throwItem } from '../api';
 import type { Character, Scene, SpellId } from '../types';
 
@@ -38,6 +38,16 @@ export function TacticalGrid({
   // popup yine de doğru karede beliriyor.
   const [damageFx, setDamageFx] = useState<{ x: number; y: number; damage: number; key: number } | null>(null);
 
+  // Faz 11 polish: token'lar anlık "zıplamak" yerine kareler arası kayarak
+  // hareket etsin diye - her hücrenin gerçek piksel konumunu ölçüp bir
+  // overlay katmanındaki token işaretçilerini bu konumlara `left`/`top`
+  // transition'ıyla yerleştiriyoruz. Yüzde bazlı bir hesap `gap`/`padding`
+  // yüzünden hücre sınırlarıyla tam örtüşmeyeceğinden gerçek ölçüm kullanıldı.
+  const gridRef = useRef<HTMLDivElement>(null);
+  const [cellRects, setCellRects] = useState<Map<string, { left: number; top: number; width: number; height: number }>>(
+    new Map(),
+  );
+
   function setScene(updated: Scene) {
     setSceneState(updated);
     onSceneUpdate?.(updated);
@@ -47,6 +57,36 @@ export function TacticalGrid({
     getScene().then(setScene);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [refreshKey]);
+
+  useEffect(() => {
+    const gridEl = gridRef.current;
+    if (!gridEl) return;
+
+    function measure() {
+      const containerRect = gridEl!.getBoundingClientRect();
+      const next = new Map<string, { left: number; top: number; width: number; height: number }>();
+      gridEl!.querySelectorAll<HTMLButtonElement>('.cell').forEach((cellEl) => {
+        const { x, y } = cellEl.dataset;
+        if (x == null || y == null) return;
+        const rect = cellEl.getBoundingClientRect();
+        next.set(`${x},${y}`, {
+          left: rect.left - containerRect.left,
+          top: rect.top - containerRect.top,
+          width: rect.width,
+          height: rect.height,
+        });
+      });
+      setCellRects(next);
+    }
+
+    measure();
+    // jsdom (test ortamı) ResizeObserver sağlamıyor - overlay konumlandırması
+    // sadece gerçek bir tarayıcıda gerekli, testlerde ilk ölçüm yeterli.
+    if (typeof ResizeObserver === 'undefined') return;
+    const observer = new ResizeObserver(measure);
+    observer.observe(gridEl);
+    return () => observer.disconnect();
+  }, [scene?.width, scene?.height]);
 
   async function handleThrowTarget(x: number, y: number) {
     if (!throwingItemId) return;
@@ -188,6 +228,7 @@ export function TacticalGrid({
       {error && <p className="error">{error}</p>}
 
       <div
+        ref={gridRef}
         className={`grid ${gridInteractive ? '' : 'grid-disabled'} ${specialMode ? 'grid-throw-mode' : ''}`}
         style={{ gridTemplateColumns: `repeat(${scene.width}, 1fr)` }}
       >
@@ -199,7 +240,6 @@ export function TacticalGrid({
             const blocked = obstacleSet.has(key);
             let className = 'cell';
             if (blocked) className += ' obstacle';
-            if (token) className += token.type === 'player' ? ' player-token' : ' enemy-token';
             if (loot) className += ' loot';
             const isDamageFxCell = damageFx && damageFx.x === x && damageFx.y === y;
             if (isDamageFxCell) className += ' damage-flash';
@@ -213,12 +253,14 @@ export function TacticalGrid({
             return (
               <button
                 key={key}
+                data-x={x}
+                data-y={y}
                 className={className}
                 onClick={() => handleCellClick(x, y)}
                 title={cellLabel}
                 aria-label={cellLabel}
               >
-                {token ? token.name[0] : loot ? '◆' : ''}
+                {!token && loot ? '◆' : ''}
                 {isDamageFxCell && (
                   <span key={damageFx!.key} className="damage-popup">
                     -{damageFx!.damage}
@@ -228,6 +270,21 @@ export function TacticalGrid({
             );
           }),
         )}
+        <div className="token-layer">
+          {scene.tokens.map((t) => {
+            const rect = cellRects.get(`${t.x},${t.y}`);
+            if (!rect) return null;
+            return (
+              <div
+                key={t.id}
+                className={`token-marker ${t.type === 'player' ? 'player-token' : 'enemy-token'}`}
+                style={{ left: rect.left, top: rect.top, width: rect.width, height: rect.height }}
+              >
+                {t.name[0]}
+              </div>
+            );
+          })}
+        </div>
       </div>
     </div>
   );

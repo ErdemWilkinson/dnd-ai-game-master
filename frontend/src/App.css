@@ -783,12 +783,36 @@
 }
 
 .grid {
+  position: relative;
   display: grid;
   gap: 2px;
   padding: 0.4rem;
   background: var(--bg-void);
   border: 1px solid rgba(201, 163, 92, 0.15);
   border-radius: 4px;
+}
+
+/* Faz 11 polish: token'lar CSS grid hücreleri yerine ölçülmüş piksel
+   konumlarına yerleştirilen ayrı bir overlay katmanında - böylece hareket
+   ettiklerinde anlık "zıplamak" yerine `left`/`top` transition'ıyla kayarlar. */
+.token-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.token-marker {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--parchment);
+  border-radius: 2px;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.2);
+  transition: left 0.3s ease, top 0.3s ease;
 }
 
 .grid-disabled .cell {
@@ -870,15 +894,12 @@
   );
 }
 
-.cell.player-token {
+.token-marker.player-token {
   background: linear-gradient(180deg, #4a86c0, var(--arcane-blue));
-  font-weight: 700;
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.2);
 }
 
-.cell.enemy-token {
+.token-marker.enemy-token {
   background: linear-gradient(180deg, #9a4a3a, var(--blood));
-  font-weight: 700;
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.15);
 }
 
