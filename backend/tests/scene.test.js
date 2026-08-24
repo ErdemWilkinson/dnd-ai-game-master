@@ -1562,6 +1562,47 @@ describe("Faz 6-C: oyuncu ölümü — HP<=0 iken aksiyon endpoint'leri reddedil
     expect(useRes.status).toBe(400);
     expect(useRes.body.error).toMatch(/ölü/i);
   });
+
+  // Tester'ın (claude-game-38) bulduğu tutarsızlık: /move ve /end-turn
+  // HP<=0 kontrolü yapmıyordu, ölü bir karakterle tur bile bitirilebiliyordu.
+  it("HP 0 olan bir karakterin oyuncu token'ını /move ile hareket ettirmek 400 ile reddedilir", async () => {
+    const app = buildApp();
+    const createRes = await request(app)
+      .post("/api/character/create")
+      .send({ name: "Test", raceId: "human", classId: "fighter" });
+    const character = characters.get(createRes.body.id);
+    character.hp.current = 0;
+
+    const moveRes = await request(app)
+      .post("/api/scene/move")
+      .send({ tokenId: "player", x: 2, y: 1 });
+    expect(moveRes.status).toBe(400);
+    expect(moveRes.body.error).toMatch(/ölü/i);
+
+    // Token gerçekten hareket etmemiş olmalı.
+    const sceneRes = await request(app).get("/api/scene");
+    const playerToken = sceneRes.body.tokens.find((t) => t.id === "player");
+    expect(playerToken.x).toBe(1);
+    expect(playerToken.y).toBe(1);
+  });
+
+  it("HP 0 olan bir karakterle /end-turn 400 ile reddedilir, sıra/düşman turu işlenmez", async () => {
+    const app = buildApp();
+    const createRes = await request(app)
+      .post("/api/character/create")
+      .send({ name: "Test", raceId: "human", classId: "fighter" });
+    const character = characters.get(createRes.body.id);
+    character.hp.current = 0;
+
+    const endTurnRes = await request(app).post("/api/scene/end-turn").send({});
+    expect(endTurnRes.status).toBe(400);
+    expect(endTurnRes.body.error).toMatch(/ölü/i);
+
+    // Sıra hâlâ oyuncuda olmalı, düşman turu hiç işlenmemiş olmalı.
+    const sceneRes = await request(app).get("/api/scene");
+    expect(sceneRes.body.activeTokenId).toBe("player");
+    expect(sceneRes.body.round).toBe(1);
+  });
 });
 
 describe("POST /api/character/reset — Faz 6-C: yeniden başlama akışı", () => {

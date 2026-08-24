@@ -107,6 +107,15 @@ router.post("/move", async (req, res) => {
   if (scene.activeTokenId !== tokenId) {
     return res.status(400).json({ error: "Sıra bu token'da değil." });
   }
+  if (token.type === "player") {
+    // Tester'ın (claude-game-38) bulduğu tutarsızlık: /attack, /cast, /item
+    // requireOwnedCharacter() ile karakter ölüyse (HP<=0) reddediliyordu ama
+    // /move hiç kontrol etmiyordu.
+    const character = getActiveCharacter(sessionId);
+    if (character && character.hp.current <= 0) {
+      return res.status(400).json({ error: "Karakter ölü, oyun bitti." });
+    }
+  }
   if (typeof x !== "number" || typeof y !== "number") {
     return res.status(400).json({ error: "Geçersiz koordinat." });
   }
@@ -200,12 +209,21 @@ function advanceTurn(scene) {
 router.post("/end-turn", (req, res) => {
   const sessionId = getSessionId(req);
   const scene = getScene(sessionId);
+
+  // Tester'ın (claude-game-38) bulduğu tutarsızlık: /attack, /cast, /item
+  // requireOwnedCharacter() ile karakter ölüyse (HP<=0) reddediliyordu ama
+  // /move ve /end-turn hiç kontrol etmiyordu - ölü bir karakterle tur
+  // bitirilip düşman turu bile işlenebiliyordu.
+  const character = getActiveCharacter(sessionId);
+  if (character && character.hp.current <= 0) {
+    return res.status(400).json({ error: "Karakter ölü, oyun bitti." });
+  }
+
   const enemyMessages = [];
 
   let activeToken = advanceTurn(scene);
   // Düşman token'ların sırası tamamen deterministik/scriptli işlenir (ek AI
   // çağrısı yok), sonra sıra otomatik olarak oyuncuya geri döner.
-  const character = getActiveCharacter(sessionId);
   while (activeToken.type === "enemy") {
     const message = runEnemyTurn(scene, activeToken, character);
     if (message) enemyMessages.push(message);
