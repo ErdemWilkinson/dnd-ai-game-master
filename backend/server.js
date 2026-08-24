@@ -2,6 +2,7 @@ require("dotenv").config();
 
 const express = require("express");
 const cors = require("cors");
+const helmet = require("helmet");
 
 const db = require("./data/db");
 const { loadAll, cleanupStaleSessions } = require("./services/persistence");
@@ -26,6 +27,10 @@ function runStaleSessionCleanup() {
     .catch((err) => console.error("Eski session temizliği başarısız:", err.message));
 }
 
+// Yaratıcı cron fikir #23: hiç güvenlik header'ı yoktu (ör. X-Powered-By:
+// Express framework bilgisini sızdırıyordu) - helmet standart bir hardening
+// header seti ekliyor (X-Content-Type-Options, X-Frame-Options, vb.).
+app.use(helmet());
 app.use(cors());
 app.use(express.json());
 
