@@ -101,10 +101,13 @@ export function getScene() {
 }
 
 export function moveToken(tokenId: string, x: number, y: number) {
-  return request<{ scene: Scene; collectedLoot: unknown; narration: Narration | null }>('/scene/move', {
-    method: 'POST',
-    body: JSON.stringify({ tokenId, x, y }),
-  });
+  return request<{ scene: Scene; collectedLoot: unknown; narration: Narration | null; character: Character | null }>(
+    '/scene/move',
+    {
+      method: 'POST',
+      body: JSON.stringify({ tokenId, x, y }),
+    },
+  );
 }
 
 export function attackTarget(characterId: string, targetTokenId: string) {

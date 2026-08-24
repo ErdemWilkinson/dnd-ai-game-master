@@ -66,8 +66,9 @@ export function TacticalGrid({
     }
     setError(null);
     try {
-      const { scene: updated, narration } = await moveToken(scene.activeTokenId, x, y);
+      const { scene: updated, narration, character } = await moveToken(scene.activeTokenId, x, y);
       setScene(updated);
+      if (character) onCharacterChange?.(character);
       if (narration) onChatActivity?.();
     } catch (e) {
       setError((e as Error).message);

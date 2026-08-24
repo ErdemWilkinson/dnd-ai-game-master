@@ -14,6 +14,7 @@ const { CLASSES } = require("../data/dnd");
 const { advanceToNextEncounter } = require("../data/sceneFactory");
 const { trimChatHistory } = require("../services/chatHistoryLimit");
 const { getWeaponDamageDie } = require("../data/weaponDamage");
+const { getSlotForItem, getIconForSlot } = require("../data/itemSlots");
 
 const router = express.Router();
 // Yaratıcı cron fikir #16: /item/throw grid sınırını/menzili hiç doğrulamıyordu
@@ -127,8 +128,26 @@ router.post("/move", async (req, res) => {
   }
 
   let narration = null;
+  let updatedCharacter = null;
   if (token.type === "player") {
     const character = getActiveCharacter(sessionId);
+    updatedCharacter = character;
+
+    // Yaratıcı cron fikir #20 (coder'ın Faz 10'da bulduğu yan bug): loot
+    // sahneden kaldırılıyordu ama karakterin envanterine hiç eklenmiyordu -
+    // eşyalar görsel olarak yerden kayboluyor ama asla kuşanılamıyordu.
+    if (collected && character) {
+      const slot = getSlotForItem(collected.name);
+      character.inventory.push({
+        id: nanoid(),
+        name: collected.name,
+        equipped: false,
+        slot,
+        icon: getIconForSlot(slot),
+      });
+      saveCharacter(character);
+    }
+
     const history = getChatHistoryList(sessionId);
     const { text, source } = await generateNarration({
       character,
@@ -136,12 +155,13 @@ router.post("/move", async (req, res) => {
       recentMessages: history.slice(-6),
       playerMessage: `${character?.name ?? "Oyuncu"} hareket ediyor.`,
     });
-    pushGmMessage(sessionId, text, source);
-    narration = { text, source };
+    const narrationText = collected ? `${text} ${collected.name} envanterine eklendi!` : text;
+    pushGmMessage(sessionId, narrationText, source);
+    narration = { text: narrationText, source };
   }
 
   saveScene(sessionId, scene);
-  res.json({ scene, collectedLoot: collected, narration });
+  res.json({ scene, collectedLoot: collected, narration, character: updatedCharacter });
 });
 
 function advanceTurn(scene) {
