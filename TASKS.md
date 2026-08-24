@@ -421,6 +421,20 @@ Aşağıdaki "İnovasyon Fikirleri" bölümündeki 1-4 numaralı maddeler PM tar
 - [ ] Mobil breakpoint'i gerçek dar viewport (örn. 375px) ile Playwright'ta görsel QA
 - [ ] **Bilinen test kırılması (kasıtlı):** `backend/tests/scene.test.js`'teki "reset, karakterin kendisini SİLMEZ" testi artık yanlış — reset artık karakteri GERÇEKTEN siliyor (fikir #1'in amacı buydu). Test adı ve assertion'ları tersine çevrilmeli (`404` bekleyecek şekilde).
 
+## Faz 10 — Ekipman Mekaniği (zırh/silah artık savaşı etkiliyor)
+
+İnovasyon fikri #18'in kullanıcı kararıyla resmileştirilmiş hali. Kullanıcı kararları: zırh **sabit hasar azaltma** (AC/zar zorlaştırma değil), silahlar **farklı hasar zarı** versin.
+
+### Coder
+- [ ] **Silah hasar zarı**: `backend/data/weaponDamage.js` (yeni) — eşya adına göre hasar zarı eşlemesi: `"Kısa Kılıç": 6, "Hançer": 4, "Topuz": 6, "Asa": 4` (varsayılan/silahsız: `4`). `/attack` endpoint'inde sabit `ATTACK_DAMAGE_DIE=6` yerine, oyuncunun `hand` slotunda KUŞANILI bir silah varsa onun zarını kullan (yoksa varsayılan 4). Not: `character.inventory` içinde `slot==="hand" && equipped===true` olan eşyayı bul, adına göre haritadan zarı çek (haritada yoksa varsayılan 6 — bilinmeyen/gelecekte eklenecek silahlar için güvenli varsayılan).
+- [ ] **Zırh hasar azaltma**: `backend/data/armorReduction.js` (yeni) — eşya adına göre azaltma: `"Deri Zırh": 2, "Eski Kalkan": 1` (varsayılan: `0`). `/attack` endpoint'inde HEDEF bir düşmansa zırh düşünülmez (düşmanların envanteri yok), ama düşmanın oyuncuya saldırdığı `enemyAI.js`'teki hasar hesaplamasında oyuncunun kuşanılı `suit`/`back` slotlarındaki eşyaların toplam azaltması gelen hasardan düşülsün (`Math.max(0, hasar - toplamAzaltma)`, 0'ın altına inmesin).
+- [ ] Bu değişikliklerin `narrationService`/mock şablonlarla çelişmediğinden emin ol (ör. "X hasar aldın" mesajları hâlâ doğru sayıyı göstermeli, azaltma SONRASI hasarı).
+
+### Tester (ya da coder kendi doğrularsa)
+- [ ] Farklı silahlarla (Hançer vs Kısa Kılıç) hasar aralığının gerçekten farklı olduğunu doğrula
+- [ ] Zırh kuşanan bir karaktere düşman saldırısında hasarın azaldığını, kuşanmayana azalmadığını doğrula
+- [ ] 0'ın altına inmediğini (negatif hasar/heal olmadığını) doğrula
+
 ## İnovasyon Fikirleri (yaratıcı cron)
 (Bu bölümü yaratıcı cron dolduracak — her turda bir fikir ekler. Yukarıdaki maddeler Faz 9'a taşındı.)
 
