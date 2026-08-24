@@ -7,6 +7,7 @@ const { generateNarration } = require("../services/narrationService");
 const { getSessionId } = require("../services/sessionId");
 const { saveChatHistory } = require("../services/persistence");
 const { trimChatHistory } = require("../services/chatHistoryLimit");
+const { publicRateLimit } = require("../services/publicRateLimit");
 
 const router = express.Router();
 
@@ -33,7 +34,13 @@ router.get("/", (req, res) => {
   res.json({ messages: getHistory(getSessionId(req)) });
 });
 
-router.post("/", async (req, res) => {
+// Yaratıcı cron fikir #36: hiç IP bazlı hız sınırı yoktu - her chat isteği
+// bir AI çağrısı DENEYİP render.yaml'daki PAYLAŞILAN/global AI_HOURLY_LIMIT
+// bütçesini tüketiyordu. Fikir #2'de `/character/create`+`/roll-stats`'a
+// eklenen aynı `publicRateLimit` deseni burada da uygulanıyor - tek bir
+// hızlı script artık saatlik AI bütçesini saniyeler içinde bitirip HERKESİ
+// o saat boyunca mock'a düşüremiyor.
+router.post("/", publicRateLimit, async (req, res) => {
   const { message } = req.body || {};
   if (!message || typeof message !== "string" || !message.trim()) {
     return res.status(400).json({ error: "Mesaj gerekli." });
