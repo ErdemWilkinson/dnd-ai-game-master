@@ -415,11 +415,17 @@ Aşağıdaki "İnovasyon Fikirleri" bölümündeki 1-4 numaralı maddeler PM tar
 - [x] **Mobil/responsive temel destek** (fikir #3, PM kararı): `App.css`'e `@media (max-width: 768px)` eklendi — `.app-main` tek sütuna düşüyor (`grid-auto-rows: 42vh`, kendi içinde dikey scroll), `.character-creation`/`.intro-screen`/`.game-over-screen` sabit piksel genişlik yerine `width:100%; max-width:420px` oluyor. Karmaşık sekme/accordion eklenmedi (PM kararıyla tutarlı). Playwright'ta gerçek 375×812 viewport ile doğrulandı: hiçbir ekranda yatay taşma yok (`body.scrollWidth === innerWidth`), 3 panel dikey sırayla erişilebilir, karakter oluşturma formu da düzgün ortalanıyor.
 
 ### Tester
-- [ ] Rate-limit için test (limit aşımının 429 döndürdüğünü doğrula)
-- [ ] Orphan temizliği için test (reset sonrası karakterin gerçekten silindiğini, eski session'ların temizlendiğini doğrula)
-- [ ] Fetch retry UX'i için test/QA (backend'i geçici kapatıp retry mesajının göründüğünü dene)
-- [ ] Mobil breakpoint'i gerçek dar viewport (örn. 375px) ile Playwright'ta görsel QA
-- [ ] **Bilinen test kırılması (kasıtlı):** `backend/tests/scene.test.js`'teki "reset, karakterin kendisini SİLMEZ" testi artık yanlış — reset artık karakteri GERÇEKTEN siliyor (fikir #1'in amacı buydu). Test adı ve assertion'ları tersine çevrilmeli (`404` bekleyecek şekilde).
+- [x] Rate-limit için test (limit aşımının 429 döndürdüğünü doğrula)
+- [x] Orphan temizliği için test (reset sonrası karakterin gerçekten silindiğini, eski session'ların temizlendiğini doğrula)
+- [x] Fetch retry UX'i için test/QA (backend'i geçici kapatıp retry mesajının göründüğünü dene)
+- [x] Mobil breakpoint'i gerçek dar viewport (örn. 375px) ile Playwright'ta görsel QA
+- [x] **Bilinen test kırılması (kasıtlı):** `backend/tests/scene.test.js`'teki "reset, karakterin kendisini SİLMEZ" testi artık yanlış — reset artık karakteri GERÇEKTEN siliyor (fikir #1'in amacı buydu). Test adı ve assertion'ları tersine çevrilmeli (`404` bekleyecek şekilde).
+
+**[2026-08-25] Geç kalmış tester turu (claude-game-38) — bu 4 madde Faz 9 kapanışından beri işaretlenmemiş kalmıştı, sonraki fazların gürültüsünde unutulmuş. Boşta kaldığım sırada TASKS.md'yi tararken fark edip aldım, local dev sunucularına (izole test DB) karşı doğruladım:**
+- **Rate-limit:** `POST /api/character/roll-stats`'ı 25 kez art arda çağırdım — ilk 19 istek 200, 20. istekten itibaren `429 {"error":"Çok fazla istek gönderildi, lütfen biraz bekleyip tekrar dene."}`. `/character/create`'in AYNI sayaçı paylaştığını da doğruladım (limit dolunca o da 429 döndü, dokümantasyondaki "ortak sayaç" davranışıyla tutarlı). İlgisiz bir uç nokta (`GET /character`) etkilenmedi (normal 404 döndü, rate-limit'e takılmadı).
+- **Orphan temizliği testi:** Zaten mevcutmuş — `backend/tests/scene.test.js`'teki `"reset, orphan kalan karakteri de gerçekten siler - eski karakter artık ID ile erişilemez"` testi bu maddeyi kapsıyor (muhtemelen fikir #29/kritik-açık düzeltmesi sırasında farkında olmadan tamamlanmış). Ayrıca en son madde (bilinen test kırılması, satır altında) de zaten çözülmüş durumda — testin adı/assertion'ları "GERÇEKTEN siler" davranışına göre yazılmış.
+- **Fetch retry UX:** Frontend'i açık bırakıp backend'i `taskkill` ile gerçekten kapattım, sayfayı yeniden yükledim — "Bağlantı kurulamadı, tekrar deneniyor... (1/3)" → "(2/3)" → "(3/3)" sırasıyla ~4sn arayla doğru göründü (ekran görüntüsüyle doğrulandı, düzgün ortalanmış, layout sorunu yok). Backend'i tekrar başlatıp sayfayı yeniden yükledim — normal karakter oluşturma formu sorunsuz göründü, geride kalan bir hata/retry state'i yoktu.
+- **Mobil breakpoint (bu madde eski 3-panelli düzen için yazılmıştı, Faz 11'de tamamen yeniden tasarlandı):** Faz 11 tester turumda (bkz. yukarı, satır ~469) zaten 375×812 ile doğrulandı — o doğrulama bu maddenin güncel karşılığı, ayrıca tekrar etmedim.
 
 ## Faz 10 — Ekipman Mekaniği (zırh/silah artık savaşı etkiliyor)
 
