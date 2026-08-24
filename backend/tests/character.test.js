@@ -274,32 +274,17 @@ describe("GET /api/character (aktif karakter)", () => {
   });
 });
 
-describe("POST /api/character (aktif karakteri güncelle)", () => {
-  beforeEach(() => {
-    characters.clear();
-  });
-
-  it("aktif karakter yoksa 404 döner", async () => {
+// Yaratıcı cron fikir #29: eskiden burada "POST /api/character (aktif
+// karakteri güncelle)" route'unu test eden bir describe bloğu vardı - o
+// route hiçbir doğrulama yapmadan client'tan hp/mana/attributes/inventory
+// kabul ediyordu (god-mode açığı, kullanılmayan/ölü bir frontend kodu
+// tarafından çağrılıyordu) ve tamamen kaldırıldı. Artık böyle bir uç nokta
+// yok - testler de onunla birlikte kaldırıldı.
+describe("POST /api/character artık mevcut değil", () => {
+  it("404 döner (route kaldırıldı)", async () => {
     const app = buildApp();
     const res = await request(app).post("/api/character").send({ hp: { current: 1 } });
     expect(res.status).toBe(404);
-  });
-
-  it("hp kısmi güncellemesi diğer alanları korur", async () => {
-    const app = buildApp();
-    const createRes = await request(app)
-      .post("/api/character/create")
-      .send({ name: "Gimli", raceId: "dwarf", classId: "fighter" });
-    const maxHp = createRes.body.hp.max;
-
-    const updateRes = await request(app)
-      .post("/api/character")
-      .send({ hp: { current: 1 } });
-
-    expect(updateRes.status).toBe(200);
-    expect(updateRes.body.hp.current).toBe(1);
-    expect(updateRes.body.hp.max).toBe(maxHp);
-    expect(updateRes.body.id).toBe(createRes.body.id);
   });
 });
 

@@ -78,13 +78,6 @@ export function getCurrentCharacter() {
   return request<Character>('/character');
 }
 
-export function updateCharacter(patch: Partial<Character>) {
-  return request<Character>('/character', {
-    method: 'POST',
-    body: JSON.stringify(patch),
-  });
-}
-
 export function getChatHistory() {
   return request<{ messages: ChatMessage[] }>('/chat');
 }

@@ -63,11 +63,12 @@ describe("Faz 6-A: oturum izolasyonu — karakter", () => {
     const a = withSession(app, SESSION_A);
     const b = withSession(app, SESSION_B);
 
-    await a.post("/api/character/create").send({ name: "Aragorn", raceId: "human", classId: "fighter" });
+    const createA = await a.post("/api/character/create").send({ name: "Aragorn", raceId: "human", classId: "fighter" });
     const createB = await b.post("/api/character/create").send({ name: "Gimli", raceId: "dwarf", classId: "fighter" });
     const bMaxHp = createB.body.hp.max;
 
-    await a.post("/api/character").send({ hp: { current: 1 } });
+    // Yaratıcı cron fikir #29: POST /api/character kaldırıldı, doğrudan store üzerinden.
+    characters.get(createA.body.id).hp.current = 1;
 
     const getB = await b.get("/api/character");
     expect(getB.body.hp.current).toBe(bMaxHp); // A'nın güncellemesi B'yi etkilememeli

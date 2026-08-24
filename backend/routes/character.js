@@ -174,22 +174,14 @@ router.get("/", (req, res) => {
   res.json(characters.get(characterId));
 });
 
-router.post("/", (req, res) => {
-  const characterId = activeCharacterIdBySession.get(getSessionId(req));
-  if (!characterId || !characters.has(characterId)) {
-    return res.status(404).json({ error: "Aktif karakter yok." });
-  }
-  const character = characters.get(characterId);
-  const { hp, mana, attributes, inventory } = req.body || {};
-  if (hp) character.hp = { ...character.hp, ...hp };
-  if (mana) character.mana = { ...character.mana, ...mana };
-  if (attributes) character.attributes = { ...character.attributes, ...attributes };
-  if (inventory) character.inventory = inventory;
-
-  characters.set(character.id, character);
-  saveCharacter(character);
-  res.json(character);
-});
+// Yaratıcı cron fikir #29 (ÖNEMLİ, oyun bütünlüğü açığı): eskiden burada bir
+// POST "/" route'u vardı, hp/mana/attributes/inventory'yi hiçbir doğrulama
+// yapmadan client'tan aynen kabul ediyordu (aynı god-mode açığı fikir #13'ün
+// /create'de kapattığı sorunun bir başka endpoint'teki hali - PM prod'da
+// str:999 ile doğrudan doğrulamıştı). Frontend'de bu route'u çağıran hiçbir
+// kod yoktu (`api.ts`'teki `updateCharacter` export'u tanımlıydı ama hiçbir
+// component'ten çağrılmıyordu - ölü kod) - doğrulama eklemek yerine
+// kullanılmayan attack surface'ı tamamen kaldırmak tercih edildi.
 
 // Faz 6-C: oyuncu öldükten sonra "yeniden başla" - session'ın karakter/sahne/
 // sohbet bağını temizler, frontend karakter oluşturma ekranına döner.

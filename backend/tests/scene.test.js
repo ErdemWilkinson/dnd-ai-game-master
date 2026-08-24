@@ -469,8 +469,9 @@ describe("POST /api/scene/item/use", () => {
     const potion = character.inventory.find((i) => i.name.includes("ksir"));
     expect(potion).toBeTruthy();
 
-    // önce hasar ver
-    await request(app).post("/api/character").send({ hp: { current: 1 } });
+    // önce hasar ver (Yaratıcı cron fikir #29: POST /api/character kaldırıldı,
+    // test amaçlı doğrudan store'daki karakteri mutasyona uğratıyoruz)
+    characters.get(character.id).hp.current = 1;
 
     const useRes = await request(app)
       .post("/api/scene/item/use")
@@ -610,10 +611,9 @@ describe("POST /api/scene/item/equip", () => {
     const sword = character.inventory.find((i) => i.name === "Kısa Kılıç"); // slot: hand
 
     // Envantere ikinci bir "hand" slotlu eşya elle ekleyip (test amaçlı) kuşanma çakışmasını simüle ediyoruz.
+    // (Yaratıcı cron fikir #29: POST /api/character kaldırıldı, doğrudan store üzerinden.)
     const secondWeapon = { id: "test-dagger", name: "Test Hançeri", equipped: false, slot: "hand" };
-    await request(app)
-      .post("/api/character")
-      .send({ inventory: [...character.inventory, secondWeapon] });
+    characters.get(character.id).inventory.push(secondWeapon);
 
     await request(app)
       .post("/api/scene/item/equip")
