@@ -163,6 +163,33 @@ describe("POST /api/scene/move", () => {
     expect(res.body.character.inventory.length).toBe(inventoryBefore);
   });
 
+  // Yaratıcı cron fikir #21: loot toplama artık çalıştığından (#20), sonsuz
+  // döngüdeki karşılaşmalar aynı loot'u her turda yeniden sunup envanteri
+  // sınırsız büyütebilirdi - MAX_INVENTORY (30) üst sınırı eklendi.
+  it("envanter doluyken (MAX_INVENTORY) yerdeki loot toplanamaz, sahnede kalır", async () => {
+    const app = buildApp();
+    const createRes = await request(app)
+      .post("/api/character/create")
+      .send({ name: "Test", raceId: "human", classId: "fighter" });
+
+    // Envanteri MAX_INVENTORY'ye (30) kadar doldur.
+    const character = characters.get(createRes.body.id);
+    while (character.inventory.length < 30) {
+      character.inventory.push({ id: `filler-${character.inventory.length}`, name: "Dolgu Eşya", equipped: false, slot: null, icon: null });
+    }
+
+    const res = await request(app)
+      .post("/api/scene/move")
+      .send({ tokenId: "player", x: 5, y: 1 }); // (5,1)'deki "Altın Kese"
+
+    expect(res.status).toBe(200);
+    expect(res.body.collectedLoot).toBeNull(); // toplanmadı
+    expect(res.body.inventoryFull).toBe(true);
+    expect(res.body.character.inventory.length).toBe(30); // değişmedi
+    expect(res.body.scene.loot.find((l) => l.name === "Altın Kese")).toBeTruthy(); // hâlâ yerde
+    expect(res.body.narration.text).toMatch(/envanterin dolu/i);
+  });
+
   it("başka bir token'ın üzerine hareket engellenir", async () => {
     const app = buildApp();
     // goblin-1 varsayılan (8,2)'de duruyor; player speed 5 ile oraya ulaşamaz zaten (mesafe 8),

@@ -56,7 +56,7 @@ beforeEach(() => {
 describe('TacticalGrid — Bug #5: düşman sırasındayken grid tıklaması engellenmeli', () => {
   it('sıra oyuncudayken hücreye tıklamak moveToken çağırır', async () => {
     vi.mocked(api.getScene).mockResolvedValue(sceneWith('player'));
-    vi.mocked(api.moveToken).mockResolvedValue({ scene: sceneWith('player'), collectedLoot: null, narration: null, character: null });
+    vi.mocked(api.moveToken).mockResolvedValue({ scene: sceneWith('player'), collectedLoot: null, inventoryFull: false, narration: null, character: null });
 
     const user = userEvent.setup();
     render(<TacticalGrid characterId="char-1" />);
@@ -136,7 +136,7 @@ describe('TacticalGrid — Faz 3-E: fırlatma hedefi grid üzerinden seçiliyor'
 
   it('throwingItemId yokken normal hareket modu çalışmaya devam eder (regresyon)', async () => {
     vi.mocked(api.getScene).mockResolvedValue(sceneWith('player'));
-    vi.mocked(api.moveToken).mockResolvedValue({ scene: sceneWith('player'), collectedLoot: null, narration: null, character: null });
+    vi.mocked(api.moveToken).mockResolvedValue({ scene: sceneWith('player'), collectedLoot: null, inventoryFull: false, narration: null, character: null });
 
     const user = userEvent.setup();
     render(<TacticalGrid characterId="char-1" throwingItemId={null} />);
@@ -228,7 +228,7 @@ describe('TacticalGrid — Faz 5 madde 1: bitişik düşmana tıkla-saldır', ()
 
   it('boş/hareket hedefi bir hücreye tıklamak hâlâ moveToken çağırır (regresyon)', async () => {
     vi.mocked(api.getScene).mockResolvedValue(sceneWith('player'));
-    vi.mocked(api.moveToken).mockResolvedValue({ scene: sceneWith('player'), collectedLoot: null, narration: null, character: null });
+    vi.mocked(api.moveToken).mockResolvedValue({ scene: sceneWith('player'), collectedLoot: null, inventoryFull: false, narration: null, character: null });
 
     const user = userEvent.setup();
     render(<TacticalGrid characterId="char-1" />);

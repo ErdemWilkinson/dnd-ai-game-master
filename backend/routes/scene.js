@@ -21,6 +21,10 @@ const router = express.Router();
 // (x:99999 gibi bir değer görünmez/kayıp bir loot yaratabiliyordu). Ateş
 // Topu'nun range:3'üyle tutarlı bir fırlatma menzili.
 const THROW_RANGE = 3;
+// Yaratıcı cron fikir #21: loot toplama düzeltilince (#20) sonsuz döngüdeki
+// karşılaşmalar aynı loot'u her turda yeniden sunmaya devam ediyor - üst
+// sınır olmadan envanter teorik olarak sınırsız büyüyebilirdi.
+const MAX_INVENTORY = 30;
 
 function getActiveCharacter(sessionId) {
   const characterId = activeCharacterIdBySession.get(sessionId);
@@ -123,9 +127,7 @@ router.post("/move", async (req, res) => {
 
   const lootIndex = scene.loot.findIndex((l) => l.x === x && l.y === y);
   let collected = null;
-  if (lootIndex !== -1) {
-    collected = scene.loot.splice(lootIndex, 1)[0];
-  }
+  let inventoryFull = false;
 
   let narration = null;
   let updatedCharacter = null;
@@ -136,16 +138,27 @@ router.post("/move", async (req, res) => {
     // Yaratıcı cron fikir #20 (coder'ın Faz 10'da bulduğu yan bug): loot
     // sahneden kaldırılıyordu ama karakterin envanterine hiç eklenmiyordu -
     // eşyalar görsel olarak yerden kayboluyor ama asla kuşanılamıyordu.
-    if (collected && character) {
-      const slot = getSlotForItem(collected.name);
-      character.inventory.push({
-        id: nanoid(),
-        name: collected.name,
-        equipped: false,
-        slot,
-        icon: getIconForSlot(slot),
-      });
-      saveCharacter(character);
+    if (lootIndex !== -1) {
+      if (character && character.inventory.length >= MAX_INVENTORY) {
+        // Yaratıcı cron fikir #21: loot artık gerçekten toplandığından
+        // (fikir #20) envanter üst sınırı olmadan sonsuz döngüdeki
+        // karşılaşmalar sınırsız kopya biriktirebilirdi - dolu envanterde
+        // eşya sahnede/yerde kalır, alınmaz.
+        inventoryFull = true;
+      } else {
+        collected = scene.loot.splice(lootIndex, 1)[0];
+        if (character) {
+          const slot = getSlotForItem(collected.name);
+          character.inventory.push({
+            id: nanoid(),
+            name: collected.name,
+            equipped: false,
+            slot,
+            icon: getIconForSlot(slot),
+          });
+          saveCharacter(character);
+        }
+      }
     }
 
     const history = getChatHistoryList(sessionId);
@@ -155,13 +168,17 @@ router.post("/move", async (req, res) => {
       recentMessages: history.slice(-6),
       playerMessage: `${character?.name ?? "Oyuncu"} hareket ediyor.`,
     });
-    const narrationText = collected ? `${text} ${collected.name} envanterine eklendi!` : text;
+    let narrationText = text;
+    if (collected) narrationText += ` ${collected.name} envanterine eklendi!`;
+    else if (inventoryFull) narrationText += ` Envanterin dolu, yerdeki eşyayı alamadın.`;
     pushGmMessage(sessionId, narrationText, source);
     narration = { text: narrationText, source };
+  } else if (lootIndex !== -1) {
+    collected = scene.loot.splice(lootIndex, 1)[0];
   }
 
   saveScene(sessionId, scene);
-  res.json({ scene, collectedLoot: collected, narration, character: updatedCharacter });
+  res.json({ scene, collectedLoot: collected, inventoryFull, narration, character: updatedCharacter });
 });
 
 function advanceTurn(scene) {
