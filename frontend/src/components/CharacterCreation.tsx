@@ -69,11 +69,12 @@ export function CharacterCreation({ onCreated }: Props) {
     };
   }, []);
 
-  // İnovasyon fikri #64: seçili ırk/sınıfın altında kısa bir özet göstermek
-  // için - veri zaten `/character/options`'tan geliyor, backend'e dokunmaya
-  // gerek yok.
+  // İnovasyon fikri #64/#66: seçili ırk/sınıf/dış görünüşün altında kısa bir
+  // özet göstermek için - veri zaten `/character/options`'tan geliyor,
+  // backend'e dokunmaya gerek yok.
   const selectedRace = races.find((r) => r.id === raceId);
   const selectedClass = classes.find((c) => c.id === classId);
+  const selectedAppearance = appearances.find((a) => a.id === appearanceId);
 
   async function handleRoll() {
     if (!raceId || rolling) return;
@@ -193,6 +194,11 @@ export function CharacterCreation({ onCreated }: Props) {
           ))}
         </select>
       </label>
+      {selectedAppearance && (
+        <p className="option-summary" aria-live="polite">
+          {selectedAppearance.description}
+        </p>
+      )}
 
       <div className="dice-roll-section">
         <button type="button" onClick={handleRoll} disabled={rolling || !raceId}>
