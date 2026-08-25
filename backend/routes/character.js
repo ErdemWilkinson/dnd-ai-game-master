@@ -124,7 +124,7 @@ router.post("/create", publicRateLimit, (req, res) => {
   res.status(201).json(character);
 });
 
-router.post("/intro", async (req, res) => {
+router.post("/intro", publicRateLimit, async (req, res) => {
   const { characterId } = req.body || {};
   const character = characters.get(characterId);
   if (!character) {
