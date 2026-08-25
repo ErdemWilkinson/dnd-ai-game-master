@@ -18,6 +18,21 @@ const CHEAPEST_SPELL_COST = Math.min(...SPELLS.map((s) => s.manaCost));
 // bir sabit/formül olduğundan API'den ayrıca çekmek yerine burada da
 // tutarlı şekilde tekrarlandı (proje genelinde kod paylaşımı yok).
 const MAX_LEVEL = 20;
+
+// Yaratıcı cron fikir #49: fikir #15'teki 🧪 fallback `!item.slot` koşuluyla
+// TÜM slotsuz eşyalarda (Büyü Kitabı/Hırsız Aletleri/Kutsal Sembol de dahil,
+// sadece iksir değil) tetikleniyordu - backend'deki weaponDamage.js/
+// armorReduction.js'teki isme-göre-eşleme deseniyle tutarlı bir harita.
+const CONSUMABLE_ICONS: Record<string, string> = {
+  'Büyü Kitabı': '📖',
+  'Hırsız Aletleri': '🗝️',
+  'Kutsal Sembol': '✨',
+};
+const DEFAULT_CONSUMABLE_ICON = '🧪';
+
+function getConsumableIcon(itemName: string): string {
+  return CONSUMABLE_ICONS[itemName] ?? DEFAULT_CONSUMABLE_ICON;
+}
 function xpToNextLevel(level: number) {
   return level * 50;
 }
@@ -331,7 +346,9 @@ export function CharacterCard({
                 {item.icon ? (
                   <img className="inventory-icon" src={item.icon} alt="" width={20} height={20} />
                 ) : (
-                  !item.slot && <span className="inventory-icon-fallback">🧪</span>
+                  !item.slot && (
+                    <span className="inventory-icon-fallback">{getConsumableIcon(item.name)}</span>
+                  )
                 )}
                 {item.name} {item.equipped && <span className="tag">🎽 kuşanıldı</span>}
               </span>
