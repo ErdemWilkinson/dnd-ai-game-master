@@ -33,6 +33,16 @@ const DEFAULT_CONSUMABLE_ICON = '🧪';
 function getConsumableIcon(itemName: string): string {
   return CONSUMABLE_ICONS[itemName] ?? DEFAULT_CONSUMABLE_ICON;
 }
+
+// Yaratıcı cron fikir #50: eskiden `!item.slot` koşulu, "hand" slotlu
+// eşyaların (silahlar - asset setinde ikonu yok) envanter listesinde HİÇ
+// fallback göstermemesine yol açıyordu (paper-doll'da `SLOT_FALLBACK_GLYPH`
+// zaten ⚔ gösteriyordu, envanter listesi bundan habersizdi). Artık "resim
+// yoksa fallback göster" mantığı - slotu ne olursa olsun.
+function getInventoryFallbackIcon(item: { slot: EquipmentSlot | null; name: string }): string | null {
+  if (item.slot) return SLOT_FALLBACK_GLYPH[item.slot] ?? null;
+  return getConsumableIcon(item.name);
+}
 function xpToNextLevel(level: number) {
   return level * 50;
 }
@@ -346,9 +356,10 @@ export function CharacterCard({
                 {item.icon ? (
                   <img className="inventory-icon" src={item.icon} alt="" width={20} height={20} />
                 ) : (
-                  !item.slot && (
-                    <span className="inventory-icon-fallback">{getConsumableIcon(item.name)}</span>
-                  )
+                  (() => {
+                    const glyph = getInventoryFallbackIcon(item);
+                    return glyph ? <span className="inventory-icon-fallback">{glyph}</span> : null;
+                  })()
                 )}
                 {item.name} {item.equipped && <span className="tag">🎽 kuşanıldı</span>}
               </span>
