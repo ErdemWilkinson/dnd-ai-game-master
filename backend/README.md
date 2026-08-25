@@ -31,6 +31,8 @@ Hepsi sadece ortam değişkeninden okunur, hiçbiri kodda/`.env`'de commit edilm
 | `DATABASE_URL` | Hayır | Varsa Postgres kullanılır (`pg`), yoksa yerel `game.db` (SQLite) — bkz. `data/db.js` |
 | `DATABASE_SSL` | Hayır | `false` verilirse Postgres bağlantısında SSL kapatılır (varsayılan açık) |
 | `DB_PATH` | Hayır | SQLite dosya yolu override (test/geliştirme amaçlı) |
+| `FRONTEND_ORIGIN` | Hayır | CORS için izinli origin listesi (virgülle ayrılmış) — yerel dev origin'lerine EK olarak |
+| `PUBLIC_RATE_LIMIT_MAX` | Hayır | Kimliksiz-erişilebilir uçlarda IP başına dakikalık istek sınırı, varsayılan `20` |
 
 ## Endpoint'ler
 
