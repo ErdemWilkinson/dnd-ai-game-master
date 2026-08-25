@@ -84,16 +84,27 @@ export function CharacterCreation({ onCreated }: Props) {
 
     const rollPromise = rollStats(raceId);
 
-    const keys = Object.keys(ATTR_LABELS) as (keyof Attributes)[];
-    rollIntervalRef.current = window.setInterval(() => {
-      const randomized = {} as Attributes;
-      for (const key of keys) randomized[key] = Math.floor(Math.random() * 20) + 1;
-      setDisplayedAttributes(randomized);
-    }, 60);
+    // İnovasyon fikri #67: hareket hassasiyeti tercih edenler için - CSS
+    // `prefers-reduced-motion` bu setInterval tabanlı zar animasyonunu
+    // kısamıyor (JS ile sürülüyor), o yüzden burada ayrıca kontrol ediliyor.
+    // Tercih edilmişse sahte/rastgele değerler hiç gösterilmeden doğrudan
+    // gerçek sonuca gidiliyor.
+    const reducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
+
+    if (!reducedMotion) {
+      const keys = Object.keys(ATTR_LABELS) as (keyof Attributes)[];
+      rollIntervalRef.current = window.setInterval(() => {
+        const randomized = {} as Attributes;
+        for (const key of keys) randomized[key] = Math.floor(Math.random() * 20) + 1;
+        setDisplayedAttributes(randomized);
+      }, 60);
+    }
 
     try {
       const { attributes } = await rollPromise;
-      await new Promise((resolve) => setTimeout(resolve, ROLL_ANIMATION_MS));
+      if (!reducedMotion) {
+        await new Promise((resolve) => setTimeout(resolve, ROLL_ANIMATION_MS));
+      }
       if (rollIntervalRef.current) {
         window.clearInterval(rollIntervalRef.current);
         rollIntervalRef.current = null;
