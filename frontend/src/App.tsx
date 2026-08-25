@@ -106,9 +106,13 @@ function App() {
 
   // Oyun ekranına ilk defa (ister yeni karakterle intro'dan sonra, ister
   // var olan bir session ile sayfa yenilendiğinde) ulaşıldığında bir kerelik
-  // yardım modalını göster.
+  // yardım modalını göster. Bilinçli olarak effect içinde bırakıldı (render
+  // sırasına taşınmadı) - `markHelpSeen()` gerçek bir dış sistem yan etkisi
+  // (localStorage yazımı), render fonksiyonu saf kalmalı; StrictMode'da çift
+  // render bunu iki kez tetiklerdi.
   useEffect(() => {
     if (character && !pendingIntro && character.hp.current > 0 && !hasSeenHelp()) {
+      // eslint-disable-next-line react/set-state-in-effect
       setShowHelp(true);
       markHelpSeen();
     }

@@ -51,11 +51,17 @@ export function CharacterCreation({ onCreated }: Props) {
       .catch((e) => setError(e.message));
   }, []);
 
-  useEffect(() => {
-    // Irk değişince önceki zar sonucu artık geçerli değil (bonuslar değişir).
+  // Irk değişince önceki zar sonucu artık geçerli değil (bonuslar değişir).
+  // Bir effect yerine render sırasında "prop değişince state sıfırla"
+  // deseni kullanılıyor (React dokümantasyonundaki önerilen yaklaşım) -
+  // hem gereksiz bir ekstra render/flaş önlüyor hem oxlint'in
+  // set-state-in-effect uyarısını gideriyor.
+  const [prevRaceId, setPrevRaceId] = useState(raceId);
+  if (raceId !== prevRaceId) {
+    setPrevRaceId(raceId);
     setFinalAttributes(null);
     setDisplayedAttributes(null);
-  }, [raceId]);
+  }
 
   useEffect(() => {
     return () => {

@@ -43,8 +43,12 @@ describe('api.ts — Faz 6-A: X-Session-Id header', () => {
     await getChatHistory();
 
     const calls = vi.mocked(fetch).mock.calls;
-    const idFromFirst = (calls[0][1]?.headers as Record<string, string>)['X-Session-Id'];
-    const idFromSecond = (calls[1][1]?.headers as Record<string, string>)['X-Session-Id'];
+    // api.ts her zaman bir options objesi geçiriyor - burada opsiyonel
+    // zincirleme yerine non-null assertion kullanmak hem daha doğru (mock
+    // her zaman dolu) hem de oxlint'in "unsafe optional chaining" uyarısını
+    // (headers undefined olsaydı ['X-Session-Id'] TypeError fırlatırdı) gideriyor.
+    const idFromFirst = (calls[0][1]!.headers as Record<string, string>)['X-Session-Id'];
+    const idFromSecond = (calls[1][1]!.headers as Record<string, string>)['X-Session-Id'];
     expect(idFromFirst).toBe(idFromSecond);
   });
 
