@@ -498,10 +498,13 @@ describe("POST /api/scene/item/use", () => {
     expect(useRes.body.character.inventory.find((i) => i.id === potion.id)).toBeUndefined();
   });
 
-  it("Faz 3-C: eşya kullanmak oyuncunun Aksiyon hakkını tüketir", async () => {
+  // Yaratıcı cron fikir #52 (kullanıcı kararı): eşya kullanmak artık Aksiyon
+  // değil Bonus Aksiyon tüketiyor - aynı turda saldır+iksir kombosu mümkün
+  // olsun diye. Bu test eskiden actionAvailable'ı kontrol ediyordu.
+  it("Faz 3-C/fikir #52: eşya kullanmak oyuncunun Bonus Aksiyon hakkını tüketir, Aksiyon'a dokunmaz", async () => {
     const app = buildApp();
     const sceneBefore = await request(app).get("/api/scene");
-    expect(sceneBefore.body.tokens.find((t) => t.id === "player").actionAvailable).toBe(true);
+    expect(sceneBefore.body.tokens.find((t) => t.id === "player").bonusActionAvailable).toBe(true);
 
     const createRes = await request(app)
       .post("/api/character/create")
@@ -513,10 +516,50 @@ describe("POST /api/scene/item/use", () => {
       .send({ characterId: createRes.body.id, itemId: item.id });
 
     const sceneAfter = await request(app).get("/api/scene");
-    expect(sceneAfter.body.tokens.find((t) => t.id === "player").actionAvailable).toBe(false);
+    const playerAfter = sceneAfter.body.tokens.find((t) => t.id === "player");
+    expect(playerAfter.bonusActionAvailable).toBe(false);
+    expect(playerAfter.actionAvailable).toBe(true); // Aksiyon hâlâ dolu - ayrı bir kaynak
   });
 
-  it("Faz 3-C: Aksiyon hakkı tükenmişse ikinci eşya kullanımı 400 döner", async () => {
+  it("fikir #52: aynı turda hem saldır hem eşya kullan (attack Aksiyon'u, item/use Bonus Aksiyon'u tüketir - ikisi de başarılı)", async () => {
+    const app = buildApp();
+    const createRes = await request(app)
+      .post("/api/character/create")
+      .send({ name: "Test", raceId: "human", classId: "fighter" });
+    const potion = createRes.body.inventory.find((i) => i.name.includes("ksir"));
+
+    await request(app).get("/api/scene"); // lazy-init ettir
+    const scene = scenes.get("default");
+    const goblin = scene.tokens.find((t) => t.id === "goblin-1");
+    const player = scene.tokens.find((t) => t.id === "player");
+    goblin.x = player.x + 1;
+    goblin.y = player.y;
+
+    const attackRes = await request(app)
+      .post("/api/scene/attack")
+      .send({ characterId: createRes.body.id, targetTokenId: "goblin-1" });
+    expect(attackRes.status).toBe(200);
+
+    const useRes = await request(app)
+      .post("/api/scene/item/use")
+      .send({ characterId: createRes.body.id, itemId: potion.id });
+    expect(useRes.status).toBe(200); // eskiden Aksiyon zaten harcanmış olduğundan 400 dönerdi
+
+    const finalScene = await request(app).get("/api/scene");
+    const finalPlayer = finalScene.body.tokens.find((t) => t.id === "player");
+    expect(finalPlayer.actionAvailable).toBe(false); // attack tarafından tüketildi
+    expect(finalPlayer.bonusActionAvailable).toBe(false); // item/use tarafından tüketildi
+
+    // Bonus Aksiyon tükenince İKİNCİ bir eşya kullanımı reddediliyor.
+    const secondPotion = createRes.body.inventory.find((i) => i.id !== potion.id);
+    const secondUseRes = await request(app)
+      .post("/api/scene/item/use")
+      .send({ characterId: createRes.body.id, itemId: secondPotion.id });
+    expect(secondUseRes.status).toBe(400);
+    expect(secondUseRes.body.error).toMatch(/bonus aksiyon/i);
+  });
+
+  it("Faz 3-C/fikir #52: Bonus Aksiyon hakkı tükenmişse ikinci eşya kullanımı 400 döner", async () => {
     const app = buildApp();
     const createRes = await request(app)
       .post("/api/character/create")
@@ -804,15 +847,17 @@ describe("POST /api/scene/item/throw", () => {
     const createRes = await request(app)
       .post("/api/character/create")
       .send({ name: "Test", raceId: "human", classId: "fighter" });
-    const [item1, item2] = createRes.body.inventory;
+    const item = createRes.body.inventory[0];
 
-    await request(app)
-      .post("/api/scene/item/use")
-      .send({ characterId: createRes.body.id, itemId: item1.id }); // Aksiyonu tüket
+    // Fikir #52'den sonra item/use artık Bonus Aksiyon tüketiyor - Aksiyon'u
+    // gerçekten tüketmek için doğrudan store üzerinden ayarlıyoruz (mevcut
+    // "characters.get(id).hp.current = X" deseniyle tutarlı).
+    await request(app).get("/api/scene"); // lazy-init ettir
+    scenes.get("default").tokens.find((t) => t.id === "player").actionAvailable = false;
 
     const res = await request(app)
       .post("/api/scene/item/throw")
-      .send({ characterId: createRes.body.id, itemId: item2.id, x: 5, y: 5 });
+      .send({ characterId: createRes.body.id, itemId: item.id, x: 5, y: 5 });
 
     expect(res.status).toBe(400);
     expect(res.body.error).toMatch(/aksiyon/i);
@@ -865,11 +910,10 @@ describe("POST /api/scene/attack — Faz 5 madde 1: gerçek saldırı aksiyonu",
     const createRes = await request(app)
       .post("/api/character/create")
       .send({ name: "Test", raceId: "human", classId: "fighter" });
-    const item = createRes.body.inventory[0];
-    await request(app)
-      .post("/api/scene/item/use")
-      .send({ characterId: createRes.body.id, itemId: item.id }); // Aksiyonu tüket
     await teleportGoblinAdjacentToPlayer(app);
+    // Fikir #52'den sonra item/use artık Bonus Aksiyon tüketiyor - Aksiyon'u
+    // gerçekten tüketmek için doğrudan store üzerinden ayarlıyoruz.
+    scenes.get("default").tokens.find((t) => t.id === "player").actionAvailable = false;
 
     const res = await request(app)
       .post("/api/scene/attack")

@@ -325,6 +325,27 @@ function requirePlayerAction(sessionId, res) {
   return playerToken;
 }
 
+// Yaratıcı cron fikir #52 (kullanıcı kararı): eşya kullanmak (iksir içmek
+// vb.) artık tam bir Aksiyon değil, Bonus Aksiyon harcıyor - aynı turda hem
+// saldırıp hem iksir içmek mümkün olsun diye. `requirePlayerAction`'la aynı
+// sıra/soft-lock (fikir #35) mantığını paylaşıyor, sadece hangi ekonomiyi
+// (`bonusActionAvailable` vs `actionAvailable`) kontrol ettiği farklı.
+function requireBonusAction(sessionId, res) {
+  const scene = getScene(sessionId);
+  const playerToken = scene.tokens.find((t) => t.id === "player");
+  const hasEnemies = scene.tokens.some((t) => t.type === "enemy");
+  if (!hasEnemies) return playerToken;
+  if (scene.activeTokenId !== "player") {
+    res.status(400).json({ error: "Sıra sende değil." });
+    return null;
+  }
+  if (!playerToken?.bonusActionAvailable) {
+    res.status(400).json({ error: "Bu tur için Bonus Aksiyon hakkın kalmadı." });
+    return null;
+  }
+  return playerToken;
+}
+
 router.post("/attack", async (req, res) => {
   const { characterId, targetTokenId } = req.body || {};
   const character = requireOwnedCharacter(req, res, characterId);
@@ -560,14 +581,14 @@ router.post("/item/use", (req, res) => {
   if (!item) return res.status(404).json({ error: "Eşya bulunamadı." });
 
   const sessionId = getSessionId(req);
-  const playerToken = requirePlayerAction(sessionId, res);
+  const playerToken = requireBonusAction(sessionId, res);
   if (!playerToken) return;
 
   character.inventory = character.inventory.filter((i) => i.id !== itemId);
   if (item.name.toLocaleLowerCase("tr").includes("iksir")) {
     character.hp.current = Math.min(character.hp.max, character.hp.current + 5);
   }
-  playerToken.actionAvailable = false;
+  playerToken.bonusActionAvailable = false;
   saveCharacter(character);
   saveScene(sessionId, getScene(sessionId));
 
