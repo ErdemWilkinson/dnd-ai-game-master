@@ -116,6 +116,12 @@ interface Props {
   onStartCast?: (spellId: SpellId) => void;
   onCancelCast?: () => void;
   onChatActivity?: () => void;
+  // İnovasyon fikri #69: TacticalGrid'deki "kaynak tükenince devre dışı"
+  // (fikir #51) mantığıyla tutarlı - App.tsx sahnedeki oyuncu token'ının
+  // actionAvailable/bonusActionAvailable'ını (savaş dışıyken bypass dahil)
+  // buraya hazır bir "kullanılabilir mi" booleanı olarak geçiriyor.
+  canUseItem?: boolean;
+  canThrowItem?: boolean;
 }
 
 const ATTR_LABELS: Record<string, string> = {
@@ -137,6 +143,8 @@ export function CharacterCard({
   onStartCast,
   onCancelCast,
   onChatActivity,
+  canUseItem = true,
+  canThrowItem = true,
 }: Props) {
   const [error, setError] = useState<string | null>(null);
 
@@ -145,6 +153,13 @@ export function CharacterCard({
 
   async function handleUse(itemId: string) {
     setError(null);
+    // İnovasyon fikri #69: TacticalGrid'in fikir #51'deki aynı davranışı -
+    // Bonus Aksiyon zaten tükenmişse backend'e hiç gitmeden inline hata
+    // gösteriliyor.
+    if (!canUseItem) {
+      setError('Bu tur için Bonus Aksiyon hakkın kalmadı.');
+      return;
+    }
     try {
       const { character: updated } = await consumeItem(character.id, itemId);
       onCharacterChange?.(updated);
@@ -202,9 +217,16 @@ export function CharacterCard({
     setError(null);
     if (throwingItemId === itemId) {
       onCancelThrow?.();
-    } else {
-      onStartThrow?.(itemId);
+      return;
     }
+    // İnovasyon fikri #69: Aksiyon zaten tükenmişse hedef-seç moduna hiç
+    // girmiyoruz - girip sonra backend 400 döndürmesindense en baştan
+    // engellemek daha net.
+    if (!canThrowItem) {
+      setError('Bu tur için Aksiyon hakkın kalmadı.');
+      return;
+    }
+    onStartThrow?.(itemId);
   }
 
   async function handleSpellClick(spell: (typeof SPELLS)[number]) {
@@ -370,7 +392,12 @@ export function CharacterCard({
               </span>
               <div className="inventory-actions">
                 {!item.slot && (
-                  <button type="button" onClick={() => handleUse(item.id)}>
+                  <button
+                    type="button"
+                    onClick={() => handleUse(item.id)}
+                    disabled={!canUseItem}
+                    title={canUseItem ? undefined : 'Bu tur için Bonus Aksiyon hakkın kalmadı.'}
+                  >
                     🧪 Kullan
                   </button>
                 )}
@@ -386,6 +413,8 @@ export function CharacterCard({
                   type="button"
                   className={throwingItemId === item.id ? 'active' : ''}
                   onClick={() => handleThrowClick(item.id)}
+                  disabled={throwingItemId !== item.id && !canThrowItem}
+                  title={canThrowItem || throwingItemId === item.id ? undefined : 'Bu tur için Aksiyon hakkın kalmadı.'}
                 >
                   {throwingItemId === item.id ? '🎯 Hedef Seçiliyor...' : '🎯 Fırlat'}
                 </button>

@@ -788,6 +788,18 @@
   font-weight: 700;
 }
 
+/* İnovasyon fikri #69: Bonus Aksiyon/Aksiyon tükenmişken Kullan/Fırlat -
+   TacticalGrid'deki .enemy-disabled ile aynı görsel dil (soluklaştırma). */
+.inventory-actions button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.inventory-actions button:disabled:hover {
+  background: #2a241d;
+  border-color: rgba(201, 163, 92, 0.3);
+}
+
 .throw-hint {
   font-size: 0.8rem;
   color: var(--gold);
