@@ -1,0 +1,44 @@
+name: Test
+
+# Yaratıcı cron fikir #59: hiç CI pipeline'ı yoktu, kırık bir commit ancak
+# manuel `npm test` çalıştırılırsa fark ediliyordu. Deploy'u bloke etmiyor
+# (Render, bu workflow'dan bağımsız kendi build/deploy'unu yapıyor) - sadece
+# erken uyarı/görünürlük için. Secret gerekmiyor: backend testleri zaten
+# VITEST=true altında SQLite'a (:memory:) düşüyor ve AI/rate-limit mock'a
+# düşüyor (bkz. backend/data/db.js, services/publicRateLimit.js).
+on:
+  push:
+  pull_request:
+    branches: [main, master]
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      - run: npm ci
+      - run: npm test
+
+  frontend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+      - run: npm test
+      - run: npm run build
