@@ -88,6 +88,16 @@ app.use((err, _req, res, next) => {
   next(err);
 });
 
+// Yaratıcı cron fikir #56: CORS özel durumundan sonra başka HİÇBİR genel
+// hata middleware'i yoktu - beklenmedik bir hata (ör. bir route'ta senkron
+// throw) Express'in varsayılan handler'ına düşüp stack trace sızdırabilir
+// ve projenin her yerde tutarlı olan `{error:"..."}` JSON formatını kırardı.
+// eslint-disable-next-line no-unused-vars
+app.use((err, _req, res, _next) => {
+  console.error("Beklenmeyen sunucu hatası:", err);
+  res.status(500).json({ error: "Sunucu hatası." });
+});
+
 async function start() {
   // Postgres kullanılıyorsa (Faz 7-B) şema/veri yükleme asenkron olur -
   // sunucu dinlemeye başlamadan önce DB'deki state'in Map'lere yüklenmiş
