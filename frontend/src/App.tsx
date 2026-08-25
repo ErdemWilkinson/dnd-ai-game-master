@@ -329,6 +329,8 @@ function App() {
         <ChatPanel refreshKey={chatRefreshTick} />
         <TacticalGrid
           characterId={character.id}
+          playerHp={character.hp.current}
+          playerMaxHp={character.hp.max}
           throwingItemId={throwingItemId}
           castingSpellId={castingSpellId}
           refreshKey={sceneRefreshTick}

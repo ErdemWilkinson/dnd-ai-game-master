@@ -4,6 +4,12 @@ import type { Character, Scene, SpellId } from '../types';
 
 interface Props {
   characterId: string;
+  // İnovasyon fikri #39: oyuncu token'ının canını da grid üzerinde görünür
+  // kılmak için - backend scene.tokens'taki "player" token'ı hp/maxHp
+  // taşımıyor (oyuncu HP'si character'da tutuluyor), o yüzden App.tsx
+  // zaten elindeki character.hp'yi buraya prop olarak geçiriyor.
+  playerHp?: number;
+  playerMaxHp?: number;
   throwingItemId?: string | null;
   castingSpellId?: SpellId | null;
   onThrowComplete?: (character: Character) => void;
@@ -20,6 +26,8 @@ interface Props {
 
 export function TacticalGrid({
   characterId,
+  playerHp,
+  playerMaxHp,
   throwingItemId = null,
   castingSpellId = null,
   onThrowComplete,
@@ -274,6 +282,9 @@ export function TacticalGrid({
           {scene.tokens.map((t) => {
             const rect = cellRects.get(`${t.x},${t.y}`);
             if (!rect) return null;
+            const hp = t.id === 'player' ? playerHp : t.hp;
+            const maxHp = t.id === 'player' ? playerMaxHp : t.maxHp;
+            const hpPct = maxHp ? Math.max(0, Math.min(100, ((hp ?? 0) / maxHp) * 100)) : null;
             return (
               <div
                 key={t.id}
@@ -281,6 +292,14 @@ export function TacticalGrid({
                 style={{ left: rect.left, top: rect.top, width: rect.width, height: rect.height }}
               >
                 {t.name[0]}
+                {hpPct !== null && (
+                  <div className="token-hp-bar">
+                    <div
+                      className={`token-hp-bar-fill ${hpPct <= 25 ? 'low' : hpPct <= 50 ? 'mid' : ''}`}
+                      style={{ width: `${hpPct}%` }}
+                    />
+                  </div>
+                )}
               </div>
             );
           })}
