@@ -2,6 +2,14 @@ const { GoogleGenerativeAI } = require("@google/generative-ai");
 
 const MODEL_NAME = process.env.GEMINI_MODEL || "gemini-3.6-flash";
 
+// Yaratıcı cron fikir #73: prompt "3-5 cümle" istiyordu ama bu sadece
+// yumuşak bir talimat - modelin sert bir üst sınırı yoktu (nadiren de olsa
+// beklenenden çok daha uzun bir yanıt üretip AI bütçesini/gecikmeyi
+// gereksiz artırabilirdi). 300 token Türkçe için birkaç atmosferik cümleye
+// (mevcut prompt talimatıyla tutarlı) cömertçe yetiyor, tam ortasında kesik
+// bir cümlede kalma riskini de düşük tutuyor.
+const MAX_OUTPUT_TOKENS = 300;
+
 let cachedClient = null;
 
 function getClient() {
@@ -23,7 +31,10 @@ async function callGemini(prompt) {
     throw new Error("GEMINI_API_KEY tanımlı değil.");
   }
 
-  const model = client.getGenerativeModel({ model: MODEL_NAME });
+  const model = client.getGenerativeModel({
+    model: MODEL_NAME,
+    generationConfig: { maxOutputTokens: MAX_OUTPUT_TOKENS },
+  });
   const result = await model.generateContent(prompt);
   const text = result.response.text().trim();
 
