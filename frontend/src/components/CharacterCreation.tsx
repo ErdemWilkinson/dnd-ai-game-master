@@ -158,7 +158,7 @@ export function CharacterCreation({ onCreated }: Props) {
         </select>
       </label>
       {selectedRace && (
-        <p className="option-summary">
+        <p className="option-summary" aria-live="polite">
           {Object.entries(selectedRace.attributeBonuses)
             .map(([attr, bonus]) => `+${bonus} ${ATTR_LABELS[attr as keyof Attributes]}`)
             .join(', ')}
@@ -176,7 +176,7 @@ export function CharacterCreation({ onCreated }: Props) {
         </select>
       </label>
       {selectedClass && (
-        <p className="option-summary">
+        <p className="option-summary" aria-live="polite">
           {selectedClass.baseHp} HP
           {selectedClass.baseMana > 0 ? ` · ${selectedClass.baseMana} Mana` : ''}
           {selectedClass.startingInventory[0] ? ` · Başlangıç silahı: ${selectedClass.startingInventory[0]}` : ''}
