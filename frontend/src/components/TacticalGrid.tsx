@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { attackTarget, castSpell, endTurn, getScene, moveToken, throwItem } from '../api';
+import { attackTarget, castSpell, endTurn, getCurrentCharacter, getScene, moveToken, throwItem } from '../api';
 import type { Character, Scene, SpellId } from '../types';
 
 // İnovasyon fikri #45: backend'deki scene.js FIREBALL_AOE_RADIUS ile aynı -
@@ -220,9 +220,28 @@ export function TacticalGrid({
   }
 
   async function handleEndTurn() {
+    // İnovasyon fikri #47: düşman turu otomatik saldırıp oyuncuya hasar
+    // verebiliyor ama `/scene/end-turn` yapısal bir hasar sayısı döndürmüyor
+    // (sadece serbest anlatım metni) - backend'e dokunmadan, tur öncesi
+    // `playerHp` prop'unu tur sonrası taze bir `/character` isteğiyle
+    // karşılaştırıp aradaki farkı oyuncu token'ının karesinde gösteriyoruz.
+    const hpBefore = playerHp;
     const { enemyMessages, ...updated } = await endTurn();
     setScene(updated);
     onTurnResolved?.(enemyMessages);
+
+    if (enemyMessages.length > 0 && hpBefore !== undefined) {
+      try {
+        const freshCharacter = await getCurrentCharacter();
+        const damage = hpBefore - freshCharacter.hp.current;
+        if (damage > 0) {
+          const playerToken = updated.tokens.find((t) => t.id === 'player');
+          if (playerToken) triggerDamageFx(playerToken.x, playerToken.y, damage);
+        }
+      } catch {
+        // Görsel bir polish - sessizce yut, ana tur akışını etkilemesin.
+      }
+    }
   }
 
   if (!scene) return <div className="tactical-grid">Harita yükleniyor...</div>;
