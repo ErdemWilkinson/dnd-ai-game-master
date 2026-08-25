@@ -213,6 +213,15 @@ export function TacticalGrid({
       return;
     }
     if (token?.type === 'enemy') {
+      // İnovasyon fikri #51: Aksiyon tükendikten sonra bitişik düşmana
+      // tıklamak öncesinde backend'e gidip 400 ile geri dönüyordu (gereksiz
+      // round-trip + kafa karıştırıcı, "Aksiyon: ✗" göstergesi sadece
+      // bilgilendiriciydi). Artık aynı kontrolü frontend'de de yapıp
+      // isteği hiç göndermiyoruz.
+      if (playerToken && !playerToken.actionAvailable) {
+        setError('Bu tur için Aksiyon hakkın kalmadı.');
+        return;
+      }
       handleAttack(token.id);
       return;
     }
@@ -257,6 +266,11 @@ export function TacticalGrid({
   const specialMode = Boolean(throwingItemId || castingSpellId);
   const gridInteractive = specialMode ? true : isPlayerTurn;
   const playerToken = scene.tokens.find((t) => t.id === 'player');
+  // İnovasyon fikri #51: Aksiyon tükenmişse düşman hücreleri (saldırı hedefi)
+  // görsel olarak devre dışı görünsün - hareket hâlâ mümkün (Aksiyon
+  // ekonomisi sadece saldırı/büyü/eşya kullanımını kapsıyor), o yüzden
+  // TÜM grid değil sadece düşman hücreleri etkileniyor.
+  const actionExhausted = isPlayerTurn && !specialMode && Boolean(playerToken) && !playerToken!.actionAvailable;
 
   // İnovasyon fikri #45: hover edilen düşmana bitişik (blast yarıçapı
   // içindeki) DİĞER düşmanların id'leri - sadece Ateş Topu hedef-seç
@@ -301,7 +315,11 @@ export function TacticalGrid({
       </div>
 
       {!specialMode && isPlayerTurn && (
-        <p className="throw-hint">Bitişik bir düşmana tıklayarak saldırabilirsin.</p>
+        <p className="throw-hint">
+          {actionExhausted
+            ? 'Bu tur için Aksiyonun kalmadı - düşmanlara saldıramazsın, ama hâlâ hareket edebilirsin.'
+            : 'Bitişik bir düşmana tıklayarak saldırabilirsin.'}
+        </p>
       )}
       {error && <p className="error">{error}</p>}
 
@@ -323,6 +341,7 @@ export function TacticalGrid({
             const cellDamageFx = damageFx.find((fx) => fx.x === x && fx.y === y);
             if (cellDamageFx) className += ' damage-flash';
             if (token && aoePreviewIds.has(token.id)) className += ' aoe-preview';
+            if (token?.type === 'enemy' && actionExhausted) className += ' enemy-disabled';
 
             const cellLabel = token
               ? `${token.name}${token.hp !== undefined ? ` (${token.hp}/${token.maxHp} HP)` : ''}`
@@ -363,7 +382,9 @@ export function TacticalGrid({
             return (
               <div
                 key={t.id}
-                className={`token-marker ${t.type === 'player' ? 'player-token' : 'enemy-token'}`}
+                className={`token-marker ${t.type === 'player' ? 'player-token' : 'enemy-token'}${
+                  t.type === 'enemy' && actionExhausted ? ' token-disabled' : ''
+                }`}
                 style={{ left: rect.left, top: rect.top, width: rect.width, height: rect.height }}
               >
                 {t.name[0]}

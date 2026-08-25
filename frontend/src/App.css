@@ -875,6 +875,20 @@
   opacity: 0.75;
 }
 
+/* İnovasyon fikri #51: Aksiyon tükenmişken düşman hücreleri (saldırı hedefi)
+   görsel olarak devre dışı - grid-disabled'a benzer ama sadece düşmanları
+   kapsıyor, hareket hâlâ mümkün olduğundan grid'in tamamı değil. Token'lar
+   ayrı bir overlay katmanında (.token-layer) olduğundan asıl görsel
+   soluklaştırma orada (.token-marker), .cell'deki sınıf sadece imleç için. */
+.cell.enemy-disabled {
+  cursor: not-allowed;
+}
+
+.token-marker.token-disabled {
+  opacity: 0.5;
+  filter: grayscale(0.7);
+}
+
 .grid-throw-mode .cell {
   cursor: crosshair;
 }
