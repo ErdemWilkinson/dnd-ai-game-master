@@ -54,7 +54,11 @@ export function TacticalGrid({
   // "sallanma/flaş" + üzerinde beliren bir hasar sayısı göstermek için. Hedef
   // ölürse token sahneden kalkıyor ama koordinatı burada yakaladığımız için
   // popup yine de doğru karede beliriyor.
-  const [damageFx, setDamageFx] = useState<{ x: number; y: number; damage: number; key: number } | null>(null);
+  // İnovasyon fikri #46: Ateş Topu artık AoE (fikir #43), tek bir cast'te
+  // birden fazla hücre AYNI ANDA etkilenebiliyor - tekil objeden diziye
+  // çevrildi (handleAttack de aynı diziyi kullanıyor, tutarlı).
+  const [damageFx, setDamageFx] = useState<{ x: number; y: number; damage: number; key: number }[]>([]);
+  const damageFxKeyRef = useRef(0);
 
   // İnovasyon fikri #45: Ateş Topu hedef-seç modunda bir düşmana hover
   // yapınca (mobilde tap-preview yerine basit hover yeterli görüldü, PM'in
@@ -126,9 +130,24 @@ export function TacticalGrid({
   async function handleCastTarget(targetTokenId: string) {
     if (!castingSpellId) return;
     setError(null);
+    // Fikir #46: AoE'de öldürülen düşmanlar `updated` sahnesinden kalkmış
+    // olabilir - koordinatlarını cast ÖNCESİ sahneden yakalıyoruz (handleAttack
+    // ile aynı desen), yoksa popup'ın nereye çizileceğini bilemeyiz.
+    const preCastPositions = new Map(scene?.tokens.map((t) => [t.id, { x: t.x, y: t.y }]) ?? []);
     try {
-      const { character, scene: updated } = await castSpell(characterId, castingSpellId, targetTokenId);
+      const { character, scene: updated, damage, blastHits } = await castSpell(characterId, castingSpellId, targetTokenId);
       if (updated) setScene(updated);
+      if (blastHits && blastHits.length > 0) {
+        for (const hit of blastHits) {
+          const pos = preCastPositions.get(hit.id);
+          if (pos && hit.damage > 0) triggerDamageFx(pos.x, pos.y, hit.damage);
+        }
+      } else if (damage && damage > 0) {
+        // İyileştir gibi blastHits taşımayan büyüler için (ya da eski API
+        // yanıtı) tek-hedef fallback.
+        const pos = preCastPositions.get(targetTokenId);
+        if (pos) triggerDamageFx(pos.x, pos.y, damage);
+      }
       onCastComplete?.(character);
       onChatActivity?.();
     } catch (e) {
@@ -169,10 +188,12 @@ export function TacticalGrid({
   }
 
   function triggerDamageFx(x: number, y: number, damage: number) {
-    const key = Date.now();
-    setDamageFx({ x, y, damage, key });
+    // AoE'de aynı anda birden fazla hücre tetiklenebildiğinden Date.now()
+    // tek başına çakışabilir (aynı ms içinde) - monoton bir sayaç kullanılıyor.
+    const key = ++damageFxKeyRef.current;
+    setDamageFx((current) => [...current, { x, y, damage, key }]);
     window.setTimeout(() => {
-      setDamageFx((current) => (current?.key === key ? null : current));
+      setDamageFx((current) => current.filter((fx) => fx.key !== key));
     }, 700);
   }
 
@@ -280,8 +301,8 @@ export function TacticalGrid({
             let className = 'cell';
             if (blocked) className += ' obstacle';
             if (loot) className += ' loot';
-            const isDamageFxCell = damageFx && damageFx.x === x && damageFx.y === y;
-            if (isDamageFxCell) className += ' damage-flash';
+            const cellDamageFx = damageFx.find((fx) => fx.x === x && fx.y === y);
+            if (cellDamageFx) className += ' damage-flash';
             if (token && aoePreviewIds.has(token.id)) className += ' aoe-preview';
 
             const cellLabel = token
@@ -304,9 +325,9 @@ export function TacticalGrid({
                 aria-label={cellLabel}
               >
                 {!token && loot ? '◆' : ''}
-                {isDamageFxCell && (
-                  <span key={damageFx!.key} className="damage-popup">
-                    -{damageFx!.damage}
+                {cellDamageFx && (
+                  <span key={cellDamageFx.key} className="damage-popup">
+                    -{cellDamageFx.damage}
                   </span>
                 )}
               </button>

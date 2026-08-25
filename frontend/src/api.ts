@@ -129,6 +129,10 @@ export function castSpell(characterId: string, spellId: SpellId, targetTokenId?:
     castResult?: ActionRoll;
     damage?: number;
     defeated?: boolean;
+    // İnovasyon fikri #43 (Ateş Topu AoE): isabet edilen her düşman için ayrı
+    // {id,name,damage,defeated} - fikir #46'da hasar popup'larını doğru
+    // hücrelerde göstermek için kullanılıyor.
+    blastHits?: { id: string; name: string; damage: number; defeated: boolean }[];
     levelsGained?: number;
     healed?: number;
     narration: Narration;
