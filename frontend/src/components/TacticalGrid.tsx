@@ -65,6 +65,12 @@ export function TacticalGrid({
   // önerisiyle tutarlı) patlamanın da vuracağı diğer düşmanları önizlemek için.
   const [hoveredEnemyId, setHoveredEnemyId] = useState<string | null>(null);
 
+  // İnovasyon fikri #53: hareket/saldırı/büyü/fırlatma/tur-bitir istekleri
+  // gerçek AI narrasyonu beklediğinden 1-5sn sürebiliyor - "donmuş ekran"
+  // hissini önlemek için bir yükleniyor göstergesi + aynı anda ikinci bir
+  // isteğin gitmesini engelleyen bir kilit.
+  const [pending, setPending] = useState(false);
+
   // Faz 11 polish: token'lar anlık "zıplamak" yerine kareler arası kayarak
   // hareket etsin diye - her hücrenin gerçek piksel konumunu ölçüp bir
   // overlay katmanındaki token işaretçilerini bu konumlara `left`/`top`
@@ -116,20 +122,24 @@ export function TacticalGrid({
   }, [scene?.width, scene?.height]);
 
   async function handleThrowTarget(x: number, y: number) {
-    if (!throwingItemId) return;
+    if (!throwingItemId || pending) return;
     setError(null);
+    setPending(true);
     try {
       const { character, scene: updated } = await throwItem(characterId, throwingItemId, x, y);
       setScene(updated);
       onThrowComplete?.(character);
     } catch (e) {
       setError((e as Error).message);
+    } finally {
+      setPending(false);
     }
   }
 
   async function handleCastTarget(targetTokenId: string) {
-    if (!castingSpellId) return;
+    if (!castingSpellId || pending) return;
     setError(null);
+    setPending(true);
     // Fikir #46: AoE'de öldürülen düşmanlar `updated` sahnesinden kalkmış
     // olabilir - koordinatlarını cast ÖNCESİ sahneden yakalıyoruz (handleAttack
     // ile aynı desen), yoksa popup'ın nereye çizileceğini bilemeyiz.
@@ -152,17 +162,20 @@ export function TacticalGrid({
       onChatActivity?.();
     } catch (e) {
       setError((e as Error).message);
+    } finally {
+      setPending(false);
     }
   }
 
   async function handleMoveTarget(x: number, y: number) {
-    if (!scene) return;
+    if (!scene || pending) return;
     const activeToken = scene.tokens.find((t) => t.id === scene.activeTokenId);
     if (activeToken?.type !== 'player') {
       setError('Sıra sende değil.');
       return;
     }
     setError(null);
+    setPending(true);
     try {
       const { scene: updated, narration, character } = await moveToken(scene.activeTokenId, x, y);
       setScene(updated);
@@ -170,11 +183,15 @@ export function TacticalGrid({
       if (narration) onChatActivity?.();
     } catch (e) {
       setError((e as Error).message);
+    } finally {
+      setPending(false);
     }
   }
 
   async function handleAttack(targetTokenId: string) {
+    if (pending) return;
     setError(null);
+    setPending(true);
     const target = scene?.tokens.find((t) => t.id === targetTokenId);
     try {
       const { character, scene: updated, damage } = await attackTarget(characterId, targetTokenId);
@@ -184,6 +201,8 @@ export function TacticalGrid({
       onChatActivity?.();
     } catch (e) {
       setError((e as Error).message);
+    } finally {
+      setPending(false);
     }
   }
 
@@ -229,27 +248,33 @@ export function TacticalGrid({
   }
 
   async function handleEndTurn() {
-    // İnovasyon fikri #47: düşman turu otomatik saldırıp oyuncuya hasar
-    // verebiliyor ama `/scene/end-turn` yapısal bir hasar sayısı döndürmüyor
-    // (sadece serbest anlatım metni) - backend'e dokunmadan, tur öncesi
-    // `playerHp` prop'unu tur sonrası taze bir `/character` isteğiyle
-    // karşılaştırıp aradaki farkı oyuncu token'ının karesinde gösteriyoruz.
-    const hpBefore = playerHp;
-    const { enemyMessages, ...updated } = await endTurn();
-    setScene(updated);
-    onTurnResolved?.(enemyMessages);
+    if (pending) return;
+    setPending(true);
+    try {
+      // İnovasyon fikri #47: düşman turu otomatik saldırıp oyuncuya hasar
+      // verebiliyor ama `/scene/end-turn` yapısal bir hasar sayısı döndürmüyor
+      // (sadece serbest anlatım metni) - backend'e dokunmadan, tur öncesi
+      // `playerHp` prop'unu tur sonrası taze bir `/character` isteğiyle
+      // karşılaştırıp aradaki farkı oyuncu token'ının karesinde gösteriyoruz.
+      const hpBefore = playerHp;
+      const { enemyMessages, ...updated } = await endTurn();
+      setScene(updated);
+      onTurnResolved?.(enemyMessages);
 
-    if (enemyMessages.length > 0 && hpBefore !== undefined) {
-      try {
-        const freshCharacter = await getCurrentCharacter();
-        const damage = hpBefore - freshCharacter.hp.current;
-        if (damage > 0) {
-          const playerToken = updated.tokens.find((t) => t.id === 'player');
-          if (playerToken) triggerDamageFx(playerToken.x, playerToken.y, damage);
+      if (enemyMessages.length > 0 && hpBefore !== undefined) {
+        try {
+          const freshCharacter = await getCurrentCharacter();
+          const damage = hpBefore - freshCharacter.hp.current;
+          if (damage > 0) {
+            const playerToken = updated.tokens.find((t) => t.id === 'player');
+            if (playerToken) triggerDamageFx(playerToken.x, playerToken.y, damage);
+          }
+        } catch {
+          // Görsel bir polish - sessizce yut, ana tur akışını etkilemesin.
         }
-      } catch {
-        // Görsel bir polish - sessizce yut, ana tur akışını etkilemesin.
       }
+    } finally {
+      setPending(false);
     }
   }
 
@@ -311,7 +336,14 @@ export function TacticalGrid({
             Aksiyon: {playerToken.actionAvailable ? '✓' : '✗'} · Bonus: {playerToken.bonusActionAvailable ? '✓' : '✗'}
           </span>
         )}
-        <button onClick={handleEndTurn}>Turu Bitir</button>
+        {pending && (
+          <span className="pending-indicator">
+            <span className="spinner" aria-hidden="true" /> İşleniyor...
+          </span>
+        )}
+        <button onClick={handleEndTurn} disabled={pending}>
+          Turu Bitir
+        </button>
       </div>
 
       {!specialMode && isPlayerTurn && (
@@ -325,7 +357,7 @@ export function TacticalGrid({
 
       <div
         ref={gridRef}
-        className={`grid ${gridInteractive ? '' : 'grid-disabled'} ${specialMode ? 'grid-throw-mode' : ''}`}
+        className={`grid ${gridInteractive && !pending ? '' : 'grid-disabled'} ${specialMode ? 'grid-throw-mode' : ''}`}
         style={{ gridTemplateColumns: `repeat(${scene.width}, 1fr)` }}
         onMouseLeave={() => setHoveredEnemyId(null)}
       >

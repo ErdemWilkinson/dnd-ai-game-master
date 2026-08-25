@@ -107,7 +107,8 @@ export function ChatPanel({ refreshKey = 0 }: Props) {
           </span>
         )}
         <button type="submit" disabled={sending}>
-          Gönder
+          {sending && <span className="spinner" aria-hidden="true" />}
+          {sending ? 'Gönderiliyor...' : 'Gönder'}
         </button>
       </form>
     </div>

@@ -522,6 +522,25 @@
   box-shadow: none;
 }
 
+/* İnovasyon fikri #53: AI çağrıları (chat/saldırı/büyü) 1-5sn sürebiliyor
+   (mock'tan çok daha yavaş, ayrıca Render soğuk-başlangıcıyla birleşebilir)
+   - "donmuş ekran" hissini önlemek için butonlarda küçük bir dönen spinner. */
+.spinner {
+  display: inline-block;
+  width: 0.8em;
+  height: 0.8em;
+  margin-right: 0.4em;
+  vertical-align: -0.15em;
+  border: 2px solid rgba(242, 235, 216, 0.35);
+  border-top-color: var(--parchment);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
 .error {
   color: #e07a5f;
   font-size: 0.85rem;
@@ -835,6 +854,12 @@
 .scene-header button {
   margin-left: auto;
   padding: 0.4rem 0.8rem;
+}
+
+/* İnovasyon fikri #53 */
+.pending-indicator {
+  font-size: 0.75rem;
+  color: var(--gold);
 }
 
 .grid {
