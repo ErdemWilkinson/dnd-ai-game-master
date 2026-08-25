@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { castSpell, dropItem, equipItem, useItem } from '../api';
+import { castSpell, consumeItem, dropItem, equipItem } from '../api';
 import { CLASS_NAMES, RACE_NAMES } from '../data/dndNames';
 import type { Character, EquipmentSlot, SpellId } from '../types';
 
@@ -146,7 +146,7 @@ export function CharacterCard({
   async function handleUse(itemId: string) {
     setError(null);
     try {
-      const { character: updated } = await useItem(character.id, itemId);
+      const { character: updated } = await consumeItem(character.id, itemId);
       onCharacterChange?.(updated);
     } catch (e) {
       setError((e as Error).message);

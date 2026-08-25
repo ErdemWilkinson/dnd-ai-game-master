@@ -150,7 +150,13 @@ export function endTurn() {
   return request<Scene & { enemyMessages: string[] }>('/scene/end-turn', { method: 'POST' });
 }
 
-export function useItem(characterId: string, itemId: string) {
+// İnovasyon fikri #60: adı "consumeItem" - eskiden "useItem" idi ama bu isim
+// React'in hook adlandırma kuralına (use...) yanlışlıkla uyduğundan
+// oxlint'in react-hooks/rules-of-hooks kuralı, bunu normal bir fonksiyondan
+// (component/hook olmayan `handleUse` içinde) çağırınca hatalı bir "hook
+// kuralı ihlali" raporluyordu - fonksiyonel bir sorun değil, sadece isim
+// çakışması, o yüzden yeniden adlandırıldı.
+export function consumeItem(characterId: string, itemId: string) {
   return request<{ character: Character }>('/scene/item/use', {
     method: 'POST',
     body: JSON.stringify({ characterId, itemId }),
