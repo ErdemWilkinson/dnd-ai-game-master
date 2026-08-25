@@ -483,6 +483,15 @@
   color: var(--parchment);
 }
 
+/* İnovasyon fikri #64: seçili ırk/sınıfın altındaki kısa özet. */
+.option-summary {
+  margin: -0.35rem 0 0;
+  font-size: 0.75rem;
+  color: var(--gold);
+  text-transform: none;
+  letter-spacing: normal;
+}
+
 /* Ortak buton stili - BG3 tarzı altın/bronz vurgulu */
 .character-creation button,
 .intro-screen button,

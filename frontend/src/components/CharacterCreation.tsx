@@ -69,6 +69,12 @@ export function CharacterCreation({ onCreated }: Props) {
     };
   }, []);
 
+  // İnovasyon fikri #64: seçili ırk/sınıfın altında kısa bir özet göstermek
+  // için - veri zaten `/character/options`'tan geliyor, backend'e dokunmaya
+  // gerek yok.
+  const selectedRace = races.find((r) => r.id === raceId);
+  const selectedClass = classes.find((c) => c.id === classId);
+
   async function handleRoll() {
     if (!raceId || rolling) return;
     setError(null);
@@ -151,6 +157,13 @@ export function CharacterCreation({ onCreated }: Props) {
           ))}
         </select>
       </label>
+      {selectedRace && (
+        <p className="option-summary">
+          {Object.entries(selectedRace.attributeBonuses)
+            .map(([attr, bonus]) => `+${bonus} ${ATTR_LABELS[attr as keyof Attributes]}`)
+            .join(', ')}
+        </p>
+      )}
 
       <label>
         Sınıf
@@ -162,6 +175,13 @@ export function CharacterCreation({ onCreated }: Props) {
           ))}
         </select>
       </label>
+      {selectedClass && (
+        <p className="option-summary">
+          {selectedClass.baseHp} HP
+          {selectedClass.baseMana > 0 ? ` · ${selectedClass.baseMana} Mana` : ''}
+          {selectedClass.startingInventory[0] ? ` · Başlangıç silahı: ${selectedClass.startingInventory[0]}` : ''}
+        </p>
+      )}
 
       <label>
         Dış Görünüş
