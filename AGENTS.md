@@ -4,8 +4,8 @@ Bu projede 3 Claude Code session'ı birlikte çalışır.
 
 ## Roller
 - **PM** (proje yöneticisi): Kullanıcıyla iletişim, kapsam/karar netleştirme, görev dağıtımı (`TASKS.md`), 15 dakikada bir coder/tester'a ilerleme kontrolü.
-- **coder** (`claude-game-c8`): `TASKS.md` → "### Coder" bölümündeki görevleri uygular.
-- **tester** (`claude-game-38`, önceki `claude-game-cf` uzun süre yanıtsız kaldığı için 2026-08-24'te değiştirildi): `TASKS.md` → "### Tester" bölümündeki görevleri uygular; coder'ın çıktısını test eder.
+- **coder** (`claude-game-34`, önceki `claude-game-c8` — pencereler 2026-08-25'te yeniden başladı, isimler değişti): `TASKS.md` → "### Coder" bölümündeki görevleri uygular.
+- **tester** (`claude-game-ec`, önceki `claude-game-38`): `TASKS.md` → "### Tester" bölümündeki görevleri uygular; coder'ın çıktısını test eder.
 
 Not: session isimleri pencere/oturum yeniden başlatıldığında değişebilir (rastgele bir sonek atanıyor) — güncel isimler için PM ile teyit edin, bu dosya güncel olmayabilir.
 
