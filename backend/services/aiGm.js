@@ -10,6 +10,15 @@ const MODEL_NAME = process.env.GEMINI_MODEL || "gemini-3.6-flash";
 // bir cümlede kalma riskini de düşük tutuyor.
 const MAX_OUTPUT_TOKENS = 300;
 
+// Yaratıcı cron fikir #74: `callGemini()`'de hiç timeout yoktu - Gemini
+// hang/aşırı yavaş yanıt verirse istek süresiz asılı kalırdı, "sessizce
+// mock'a düş" ilkesi (Faz 2'den beri) bu senaryoda hiç devreye giremezdi
+// (mevcut catch sadece REDDEDİLEN bir promise'i yakalıyor, asılı kalanı
+// değil). SDK'nın kendi `requestOptions.timeout`'u (node_modules'teki tip
+// tanımlarında doğrulandı - `RequestOptions.timeout`, `getGenerativeModel`'in
+// ikinci parametresi) kullanılıyor, manuel bir Promise.race'e gerek kalmadı.
+const AI_TIMEOUT_MS = 15000;
+
 let cachedClient = null;
 
 function getClient() {
@@ -31,10 +40,13 @@ async function callGemini(prompt) {
     throw new Error("GEMINI_API_KEY tanımlı değil.");
   }
 
-  const model = client.getGenerativeModel({
-    model: MODEL_NAME,
-    generationConfig: { maxOutputTokens: MAX_OUTPUT_TOKENS },
-  });
+  const model = client.getGenerativeModel(
+    {
+      model: MODEL_NAME,
+      generationConfig: { maxOutputTokens: MAX_OUTPUT_TOKENS },
+    },
+    { timeout: AI_TIMEOUT_MS },
+  );
   const result = await model.generateContent(prompt);
   const text = result.response.text().trim();
 
