@@ -13,6 +13,17 @@ const sceneRouter = require("./routes/scene");
 const app = express();
 const PORT = process.env.PORT || 3001;
 
+// Yaratıcı cron fikir #58: prod backend Render'ın proxy/edge katmanının
+// (Cloudflare) arkasında çalışıyor - bu ayar olmadan Express `req.ip`'yi
+// gerçek istemci IP'si yerine proxy'nin kendi IP'si olarak görüyordu, bu da
+// `publicRateLimit`'in (express-rate-limit, IP bazlı) TÜM oyuncuları TEK bir
+// bucket'a düşürmesine yol açıyor olabilirdi (bir oyuncunun spam'i herkesi
+// mock'a düşürebilirdi - fikir #19'daki "AI hep mock'a düşüyor" şikayetinin
+// bir başka olası kök nedeni). `1` = "en yakın bir proxy hop'una güven" -
+// Render'ın standart web servis kurulumu için doğru değer (kendi edge'i tek
+// bir hop olarak `X-Forwarded-For`'a gerçek istemci IP'sini ekliyor).
+app.set("trust proxy", 1);
+
 // Faz 9 (yaratıcı cron fikir #1): 30 gündür hiç aktivite görmemiş session/
 // karakterleri temizler - ücretsiz Postgres'in 1GB sınırına sınırsız birikim
 // çarpmasın diye. Test ortamında (VITEST) hiç çalışmaz.
