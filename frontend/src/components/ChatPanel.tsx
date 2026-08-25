@@ -26,6 +26,7 @@ export function ChatPanel({ refreshKey = 0 }: Props) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
   const [sending, setSending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const messagesRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -44,10 +45,18 @@ export function ChatPanel({ refreshKey = 0 }: Props) {
     const text = input.trim();
     if (!text || sending) return;
     setSending(true);
-    setInput('');
+    setError(null);
     try {
       const { playerMessage, gmMessage } = await sendChatMessage(text);
       setMessages((prev) => [...prev, playerMessage, gmMessage]);
+      // Yaratıcı cron fikir #37: input eskiden istek başlamadan ÖNCE
+      // boşaltılıyordu - istek başarısız olursa (ör. #36'nın rate-limit'i)
+      // hem mesaj hiçbir yere eklenmiyor hem kullanıcı yazdığını kaybediyordu,
+      // ekranda hiçbir hata da görünmüyordu. Artık input SADECE başarı
+      // durumunda temizleniyor, hata durumunda olduğu gibi kalıyor.
+      setInput('');
+    } catch (err) {
+      setError((err as Error).message);
     } finally {
       setSending(false);
     }
@@ -77,6 +86,7 @@ export function ChatPanel({ refreshKey = 0 }: Props) {
           </div>
         ))}
       </div>
+      {error && <p className="error">{error}</p>}
       <form className="chat-input-row" onSubmit={handleSend}>
         <input
           value={input}
