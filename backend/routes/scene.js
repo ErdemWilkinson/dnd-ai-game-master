@@ -15,8 +15,16 @@ const { advanceToNextEncounter } = require("../data/sceneFactory");
 const { trimChatHistory } = require("../services/chatHistoryLimit");
 const { getWeaponDamageDie } = require("../data/weaponDamage");
 const { getSlotForItem, getIconForSlot } = require("../data/itemSlots");
+const { publicRateLimit } = require("../services/publicRateLimit");
 
 const router = express.Router();
+// Yaratıcı cron fikir #40: fikir #36 sadece /chat'i publicRateLimit'e
+// bağlamıştı - move/end-turn/attack/cast/item/use gibi bu router'daki
+// route'ların çoğu da generateNarration() üzerinden AYNI paylaşılan saatlik
+// AI bütçesini (services/rateLimiter.js) tüketiyor, üstelik tıklama yazmaktan
+// daha hızlı olduğundan bütçeyi chat'ten bile daha çabuk boşaltabilir.
+// Router seviyesinde tek middleware - tek tek route'lara eklemeye gerek yok.
+router.use(publicRateLimit);
 // Yaratıcı cron fikir #16: /item/throw grid sınırını/menzili hiç doğrulamıyordu
 // (x:99999 gibi bir değer görünmez/kayıp bir loot yaratabiliyordu). Ateş
 // Topu'nun range:3'üyle tutarlı bir fırlatma menzili.
