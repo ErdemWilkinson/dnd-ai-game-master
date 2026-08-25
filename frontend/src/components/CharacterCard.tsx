@@ -13,6 +13,15 @@ const SPELLS: { id: SpellId; name: string; manaCost: number; needsTarget: boolea
 // gösterilmemeli, aksi halde kullanıcı sürekli devre dışı butonlarla karşılaşır.
 const CHEAPEST_SPELL_COST = Math.min(...SPELLS.map((s) => s.manaCost));
 
+// Yaratıcı cron fikir #38: backend/services/leveling.js'teki formülün
+// (xpToNextLevel(level)=level*50, MAX_LEVEL=20) frontend karşılığı - basit
+// bir sabit/formül olduğundan API'den ayrıca çekmek yerine burada da
+// tutarlı şekilde tekrarlandı (proje genelinde kod paylaşımı yok).
+const MAX_LEVEL = 20;
+function xpToNextLevel(level: number) {
+  return level * 50;
+}
+
 // SS13 (tgstation ikon seti) tarzı genişletilmiş paper-doll slot düzeni.
 const SLOT_ORDER: EquipmentSlot[] = [
   'head',
@@ -205,6 +214,30 @@ export function CharacterCard({
         <span>
           {character.hp.current}/{character.hp.max}
         </span>
+      </div>
+
+      <div className="bar-row">
+        <span>⭐ XP</span>
+        {character.level >= MAX_LEVEL ? (
+          <>
+            <div className="bar">
+              <div className="bar-fill xp" style={{ width: '100%' }} />
+            </div>
+            <span>MAX</span>
+          </>
+        ) : (
+          <>
+            <div className="bar">
+              <div
+                className="bar-fill xp"
+                style={{ width: `${(character.xp / xpToNextLevel(character.level)) * 100}%` }}
+              />
+            </div>
+            <span>
+              {character.xp}/{xpToNextLevel(character.level)}
+            </span>
+          </>
+        )}
       </div>
 
       <div className="bar-row">

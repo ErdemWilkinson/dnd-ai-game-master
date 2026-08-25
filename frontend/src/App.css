@@ -577,6 +577,10 @@
   background: linear-gradient(90deg, #24507a, var(--arcane-blue));
 }
 
+.bar-fill.xp {
+  background: linear-gradient(90deg, #8a6a20, var(--gold));
+}
+
 .attributes-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
