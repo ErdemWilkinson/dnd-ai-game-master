@@ -27,6 +27,11 @@ const CONSUMABLE_ICONS: Record<string, string> = {
   'Büyü Kitabı': '📖',
   'Hırsız Aletleri': '🗝️',
   'Kutsal Sembol': '✨',
+  // Yaratıcı cron fikir #54: loot trofe eşyaları (data/encounters.js) de
+  // slotsuz olduğundan yanlışlıkla 🧪 gösteriyordu.
+  'Altın Kese': '💰',
+  'Örümcek İpeği': '🕸️',
+  'Ejderha Pulu': '🐉',
 };
 const DEFAULT_CONSUMABLE_ICON = '🧪';
 
