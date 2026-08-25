@@ -2,6 +2,16 @@ import { useEffect, useRef, useState } from 'react';
 import { attackTarget, castSpell, endTurn, getScene, moveToken, throwItem } from '../api';
 import type { Character, Scene, SpellId } from '../types';
 
+// İnovasyon fikri #45: backend'deki scene.js FIREBALL_AOE_RADIUS ile aynı -
+// hedef seçerken patlamanın hangi diğer düşmanları vuracağını önceden
+// göstermek için (proje genelinde kod paylaşımı yok, leveling.js/dndNames.ts
+// sabitlerindeki mevcut desenle tutarlı).
+const FIREBALL_AOE_RADIUS = 1;
+
+function manhattan(a: { x: number; y: number }, b: { x: number; y: number }) {
+  return Math.abs(a.x - b.x) + Math.abs(a.y - b.y);
+}
+
 interface Props {
   characterId: string;
   // İnovasyon fikri #39: oyuncu token'ının canını da grid üzerinde görünür
@@ -45,6 +55,11 @@ export function TacticalGrid({
   // ölürse token sahneden kalkıyor ama koordinatı burada yakaladığımız için
   // popup yine de doğru karede beliriyor.
   const [damageFx, setDamageFx] = useState<{ x: number; y: number; damage: number; key: number } | null>(null);
+
+  // İnovasyon fikri #45: Ateş Topu hedef-seç modunda bir düşmana hover
+  // yapınca (mobilde tap-preview yerine basit hover yeterli görüldü, PM'in
+  // önerisiyle tutarlı) patlamanın da vuracağı diğer düşmanları önizlemek için.
+  const [hoveredEnemyId, setHoveredEnemyId] = useState<string | null>(null);
 
   // Faz 11 polish: token'lar anlık "zıplamak" yerine kareler arası kayarak
   // hareket etsin diye - her hücrenin gerçek piksel konumunu ölçüp bir
@@ -203,6 +218,21 @@ export function TacticalGrid({
   const gridInteractive = specialMode ? true : isPlayerTurn;
   const playerToken = scene.tokens.find((t) => t.id === 'player');
 
+  // İnovasyon fikri #45: hover edilen düşmana bitişik (blast yarıçapı
+  // içindeki) DİĞER düşmanların id'leri - sadece Ateş Topu hedef-seç
+  // modundayken anlamlı.
+  const aoePreviewIds = new Set<string>();
+  if (castingSpellId === 'fireball' && hoveredEnemyId) {
+    const hoveredToken = scene.tokens.find((t) => t.id === hoveredEnemyId);
+    if (hoveredToken) {
+      for (const t of scene.tokens) {
+        if (t.type === 'enemy' && t.id !== hoveredToken.id && manhattan(t, hoveredToken) <= FIREBALL_AOE_RADIUS) {
+          aoePreviewIds.add(t.id);
+        }
+      }
+    }
+  }
+
   return (
     <div className="tactical-grid">
       <div className="scene-header">
@@ -239,6 +269,7 @@ export function TacticalGrid({
         ref={gridRef}
         className={`grid ${gridInteractive ? '' : 'grid-disabled'} ${specialMode ? 'grid-throw-mode' : ''}`}
         style={{ gridTemplateColumns: `repeat(${scene.width}, 1fr)` }}
+        onMouseLeave={() => setHoveredEnemyId(null)}
       >
         {rows.map((y) =>
           cols.map((x) => {
@@ -251,6 +282,7 @@ export function TacticalGrid({
             if (loot) className += ' loot';
             const isDamageFxCell = damageFx && damageFx.x === x && damageFx.y === y;
             if (isDamageFxCell) className += ' damage-flash';
+            if (token && aoePreviewIds.has(token.id)) className += ' aoe-preview';
 
             const cellLabel = token
               ? `${token.name}${token.hp !== undefined ? ` (${token.hp}/${token.maxHp} HP)` : ''}`
@@ -265,6 +297,9 @@ export function TacticalGrid({
                 data-y={y}
                 className={className}
                 onClick={() => handleCellClick(x, y)}
+                onMouseEnter={() =>
+                  setHoveredEnemyId(castingSpellId === 'fireball' && token?.type === 'enemy' ? token.id : null)
+                }
                 title={cellLabel}
                 aria-label={cellLabel}
               >

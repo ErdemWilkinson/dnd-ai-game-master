@@ -884,6 +884,14 @@
   outline: 2px solid var(--gold);
 }
 
+/* İnovasyon fikri #45: Ateş Topu hedef-seç modunda, hover edilen düşmana
+   bitişik (blast yarıçapı içindeki) DİĞER düşmanları önceden işaretle -
+   ana hover'ın altın rengiyle karışmasın diye turuncu kullanıldı. */
+.cell.aoe-preview {
+  outline: 2px solid #e0793a;
+  background: rgba(224, 121, 58, 0.25);
+}
+
 .cell {
   position: relative;
   aspect-ratio: 1;
