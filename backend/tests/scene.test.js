@@ -8,6 +8,10 @@ const sceneRouter = require("../routes/scene.js");
 const characterRouter = require("../routes/character.js");
 const chatRouter = require("../routes/chat.js");
 const { scenes, characters } = require("../data/store.js");
+// Yaratıcı cron fikir #62: sabit "default" string'i yerine sessionId.js'in
+// dışa aktardığı (modül yüklenirken bir kez üretilen) gerçek fallback ID -
+// header'sız istekler artık bu ID'ye düşüyor, testler de aynısını kullanmalı.
+const { DEFAULT_SESSION_ID } = require("../services/sessionId.js");
 
 function buildApp() {
   const app = express();
@@ -339,7 +343,7 @@ describe("POST /api/scene/end-turn — Faz 4-D: scriptli düşman AI", () => {
     // testte paylaşılan `scenes` singleton'ını doğrudan mutasyona uğratıyoruz
     // (character.test.js'teki createRequire/singleton deseniyle tutarlı).
     await request(app).get("/api/scene"); // sahneyi lazy-init ettir
-    const scene = scenes.get("default");
+    const scene = scenes.get(DEFAULT_SESSION_ID);
     const goblin = scene.tokens.find((t) => t.id === "goblin-1");
     const player = scene.tokens.find((t) => t.id === "player");
     goblin.x = player.x + 1;
@@ -529,7 +533,7 @@ describe("POST /api/scene/item/use", () => {
     const potion = createRes.body.inventory.find((i) => i.name.includes("ksir"));
 
     await request(app).get("/api/scene"); // lazy-init ettir
-    const scene = scenes.get("default");
+    const scene = scenes.get(DEFAULT_SESSION_ID);
     const goblin = scene.tokens.find((t) => t.id === "goblin-1");
     const player = scene.tokens.find((t) => t.id === "player");
     goblin.x = player.x + 1;
@@ -587,7 +591,7 @@ describe("POST /api/scene/item/use", () => {
       .post("/api/character/create")
       .send({ name: "Test", raceId: "human", classId: "fighter" });
     await request(app).get("/api/scene"); // lazy-init ettir
-    const scene = scenes.get("default");
+    const scene = scenes.get(DEFAULT_SESSION_ID);
     scene.tokens = scene.tokens.filter((t) => t.type === "player"); // düşman yok - savaş dışı
     const player = scene.tokens.find((t) => t.id === "player");
     player.actionAvailable = false; // eskiden bu durumda bir daha ASLA sıfırlanamıyordu (soft-lock)
@@ -617,7 +621,7 @@ describe("POST /api/scene/item/use", () => {
       .post("/api/character/create")
       .send({ name: "Test", raceId: "human", classId: "fighter" });
     await request(app).get("/api/scene"); // lazy-init ettir
-    scenes.get("default").activeTokenId = "goblin-1";
+    scenes.get(DEFAULT_SESSION_ID).activeTokenId = "goblin-1";
 
     const item = createRes.body.inventory[0];
     const res = await request(app)
@@ -853,7 +857,7 @@ describe("POST /api/scene/item/throw", () => {
     // gerçekten tüketmek için doğrudan store üzerinden ayarlıyoruz (mevcut
     // "characters.get(id).hp.current = X" deseniyle tutarlı).
     await request(app).get("/api/scene"); // lazy-init ettir
-    scenes.get("default").tokens.find((t) => t.id === "player").actionAvailable = false;
+    scenes.get(DEFAULT_SESSION_ID).tokens.find((t) => t.id === "player").actionAvailable = false;
 
     const res = await request(app)
       .post("/api/scene/item/throw")
@@ -876,7 +880,7 @@ describe("POST /api/scene/attack — Faz 5 madde 1: gerçek saldırı aksiyonu",
 
   async function teleportGoblinAdjacentToPlayer(app) {
     await request(app).get("/api/scene");
-    const scene = scenes.get("default");
+    const scene = scenes.get(DEFAULT_SESSION_ID);
     const goblin = scene.tokens.find((t) => t.id === "goblin-1");
     const player = scene.tokens.find((t) => t.id === "player");
     goblin.x = player.x + 1;
@@ -896,7 +900,7 @@ describe("POST /api/scene/attack — Faz 5 madde 1: gerçek saldırı aksiyonu",
       .post("/api/character/create")
       .send({ name: "Test", raceId: "human", classId: "fighter" });
     await request(app).get("/api/scene");
-    scenes.get("default").activeTokenId = "goblin-1";
+    scenes.get(DEFAULT_SESSION_ID).activeTokenId = "goblin-1";
 
     const res = await request(app)
       .post("/api/scene/attack")
@@ -913,7 +917,7 @@ describe("POST /api/scene/attack — Faz 5 madde 1: gerçek saldırı aksiyonu",
     await teleportGoblinAdjacentToPlayer(app);
     // Fikir #52'den sonra item/use artık Bonus Aksiyon tüketiyor - Aksiyon'u
     // gerçekten tüketmek için doğrudan store üzerinden ayarlıyoruz.
-    scenes.get("default").tokens.find((t) => t.id === "player").actionAvailable = false;
+    scenes.get(DEFAULT_SESSION_ID).tokens.find((t) => t.id === "player").actionAvailable = false;
 
     const res = await request(app)
       .post("/api/scene/attack")
@@ -1163,7 +1167,7 @@ describe("POST /api/scene/attack — Faz 6-C: XP/seviye entegrasyonu", () => {
 
   async function teleportGoblinAdjacentToPlayer(app) {
     await request(app).get("/api/scene");
-    const scene = scenes.get("default");
+    const scene = scenes.get(DEFAULT_SESSION_ID);
     const goblin = scene.tokens.find((t) => t.id === "goblin-1");
     const player = scene.tokens.find((t) => t.id === "player");
     goblin.x = player.x + 1;
@@ -1246,7 +1250,7 @@ describe("POST /api/scene/attack — Faz 10: kuşanılı silaha göre hasar zar�
 
   async function teleportGoblinAdjacentToPlayer(app) {
     await request(app).get("/api/scene");
-    const scene = scenes.get("default");
+    const scene = scenes.get(DEFAULT_SESSION_ID);
     const goblin = scene.tokens.find((t) => t.id === "goblin-1");
     const player = scene.tokens.find((t) => t.id === "player");
     goblin.x = player.x + 1;
@@ -1418,7 +1422,7 @@ describe("POST /api/scene/cast — Faz 6-C: büyü sistemi", () => {
 
     // goblin'i menzile taşı
     await request(app).get("/api/scene");
-    const scene = scenes.get("default");
+    const scene = scenes.get(DEFAULT_SESSION_ID);
     const goblin = scene.tokens.find((t) => t.id === "goblin-1");
     goblin.x = 2; goblin.y = 1; // player (1,1)'e mesafe 1, range 3 içinde
 
@@ -1437,7 +1441,7 @@ describe("POST /api/scene/cast — Faz 6-C: büyü sistemi", () => {
     const createRes = await createWizard(app);
 
     await request(app).get("/api/scene");
-    const scene = scenes.get("default");
+    const scene = scenes.get(DEFAULT_SESSION_ID);
     const goblin = scene.tokens.find((t) => t.id === "goblin-1");
     goblin.x = 2; goblin.y = 1;
 
@@ -1458,7 +1462,7 @@ describe("POST /api/scene/cast — Faz 6-C: büyü sistemi", () => {
     const createRes = await createWizard(app);
 
     await request(app).get("/api/scene");
-    const scene = scenes.get("default");
+    const scene = scenes.get(DEFAULT_SESSION_ID);
     const goblin = scene.tokens.find((t) => t.id === "goblin-1");
     goblin.x = 2;
     goblin.y = 1; // player (1,1)'e bitişik, cast range (3) içinde
@@ -1515,7 +1519,7 @@ describe("POST /api/scene/cast — Faz 6-C: büyü sistemi", () => {
     const hpBefore = characters.get(createRes.body.id).hp.current;
 
     await request(app).get("/api/scene");
-    const scene = scenes.get("default");
+    const scene = scenes.get(DEFAULT_SESSION_ID);
     const goblin = scene.tokens.find((t) => t.id === "goblin-1");
     goblin.x = 2;
     goblin.y = 1; // player (1,1)'e bitişik - blast yarıçapı oyuncuyu da kapsıyor ama PvE, dost ateşi yok
@@ -1534,7 +1538,7 @@ describe("POST /api/scene/cast — Faz 6-C: büyü sistemi", () => {
     const createRes = await createWizard(app);
 
     await request(app).get("/api/scene");
-    const scene = scenes.get("default");
+    const scene = scenes.get(DEFAULT_SESSION_ID);
     const goblin = scene.tokens.find((t) => t.id === "goblin-1");
     goblin.x = 2;
     goblin.y = 1;
@@ -1575,7 +1579,7 @@ describe("Faz 7-A: karşılaşma temizlenince yeni alana geçiş", () => {
 
   async function teleportGoblinAdjacentToPlayer(app) {
     await request(app).get("/api/scene");
-    const scene = scenes.get("default");
+    const scene = scenes.get(DEFAULT_SESSION_ID);
     const goblin = scene.tokens.find((t) => t.id === "goblin-1");
     const player = scene.tokens.find((t) => t.id === "player");
     goblin.x = player.x + 1;
@@ -1667,7 +1671,7 @@ describe("Faz 7-A: karşılaşma temizlenince yeni alana geçiş", () => {
       .send({ name: "Merlin", raceId: "elf", classId: "wizard" });
 
     await request(app).get("/api/scene");
-    const scene = scenes.get("default");
+    const scene = scenes.get(DEFAULT_SESSION_ID);
     const goblin = scene.tokens.find((t) => t.id === "goblin-1");
     goblin.x = 2; goblin.y = 1; // range 3 içinde
 
@@ -1689,7 +1693,7 @@ describe("Faz 7-A: karşılaşma temizlenince yeni alana geçiş", () => {
       .send({ name: "Test", raceId: "human", classId: "fighter" });
 
     await request(app).get("/api/scene");
-    const scene = scenes.get("default");
+    const scene = scenes.get(DEFAULT_SESSION_ID);
     scene.encounterIndex = 2; // İskelet Mezarlığı (2 düşman)
     scene.name = "İskelet Mezarlığı";
     scene.tokens = scene.tokens.filter((t) => t.type === "player");
@@ -1725,8 +1729,8 @@ describe("Faz 7-A: karşılaşma temizlenince yeni alana geçiş", () => {
       .send({ characterId: createRes.body.id, targetTokenId: "goblin-1" });
 
     // Bekleyen geçiş anında (henüz /move çağrılmadan) da kalıcılığa yazılmalı.
-    expect(scenes.get("default").encounterIndex).toBe(0);
-    expect(scenes.get("default").pendingEncounterIndex).toBe(1);
+    expect(scenes.get(DEFAULT_SESSION_ID).encounterIndex).toBe(0);
+    expect(scenes.get(DEFAULT_SESSION_ID).pendingEncounterIndex).toBe(1);
 
     await request(app)
       .post("/api/scene/move")
@@ -1736,8 +1740,8 @@ describe("Faz 7-A: karşılaşma temizlenince yeni alana geçiş", () => {
     // saveScene her mutasyon noktasında zaten çağrılıyor (route içinde) — burada
     // sadece route'un GERÇEKTEN güncel (geçiş sonrası) sahneyi kaydettiğini
     // scenes Map'inden okuyarak doğruluyoruz (persistence.test.js DB round-trip'i ayrıca test ediyor).
-    expect(scenes.get("default").encounterIndex).toBe(1);
-    expect(scenes.get("default").pendingEncounterIndex).toBeNull();
+    expect(scenes.get(DEFAULT_SESSION_ID).encounterIndex).toBe(1);
+    expect(scenes.get(DEFAULT_SESSION_ID).pendingEncounterIndex).toBeNull();
     expect(typeof saveScene).toBe("function");
   });
 });
@@ -1838,7 +1842,7 @@ describe("POST /api/character/reset — Faz 6-C: yeniden başlama akışı", () 
       .send({ name: "İlkKarakter", raceId: "human", classId: "fighter" });
     // sahneyi kirlet: goblin'e hasar ver, oyuncuyu hareket ettir
     await request(app).get("/api/scene");
-    const dirtyScene = scenes.get("default");
+    const dirtyScene = scenes.get(DEFAULT_SESSION_ID);
     const goblin = dirtyScene.tokens.find((t) => t.id === "goblin-1");
     goblin.hp = 1;
     dirtyScene.tokens.find((t) => t.id === "player").x = 5;

@@ -87,7 +87,7 @@ describe("Faz 6-A: oturum izolasyonu — karakter", () => {
     expect(getA.body.name).toBe("Aragorn");
   });
 
-  it("X-Session-Id header'ı gönderilmezse 'default' oturumuna düşer (geriye dönük uyumluluk)", async () => {
+  it("X-Session-Id header'ı gönderilmezse sabit bir fallback oturumuna düşer (geriye dönük uyumluluk, fikir #62'den sonra artık tahmin edilemez bir UUID)", async () => {
     const app = buildApp();
     // header YOK - eski davranış
     const createRes = await request(app)

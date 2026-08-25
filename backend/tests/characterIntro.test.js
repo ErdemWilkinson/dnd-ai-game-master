@@ -35,6 +35,9 @@ delete require.cache[characterRouterPath];
 const characterRouter = require("../routes/character.js");
 
 const { characters, chatHistories } = require("../data/store.js");
+// Yaratıcı cron fikir #62: sabit "default" yerine sessionId.js'in dışa
+// aktardığı gerçek fallback ID.
+const { DEFAULT_SESSION_ID } = require("../services/sessionId.js");
 
 function buildApp() {
   const app = express();
@@ -114,7 +117,7 @@ describe("POST /api/character/intro", () => {
     const character = await createTestCharacter(app);
     await request(app).post("/api/character/intro").send({ characterId: character.id });
 
-    const history = chatHistories.get("default");
+    const history = chatHistories.get(DEFAULT_SESSION_ID);
     expect(history).toHaveLength(1);
     expect(history[0]).toMatchObject({ role: "gm", source: "ai", text: "Açılış metni." });
   });
