@@ -1405,6 +1405,118 @@ describe("POST /api/scene/cast — Faz 6-C: büyü sistemi", () => {
     expect(res.body.character.xp).toBeGreaterThan(0);
     expect(res.body.scene.tokens.find((t) => t.id === "goblin-1")).toBeUndefined();
   });
+
+  // Fikir #43 (kullanıcı kararı: AoE) - Ateş Topu artık hedefe bitişik
+  // (Manhattan mesafesi ≤1) diğer düşmanlara da hasar veriyor.
+  it("Ateş Topu (AoE): isabetli atış hedefe bitişik diğer düşmanlara da hasar verir, her öldürdüğü düşman için ayrı XP verir", async () => {
+    vi.spyOn(Math, "random").mockReturnValue(0.999999); // kritik, garanti öldürme
+    const app = buildApp();
+    const createRes = await createWizard(app);
+
+    await request(app).get("/api/scene");
+    const scene = scenes.get("default");
+    const goblin = scene.tokens.find((t) => t.id === "goblin-1");
+    goblin.x = 2;
+    goblin.y = 1; // player (1,1)'e bitişik, cast range (3) içinde
+
+    // Hedefe bitişik ikinci bir düşman (blast radius 1 içinde).
+    scene.tokens.push({
+      id: "goblin-2",
+      type: "enemy",
+      name: "İkinci Goblin",
+      x: 3,
+      y: 1,
+      hp: 10,
+      maxHp: 10,
+      speed: 4,
+      movementLeft: 4,
+      actionAvailable: true,
+      bonusActionAvailable: true,
+    });
+    // Blast yarıçapının DIŞINDA üçüncü bir düşman - etkilenmemeli.
+    scene.tokens.push({
+      id: "goblin-3",
+      type: "enemy",
+      name: "Uzak Goblin",
+      x: 6,
+      y: 1,
+      hp: 10,
+      maxHp: 10,
+      speed: 4,
+      movementLeft: 4,
+      actionAvailable: true,
+      bonusActionAvailable: true,
+    });
+
+    const res = await request(app)
+      .post("/api/scene/cast")
+      .send({ characterId: createRes.body.id, spellId: "fireball", targetTokenId: "goblin-1" });
+
+    expect(res.status).toBe(200);
+    expect(res.body.blastHits).toHaveLength(2); // goblin-1 + goblin-2, goblin-3 dahil değil
+    expect(res.body.blastHits.every((h) => h.defeated)).toBe(true);
+    expect(res.body.scene.tokens.find((t) => t.id === "goblin-1")).toBeUndefined();
+    expect(res.body.scene.tokens.find((t) => t.id === "goblin-2")).toBeUndefined();
+    const farGoblin = res.body.scene.tokens.find((t) => t.id === "goblin-3");
+    expect(farGoblin).toBeDefined();
+    expect(farGoblin.hp).toBe(10); // blast yarıçapı dışında, hasar almadı
+    expect(res.body.character.xp).toBe(40); // 2 öldürme x 20 XP, henüz seviye atlamadı (eşik 50)
+    expect(res.body.narration.text).toMatch(/2 düşmana çarptı.*2 tanesi yenildi/);
+  });
+
+  it("Ateş Topu (AoE): oyuncu blast yarıçapında olsa bile etkilenmez", async () => {
+    vi.spyOn(Math, "random").mockReturnValue(0.999999); // kritik, garanti öldürme
+    const app = buildApp();
+    const createRes = await createWizard(app);
+    const hpBefore = characters.get(createRes.body.id).hp.current;
+
+    await request(app).get("/api/scene");
+    const scene = scenes.get("default");
+    const goblin = scene.tokens.find((t) => t.id === "goblin-1");
+    goblin.x = 2;
+    goblin.y = 1; // player (1,1)'e bitişik - blast yarıçapı oyuncuyu da kapsıyor ama PvE, dost ateşi yok
+
+    const res = await request(app)
+      .post("/api/scene/cast")
+      .send({ characterId: createRes.body.id, spellId: "fireball", targetTokenId: "goblin-1" });
+
+    expect(res.status).toBe(200);
+    expect(res.body.character.hp.current).toBe(hpBefore); // oyuncu tokenı bu blast'ta hiç değerlendirilmedi
+  });
+
+  it("Ateş Topu (AoE): ıskalarsa hiçbir düşman (bitişik olan dahil) etkilenmez", async () => {
+    vi.spyOn(Math, "random").mockReturnValue(0); // nat1, garanti ıska
+    const app = buildApp();
+    const createRes = await createWizard(app);
+
+    await request(app).get("/api/scene");
+    const scene = scenes.get("default");
+    const goblin = scene.tokens.find((t) => t.id === "goblin-1");
+    goblin.x = 2;
+    goblin.y = 1;
+    scene.tokens.push({
+      id: "goblin-2",
+      type: "enemy",
+      name: "İkinci Goblin",
+      x: 3,
+      y: 1,
+      hp: 10,
+      maxHp: 10,
+      speed: 4,
+      movementLeft: 4,
+      actionAvailable: true,
+      bonusActionAvailable: true,
+    });
+
+    const res = await request(app)
+      .post("/api/scene/cast")
+      .send({ characterId: createRes.body.id, spellId: "fireball", targetTokenId: "goblin-1" });
+
+    expect(res.status).toBe(200);
+    expect(res.body.blastHits).toHaveLength(0);
+    expect(res.body.scene.tokens.find((t) => t.id === "goblin-1").hp).toBe(10);
+    expect(res.body.scene.tokens.find((t) => t.id === "goblin-2").hp).toBe(10);
+  });
 });
 
 describe("Faz 7-A: karşılaşma temizlenince yeni alana geçiş", () => {

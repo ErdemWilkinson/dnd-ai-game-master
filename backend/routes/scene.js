@@ -33,6 +33,12 @@ const THROW_RANGE = 3;
 // karşılaşmalar aynı loot'u her turda yeniden sunmaya devam ediyor - üst
 // sınır olmadan envanter teorik olarak sınırsız büyüyebilirdi.
 const MAX_INVENTORY = 30;
+// Yaratıcı cron fikir #43 (kullanıcı kararı: AoE): Ateş Topu artık hedefe
+// bitişik (Manhattan mesafesi ≤1) TÜM düşmanlara da hasar veriyor - sadece
+// tek hedefe menzilli bir kılıç darbesi olmaktan çıkıp gerçek bir "alan"
+// büyüsü hissi veriyor. Oyuncu bu yarıçapa dahil edilmiyor (PvE, dost ateşi
+// yok) çünkü zaten oyuncu bir düşman token'ı değil.
+const FIREBALL_AOE_RADIUS = 1;
 
 function getActiveCharacter(sessionId) {
   const characterId = activeCharacterIdBySession.get(sessionId);
@@ -472,20 +478,37 @@ router.post("/cast", async (req, res) => {
   else if (total >= DIFFICULTY_CLASS) outcome = "success";
   else outcome = "failure";
 
+  // Fikir #43 (kullanıcı kararı: AoE): isabet ederse hasar hem asıl hedefe
+  // hem de ona bitişik (Manhattan mesafesi ≤ FIREBALL_AOE_RADIUS) diğer
+  // düşmanlara uygulanıyor - tek bir zar/isabet kontrolü patlamanın tamamını
+  // belirliyor (ıskalarsa hiçbir düşman etkilenmez), ama hasar zarı her
+  // düşman için AYRI atılıyor (aynı patlamada bile şansa göre değişsin diye).
   let damage = 0;
   let defeated = false;
+  const blastHits = [];
   if (outcome === "success" || outcome === "critical-success") {
-    damage = rollDie(spell.damageDie) + (outcome === "critical-success" ? rollDie(spell.damageDie) : 0);
-    target.hp = Math.max(0, (target.hp ?? 0) - damage);
-    if (target.hp <= 0) {
-      defeated = true;
-      scene.tokens = scene.tokens.filter((t) => t.id !== target.id);
+    const blastTargets = scene.tokens.filter(
+      (t) =>
+        t.type === "enemy" &&
+        (t.id === target.id || Math.abs(t.x - target.x) + Math.abs(t.y - target.y) <= FIREBALL_AOE_RADIUS),
+    );
+    for (const enemy of blastTargets) {
+      const enemyDamage = rollDie(spell.damageDie) + (outcome === "critical-success" ? rollDie(spell.damageDie) : 0);
+      enemy.hp = Math.max(0, (enemy.hp ?? 0) - enemyDamage);
+      const enemyDefeated = enemy.hp <= 0;
+      blastHits.push({ id: enemy.id, name: enemy.name, damage: enemyDamage, defeated: enemyDefeated });
+      if (enemy.id === target.id) {
+        damage = enemyDamage;
+        defeated = enemyDefeated;
+      }
     }
+    const defeatedIds = new Set(blastHits.filter((h) => h.defeated).map((h) => h.id));
+    scene.tokens = scene.tokens.filter((t) => !defeatedIds.has(t.id));
   }
 
   let levelsGained = 0;
-  if (defeated) {
-    levelsGained = awardXp(character, primaryAttribute);
+  for (const hit of blastHits) {
+    if (hit.defeated) levelsGained += awardXp(character, primaryAttribute);
   }
 
   const castResult = { attribute: primaryAttribute, roll, modifier, total, dc: DIFFICULTY_CLASS, outcome };
@@ -496,11 +519,17 @@ router.post("/cast", async (req, res) => {
     playerMessage: `${character.name}, ${target.name}'e ${spell.name} büyüsü fırlatıyor!`,
     actionResult: castResult,
   });
-  let narrationText = defeated ? `${text} ${target.name} yenildi!` : text;
+  const defeatedHits = blastHits.filter((h) => h.defeated);
+  let narrationText = text;
+  if (blastHits.length > 1) {
+    narrationText += ` Patlama ${blastHits.length} düşmana çarptı, ${defeatedHits.length} tanesi yenildi!`;
+  } else if (defeated) {
+    narrationText += ` ${target.name} yenildi!`;
+  }
   if (levelsGained > 0) {
     narrationText += ` ${character.name} seviye ${character.level}'e ulaştı!`;
   }
-  if (defeated) {
+  if (defeatedHits.length > 0) {
     const encounterSuffix = checkEncounterCleared(scene);
     if (encounterSuffix) narrationText += encounterSuffix;
   }
@@ -516,6 +545,7 @@ router.post("/cast", async (req, res) => {
     castResult,
     damage,
     defeated,
+    blastHits,
     levelsGained,
     narration: { text: narrationText, source },
   });
