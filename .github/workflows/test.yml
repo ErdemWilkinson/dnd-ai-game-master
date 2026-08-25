@@ -17,6 +17,26 @@ jobs:
     defaults:
       run:
         working-directory: backend
+    # Yaratıcı cron fikir #72: `data/db.js`, VITEST=true altında DATABASE_URL
+    # olsa bile HER ZAMAN SQLite'a düşüyor (bkz. db.js) - yani `npm test`
+    # (vitest) `dbPostgres.js`'i hiç import etmiyordu, prod'un kullandığı en
+    # kritik kod yolu hiç CI'da koşmuyordu. Bir Postgres service container'ı
+    # ekleyip `scripts/pgSmokeTest.js`'i düz `node` ile (VITEST set OLMADAN)
+    # çalıştırarak gerçek Postgres CRUD'ını da doğruluyoruz.
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: dnd_game_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -26,6 +46,9 @@ jobs:
           cache-dependency-path: backend/package-lock.json
       - run: npm ci
       - run: npm test
+      - run: node scripts/pgSmokeTest.js
+        env:
+          DATABASE_URL: postgres://postgres:postgres@localhost:5432/dnd_game_test
 
   frontend:
     runs-on: ubuntu-latest
