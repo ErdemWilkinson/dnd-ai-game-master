@@ -49,6 +49,10 @@ jobs:
       - run: node scripts/pgSmokeTest.js
         env:
           DATABASE_URL: postgres://postgres:postgres@localhost:5432/dnd_game_test
+          # Yerel service container'daki Postgres SSL desteklemiyor (prod/
+          # Render'daki managed Postgres'in aksine) - DATABASE_SSL=false
+          # zaten bu senaryo için var olan bir env değişkeni (bkz. dbPostgres.js).
+          DATABASE_SSL: "false"
 
   frontend:
     runs-on: ubuntu-latest
