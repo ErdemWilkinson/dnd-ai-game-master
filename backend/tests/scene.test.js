@@ -1864,7 +1864,7 @@ describe("POST /api/character/reset — Faz 6-C: yeniden başlama akışı", () 
   // Faz 9 (yaratıcı cron fikir #1, orphan temizliği): reset artık orphan
   // karakter satırını da gerçekten siliyor - eskiden sadece session bağı
   // kesiliyordu, karakter kalıcı olarak "sahipsiz" DB'de kalıyordu.
-  it("reset, orphan kalan karakteri de gerçekten siler - eski karakter artık ID ile erişilemez", async () => {
+  it("reset, orphan kalan karakteri de gerçekten siler - eski karakter store'dan tamamen kalkar", async () => {
     const app = buildApp();
     const createRes = await request(app)
       .post("/api/character/create")
@@ -1872,8 +1872,9 @@ describe("POST /api/character/reset — Faz 6-C: yeniden başlama akışı", () 
 
     await request(app).post("/api/character/reset").send({});
 
-    const byIdRes = await request(app).get(`/api/character/${createRes.body.id}`);
-    expect(byIdRes.status).toBe(404);
+    // Fikir #63'te GET /api/character/:id (IDOR açığı) kaldırıldı - artık
+    // doğrudan store'dan kontrol ediyoruz (fikir #29'daki aynı desen).
+    expect(characters.get(createRes.body.id)).toBeUndefined();
   });
 
   it("reset sonrası sohbet geçmişi de temizlenir", async () => {

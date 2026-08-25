@@ -288,30 +288,23 @@ describe("POST /api/character artık mevcut değil", () => {
   });
 });
 
-describe("GET /api/character/:id", () => {
+describe("GET /api/character/:id — fikir #63'te KALDIRILDI (IDOR açığı)", () => {
   beforeEach(() => {
     characters.clear();
   });
 
-  it("var olmayan id için 404 döner", async () => {
-    const app = buildApp();
-    const res = await request(app).get("/api/character/does-not-exist");
-    expect(res.status).toBe(404);
-  });
-
-  it("oluşturulan karakteri id ile getirir", async () => {
+  it("route artık yok - herhangi bir id ile denense bile 404 döner (sahiplik kontrolü olmadan karakter okumaya izin vermiyor)", async () => {
     const app = buildApp();
     const createRes = await request(app)
       .post("/api/character/create")
       .send({ name: "Legolas", raceId: "elf", classId: "rogue" });
     const id = createRes.body.id;
 
-    const getRes = await request(app).get(`/api/character/${id}`);
-    expect(getRes.status).toBe(200);
-    expect(getRes.body.name).toBe("Legolas");
+    const res = await request(app).get(`/api/character/${id}`);
+    expect(res.status).toBe(404);
   });
 
-  it("'options' path'i :id route'una düşmemeli (route sırası çakışması)", async () => {
+  it("'options' route'u hiç etkilenmedi (route kaldırılınca çakışma riski de ortadan kalktı)", async () => {
     const app = buildApp();
     const res = await request(app).get("/api/character/options");
     expect(res.status).toBe(200);

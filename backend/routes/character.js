@@ -195,12 +195,15 @@ router.post("/reset", (req, res) => {
   res.json({ ok: true });
 });
 
-router.get("/:id", (req, res) => {
-  const character = characters.get(req.params.id);
-  if (!character) {
-    return res.status(404).json({ error: "Karakter bulunamadı." });
-  }
-  res.json(character);
-});
+// Yaratıcı cron fikir #63 (KRİTİK, IDOR açığı): eskiden burada bir
+// GET "/:id" route'u vardı, hiçbir sahiplik kontrolü yapmadan `characters`
+// Map'inden doğrudan `req.params.id` ile karakter döndürüyordu - herhangi bir
+// karakter ID'sini bilen HERKES (başka bir oyuncunun stat/envanter/HP/mana
+// verisi dahil) tam karakter datasını okuyabiliyordu (PM prod'da farklı bir
+// session'la başka birinin test karakterini okuyarak doğrudan doğrulamıştı).
+// Frontend'de bu route'u çağıran hiçbir kod yoktu (`GET /` zaten aktif
+// karakteri sessionId üzerinden döndürüyor, yukarıdaki route) - fikir #29'daki
+// aynı desen: kullanılmayan attack surface'ı doğrulama eklemek yerine
+// tamamen kaldırmak tercih edildi.
 
 module.exports = router;
