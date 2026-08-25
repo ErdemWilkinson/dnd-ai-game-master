@@ -17,6 +17,11 @@ const ATTR_LABELS: Record<keyof Attributes, string> = {
 
 const ROLL_ANIMATION_MS = 700;
 
+// İnovasyon fikri #42: backend'deki character.js MAX_NAME_LENGTH ile aynı -
+// kullanıcı limiti ancak 400 aldıktan sonra öğrenmesin diye burada da
+// uygulanıyor.
+const MAX_NAME_LENGTH = 50;
+
 export function CharacterCreation({ onCreated }: Props) {
   const [races, setRaces] = useState<RaceOption[]>([]);
   const [classes, setClasses] = useState<ClassOption[]>([]);
@@ -122,7 +127,12 @@ export function CharacterCreation({ onCreated }: Props) {
 
       <label>
         İsim
-        <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Karakter adı" />
+        <input
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          placeholder="Karakter adı"
+          maxLength={MAX_NAME_LENGTH}
+        />
       </label>
 
       <label>

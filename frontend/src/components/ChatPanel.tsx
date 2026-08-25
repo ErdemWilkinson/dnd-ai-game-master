@@ -22,6 +22,12 @@ interface Props {
   refreshKey?: number;
 }
 
+// İnovasyon fikri #42: backend'deki chat.js MAX_MESSAGE_LENGTH ile aynı -
+// kullanıcı limiti ancak 400 aldıktan sonra öğrenmesin diye burada da
+// uygulanıyor (proje genelinde kod paylaşımı yok, dnd-names.ts/leveling.js
+// sabitleriyle aynı desen).
+const MAX_MESSAGE_LENGTH = 500;
+
 export function ChatPanel({ refreshKey = 0 }: Props) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
@@ -93,7 +99,13 @@ export function ChatPanel({ refreshKey = 0 }: Props) {
           onChange={(e) => setInput(e.target.value)}
           placeholder="Ne yapmak istersin?"
           disabled={sending}
+          maxLength={MAX_MESSAGE_LENGTH}
         />
+        {input.length > MAX_MESSAGE_LENGTH * 0.8 && (
+          <span className="chat-char-count">
+            {input.length}/{MAX_MESSAGE_LENGTH}
+          </span>
+        )}
         <button type="submit" disabled={sending}>
           Gönder
         </button>

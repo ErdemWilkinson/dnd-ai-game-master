@@ -1088,3 +1088,11 @@
   border-radius: 4px;
   color: var(--parchment);
 }
+
+/* İnovasyon fikri #42: mesaj limitine yaklaşınca (>%80) görünen sayaç. */
+.chat-char-count {
+  align-self: center;
+  font-size: 0.75rem;
+  color: var(--parchment-dim);
+  white-space: nowrap;
+}
