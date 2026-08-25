@@ -24,6 +24,7 @@ const ITEM_SLOTS = {
   Asa: "hand",
   Topuz: "hand",
   Kalkan: "back", // SS13 slot listesinde ayrı bir "kalkan" slotu yok, en yakın karşılık "back"
+  "Eski Kalkan": "back", // İskelet Mezarlığı loot'u - Kalkan ile aynı slot (fikir #41)
   "Deri Zırh": "suit",
   "Büyü Kitabı": null,
   "Hırsız Aletleri": null,
