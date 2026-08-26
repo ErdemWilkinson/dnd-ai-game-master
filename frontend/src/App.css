@@ -61,7 +61,8 @@
    butonla açılıp kapanan bir overlay panel. Savaşta (grid görünürken) da
    erişilebilir kalması gerekiyor (envanter kullanımı için) - App.tsx bu
    butonu her zaman render ediyor, layout moduna bağlı değil. */
-.character-toggle-button {
+.character-toggle-button,
+.grid-toggle-button {
   display: flex;
   align-items: center;
   gap: 0.4rem;
@@ -76,9 +77,40 @@
 }
 
 .character-toggle-button:hover,
-.character-toggle-button[aria-pressed='true'] {
+.character-toggle-button[aria-pressed='true'],
+.grid-toggle-button:hover,
+.grid-toggle-button[aria-pressed='true'] {
   box-shadow: 0 0 10px rgba(242, 193, 78, 0.35);
   border-color: var(--gold);
+}
+
+/* Faz 12-B (serbest-form mimari sıfırlaması): chat artık varsayılan/tek
+   görünüm, taktik grid manuel bir toggle'la (⚔️ Harita) açılıyor - HP/Mana/
+   Seviye gibi temel durumu görmek için artık karakter panelini açmaya gerek
+   kalmasın diye her zaman görünen küçük bir şerit. */
+.header-hud {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-size: 0.85rem;
+  color: var(--parchment);
+  flex-wrap: wrap;
+}
+
+.header-hud-item {
+  white-space: nowrap;
+}
+
+.header-hud-hp {
+  color: #e08a8a;
+}
+
+.header-hud-mana {
+  color: #8ab4e0;
+}
+
+.header-hud-level {
+  color: var(--gold);
 }
 
 .character-panel-overlay {
@@ -346,6 +378,17 @@
    kartı ayrı bir overlay panel. Dar ekranlarda savaş modunda dikey
    istifleniyor, metin modunda zaten tek panel (sohbet) var. */
 @media (max-width: 768px) {
+  .app-header {
+    flex-wrap: wrap;
+    row-gap: 0.5rem;
+  }
+
+  .header-hud {
+    order: 1;
+    flex-basis: 100%;
+    font-size: 0.8rem;
+  }
+
   .app-main {
     padding: 0.75rem;
     gap: 0.75rem;

@@ -7,6 +7,7 @@ import { TacticalGrid } from './components/TacticalGrid';
 import { IntroScreen } from './components/IntroScreen';
 import { GameOverScreen } from './components/GameOverScreen';
 import { HelpModal } from './components/HelpModal';
+import { HeaderHud } from './components/HeaderHud';
 import { getCurrentCharacter, getScene, moveToken, resetSession, NetworkError } from './api';
 import type { Character, Scene, SpellId } from './types';
 
@@ -75,6 +76,13 @@ function App() {
   // tek yolu ölmekti - karakter panelinde bir "Yeni Karaktere Başla" seçeneği
   // ekliyoruz, yanlışlıkla silmeyi önlemek için önce inline bir onay istiyor.
   const [confirmingRestart, setConfirmingRestart] = useState(false);
+  // Faz 12-B (serbest-form mimari sıfırlaması, kullanıcı kararı): chat artık
+  // varsayılan/tek arayüz - grid'in `hasEnemies` oldu mu diye ZORUNLU açılma
+  // mantığı kaldırıldı, yerine manuel bir toggle geldi. Büyü/eşya fırlatma
+  // hedef-seçimi hâlâ grid'e tıklamayı gerektirdiğinden (freeform sistem
+  // henüz cast/throw'u kapsamıyor, bkz. Faz 12-A) o akış hâlâ grid'i
+  // otomatik açıyor (aşağıdaki showGrid formülündeki OR'un ikinci kısmı).
+  const [manualGridOpen, setManualGridOpen] = useState(false);
   // İnovasyon fikri #82: handleRestart()'ta hiç try/catch yoktu - resetSession()
   // başarısız olursa (ağ hatası/Render soğuk başlangıcı) oyuncu Game Over
   // ekranında ya da yeniden başlatma onay kutusunda sessizce takılı kalıyordu.
@@ -270,16 +278,27 @@ function App() {
     );
   }
 
-  // Fırlatma/büyü hedef-seçimi grid'e tıklamayı gerektiriyor - düşman yokken
+  // Fırlatma/büyü hedef-seçimi grid'e tıklamayı gerektiriyor - kapalıyken
   // bile (örn. boş bir kareye eşya fırlatmak) grid'in geçici olarak görünmesi
   // gerekiyor, aksi halde hedef seçilemez.
-  const showGrid = hasEnemies || Boolean(throwingItemId || castingSpellId);
+  const showGrid = manualGridOpen || Boolean(throwingItemId || castingSpellId);
 
   return (
     <div className="app app-game">
       <header className="app-header">
         <h1>D&D AI Game Master</h1>
+        <HeaderHud character={character} />
         <div className="app-header-actions">
+          <button
+            type="button"
+            className="grid-toggle-button"
+            onClick={() => setManualGridOpen((v) => !v)}
+            title="Taktik Harita"
+            aria-label="Taktik haritayı aç/kapat"
+            aria-pressed={manualGridOpen}
+          >
+            <span aria-hidden="true">⚔️</span> <span>Harita</span>
+          </button>
           <button
             type="button"
             className="character-toggle-button"
