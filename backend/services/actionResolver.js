@@ -75,6 +75,31 @@ const PICKUP_PATTERN = buildCategoryPattern([
 ]);
 const CONSUME_PATTERN = buildCategoryPattern(["içiyor", "içerim", "içeceğim", "içtim", "kullan", "tüket", "drink"]);
 
+// Faz 12-C-hazırlık 2: kuşanma niyeti - "kuşan" (5 harf) bare kök olarak
+// güvenli sayılabilirdi ama disiplin gereği (fikir #88) yine de çekimli
+// formlar + kelime-sonu çapalı emir kipi kullanıldı. "tak"/"giy" (kısa
+// kökler) BARE olarak eklenmedi ("taktik" gibi kelimelerle çakışır) -
+// sadece çekimli halleri (zaten en az 3 harf ek içerdiğinden güvenli).
+const EQUIP_PATTERN = buildCategoryPattern([
+  "kuşanıyor",
+  "kuşanırım",
+  "kuşanacağım",
+  "kuşandım",
+  "kuşan(?![a-zçğıiöşü])",
+  "giyiyor",
+  "giyerim",
+  "giyeceğim",
+  "giydim",
+  "takıyor",
+  "takarım",
+  "takacağım",
+  "taktım",
+]);
+
+function isEquipIntent(text) {
+  return EQUIP_PATTERN.test((text || "").toLocaleLowerCase("tr"));
+}
+
 function isAttackIntent(text) {
   return STR_PATTERN.test((text || "").toLocaleLowerCase("tr"));
 }
@@ -151,5 +176,6 @@ module.exports = {
   isAttackIntent,
   isPickupIntent,
   isConsumeIntent,
+  isEquipIntent,
   detectSpellId,
 };

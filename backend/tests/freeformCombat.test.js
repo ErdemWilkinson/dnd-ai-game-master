@@ -74,6 +74,12 @@ describe("Faz 12-A: /chat serbest metinden GERÇEK mekanik sonuç (saldırı/eş
     // objesinin yanıtta gerçekten döndüğünü doğruluyoruz (frontend senkronu).
     expect(res.body.character).toBeTruthy();
     expect(res.body.character.id).toBe((await request(app).get("/api/character")).body.id);
+
+    // Faz 12-C-hazırlık 2 (PM onaylı): goblin yenilmedi (hâlâ 6 HP), bu yüzden
+    // KARŞILIK VERMELİ - oyuncu GERÇEKTEN hasar almalı (eskiden freeform'da
+    // hiçbir düşman karşılığı yoktu, oyuncu asla hasar almıyordu).
+    expect(res.body.character.hp.current).toBeLessThan(12); // fighter başlangıç HP: 12
+    expect(res.body.gmMessage.text).toMatch(/karşılık veriyor/);
   });
 
   it("düşman yenilince karakter gerçekten XP kazanır ve karşılaşma bir sonrakine geçer", async () => {
@@ -182,6 +188,63 @@ describe("Faz 12-A: /chat serbest metinden GERÇEK mekanik sonuç (saldırı/eş
     const updatedCharacter = characters.get(character.id);
     expect(updatedCharacter.mana.current).toBe(character.mana.max - 4); // fireball manaCost=4
     expect(res.body.gmMessage.text).toMatch(/hasar verdin/);
+
+    // Faz 12-C-hazırlık 2: goblin hâlâ hayatta (10 HP'den 8 hasar aldı), saldırı
+    // büyüsünden sonra da karşılık vermeli.
+    expect(res.body.character.hp.current).toBeLessThan(character.hp.max);
+    expect(res.body.gmMessage.text).toMatch(/karşılık veriyor/);
+  });
+
+  it("Faz 12-C-hazırlık 2: son düşman öldürülünce O ANKİ mesajda KARŞILIK VERMEZ (kimse kalmadı)", async () => {
+    vi.spyOn(Math, "random").mockReturnValue(0.99); // maksimum isabet + hasar, kritikler dahil
+    const app = buildApp();
+    await createFighter(app);
+
+    let lastRes;
+    let cleared = false;
+    for (let i = 0; i < 10 && !cleared; i++) {
+      lastRes = await request(app).post("/api/chat").send({ message: "Goblin'e saldırıyorum" });
+      if (lastRes.body.gmMessage.text.includes("yenildi")) cleared = true;
+    }
+
+    expect(cleared).toBe(true);
+    // Öldürücü darbeyi indiren mesajda geride karşılık verecek kimse kalmadığından
+    // oyuncu O MESAJDA hasar almamalı (önceki mesajlarda almış olabilir, HP'nin
+    // sıfırdan büyük olması yeterli - asıl kanıt "karşılık veriyor" metninin
+    // öldürücü darbe mesajında hiç geçmemesi).
+    expect(lastRes.body.gmMessage.text).not.toMatch(/karşılık veriyor|karşılık vermeye çalışıyor/);
+  });
+
+  it("Faz 12-C-hazırlık 2: düşman karşılığı ISKALAYABİLİR (düşük zar), oyuncu hasar almaz ama mesaj yine de gösterilir", async () => {
+    vi.spyOn(Math, "random").mockReturnValue(0); // D20 -> 1 (nat 1, kesin ıska) hem oyuncu hem düşman için
+    const app = buildApp();
+    const character = await createFighter(app);
+
+    const res = await request(app).post("/api/chat").send({ message: "Goblin'e saldırıyorum" });
+    expect(res.status).toBe(201);
+
+    expect(res.body.character.hp.current).toBe(character.hp.max); // hasar almadı
+    expect(res.body.gmMessage.text).toMatch(/karşılık vermeye çalışıyor ama ıskalıyor/);
+  });
+
+  it("Faz 12-C-hazırlık 2: karşılık vuruşu HP'yi sıfıra indirirse yanıttaki character bunu yansıtır (GameOverScreen'in tetiklenebilmesi için)", async () => {
+    const app = buildApp();
+    const character = await createFighter(app);
+    const stored = characters.get(character.id);
+    stored.hp.current = 1; // bir sonraki isabetli vuruşta ölecek şekilde ayarla
+
+    // r=0.5: oyuncunun kendi saldırısı isabetli ama öldürücü değil (goblin
+    // hayatta kalır) - ardından goblin'in karşılığı da isabet edip (d6 min
+    // hasar bile 1 HP'lik karakteri öldürmeye yeter) oyuncuyu öldürür.
+    vi.spyOn(Math, "random").mockReturnValue(0.5);
+    const res = await request(app).post("/api/chat").send({ message: "Goblin'e saldırıyorum" });
+    expect(res.status).toBe(201);
+
+    expect(res.body.gmMessage.text).toMatch(/yere yığılıyorsun/);
+    // App.tsx zaten character.hp.current<=0 olunca GameOverScreen'i gösteriyor -
+    // burada yanıtın bunu GERÇEKTEN yansıttığını (0'ın altına değil, 0'da
+    // clamp'lendiğini) doğruluyoruz.
+    expect(res.body.character.hp.current).toBe(0);
   });
 
   it("Faz 12-C-hazırlık: Ateş Topu, karşılaşmadaki TÜM canlı düşmanlara isabet eder (grid'in bitişik-hücre AoE'sinin freeform karşılığı)", async () => {
@@ -263,6 +326,50 @@ describe("Faz 12-A: /chat serbest metinden GERÇEK mekanik sonuç (saldırı/eş
     // rolsüz bu eşya-kullan aksiyonu ALAKASIZ bir flavor-zarı göstermiyor.
     expect(res.body.character.inventory.find((i) => i.id === potion.id)).toBeUndefined();
     expect(res.body.gmMessage.roll).toBeNull();
+  });
+
+  it("Faz 12-C-hazırlık 2: kuşanma niyeti algılanınca eşya GERÇEKTEN kuşanılıyor (paper-doll mantığı ile)", async () => {
+    const app = buildApp();
+    const character = await createFighter(app);
+    const sword = character.inventory.find((i) => i.name === "Kısa Kılıç");
+    expect(sword).toBeTruthy();
+    expect(sword.equipped).toBe(false);
+
+    const res = await request(app).post("/api/chat").send({ message: "Kısa Kılıcı kuşanıyorum" });
+    expect(res.status).toBe(201);
+
+    const updated = characters.get(character.id);
+    expect(updated.inventory.find((i) => i.id === sword.id).equipped).toBe(true);
+    expect(res.body.character.inventory.find((i) => i.id === sword.id).equipped).toBe(true);
+    expect(res.body.gmMessage.roll).toBeNull(); // rolsüz aksiyon, alakasız zar yok
+    expect(res.body.gmMessage.text).toMatch(/Kısa Kılıç kuşandın/);
+  });
+
+  it("Faz 12-C-hazırlık 2: aynı slotta başka bir eşya kuşanılıysa önce o çıkarılır (paper-doll)", async () => {
+    const app = buildApp();
+    const character = await createFighter(app);
+    const stored = characters.get(character.id);
+    const sword = stored.inventory.find((i) => i.name === "Kısa Kılıç");
+    sword.equipped = true; // önce kılıç kuşanılmış gibi simüle et
+    stored.inventory.push({ id: "test-dagger", name: "İkinci Silah", equipped: false, slot: "hand", icon: null });
+
+    const res = await request(app).post("/api/chat").send({ message: "İkinci Silahı kuşanıyorum" });
+    expect(res.status).toBe(201);
+
+    const updated = characters.get(character.id);
+    expect(updated.inventory.find((i) => i.id === "test-dagger").equipped).toBe(true);
+    expect(updated.inventory.find((i) => i.name === "Kısa Kılıç").equipped).toBe(false); // eski silah çıkarıldı
+  });
+
+  it("Faz 12-C-hazırlık 2: kuşanılabilir eşyası yoksa (ya da kuşanma niyeti yanlış algılanmışsa) sessizce hiçbir mekanik sonuç üretmez", async () => {
+    const app = buildApp();
+    const character = await createFighter(app);
+    const stored = characters.get(character.id);
+    stored.inventory = stored.inventory.filter((i) => !i.slot); // tüm kuşanılabilir eşyaları çıkar
+
+    const res = await request(app).post("/api/chat").send({ message: "Kılıcı kuşanıyorum" });
+    expect(res.status).toBe(201);
+    expect(res.body.gmMessage.text).not.toMatch(/kuşandın/);
   });
 
   it("eşya alma niyeti algılanınca sahnedeki loot GERÇEKTEN envantere ekleniyor", async () => {

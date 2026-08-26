@@ -34,6 +34,19 @@ function getActiveCharacter(sessionId) {
 // Faz 12-A: serbest metinden algılanan GERÇEK mekanik sonucu (saldırı/eşya)
 // okunabilir bir Türkçe ek metne çevirir - grid'in `routes/scene.js`'teki
 // aynı narrationText'e ek yapma deseniyle (bkz. /attack, /move) tutarlı.
+// Faz 12-C-hazırlık 2 (PM onaylı): oyuncunun saldırı/saldırı büyüsünden SONRA,
+// hâlâ canlı düşman varsa tek bir düşmanın karşılık verdiğini anlatıya ekler -
+// karakter ölürse (hp<=0) frontend zaten GameOverScreen'i gösteriyor (yanıttaki
+// güncel `character` üzerinden), burada ekstra bir şey yapmaya gerek yok.
+function describeEnemyRetaliation(retaliation, character) {
+  if (!retaliation) return "";
+  if (!retaliation.hit) return ` ${retaliation.enemyName} karşılık vermeye çalışıyor ama ıskalıyor.`;
+  const hpText = ` (HP: ${character.hp.current}/${character.hp.max})`;
+  return character.hp.current <= 0
+    ? ` ${retaliation.enemyName} karşılık veriyor, ${retaliation.damage} hasar alıyorsun ve yere yığılıyorsun!${hpText}`
+    : ` ${retaliation.enemyName} karşılık veriyor, ${retaliation.damage} hasar alıyorsun.${hpText}`;
+}
+
 function describeFreeformResult(result, character) {
   if (!result) return "";
 
@@ -55,6 +68,7 @@ function describeFreeformResult(result, character) {
         ? ` Tüm bölgeyi temizledin! Kahramanlığın efsaneleşiyor... ama tehlike hiç bitmiyor, yeni bir tehdit beliriyor: ${result.nextEncounterName}.`
         : ` Alanı temizledin! Yeni alan: ${result.nextEncounterName}.`;
     }
+    suffix += describeEnemyRetaliation(result.enemyRetaliation, character);
     return suffix;
   }
 
@@ -81,6 +95,7 @@ function describeFreeformResult(result, character) {
         ? ` Tüm bölgeyi temizledin! Kahramanlığın efsaneleşiyor... ama tehlike hiç bitmiyor, yeni bir tehdit beliriyor: ${result.nextEncounterName}.`
         : ` Alanı temizledin! Yeni alan: ${result.nextEncounterName}.`;
     }
+    suffix += describeEnemyRetaliation(result.enemyRetaliation, character);
     return suffix;
   }
 
@@ -93,6 +108,10 @@ function describeFreeformResult(result, character) {
   if (result.kind === "pickup") {
     if (result.inventoryFull) return " Envanterin dolu, eşyayı alamadın.";
     return ` ${result.item.name} envanterine eklendi!`;
+  }
+
+  if (result.kind === "equip") {
+    return result.equipped ? ` ${result.item.name} kuşandın.` : ` ${result.item.name} çıkardın.`;
   }
 
   return "";

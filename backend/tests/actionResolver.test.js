@@ -2,7 +2,7 @@ import { describe, it, expect, vi, afterEach } from "vitest";
 import { createRequire } from "module";
 
 const require = createRequire(import.meta.url);
-const { resolveAction, detectActionAttribute, abilityModifier, DIFFICULTY_CLASS, isAttackIntent, isPickupIntent, isConsumeIntent, detectSpellId } =
+const { resolveAction, detectActionAttribute, abilityModifier, DIFFICULTY_CLASS, isAttackIntent, isPickupIntent, isConsumeIntent, isEquipIntent, detectSpellId } =
   require("../services/actionResolver.js");
 
 afterEach(() => {
@@ -122,6 +122,20 @@ describe("Faz 12-C-hazırlık: detectSpellId", () => {
   it("İnovasyon fikri #90: genişletilmiş eşleşme kısa-kök ailesindeki (fikir #88) hatayı tekrarlamıyor - alakasız cümleler hâlâ null döner", () => {
     expect(detectSpellId("Kırmızı bir alev görüyorum uzakta")).toBeNull();
     expect(detectSpellId("Ateşin yanına oturuyorum")).toBeNull();
+  });
+});
+
+describe("Faz 12-C-hazırlık 2: isEquipIntent", () => {
+  it("gerçek kuşanma niyetleri (çekimli VE emir kipi) doğru tespit ediliyor", () => {
+    expect(isEquipIntent("Kısa Kılıcı kuşanıyorum")).toBe(true);
+    expect(isEquipIntent("Zırhı giyiyorum")).toBe(true);
+    expect(isEquipIntent("Kalkanı takıyorum")).toBe(true);
+    expect(isEquipIntent("Kılıcı kuşan")).toBe(true); // emir kipi, ek almaz
+  });
+
+  it("fikir #88'in aynı sınıfından bir hata tekrarlanmıyor - 'taktik'/'takas' gibi alakasız kelimeler tetiklenmiyor", () => {
+    expect(isEquipIntent("Taktik bir hamle yapıyorum")).toBe(false);
+    expect(isEquipIntent("Takas yapıyorum")).toBe(false);
   });
 });
 

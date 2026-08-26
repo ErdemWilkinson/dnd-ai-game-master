@@ -11,11 +11,13 @@ const {
   isAttackIntent,
   isPickupIntent,
   isConsumeIntent,
+  isEquipIntent,
   detectSpellId,
 } = require("./actionResolver");
 const { CLASSES } = require("../data/dnd");
 const { SPELLS } = require("../data/spells");
 const { getWeaponDamageDie } = require("../data/weaponDamage");
+const { getTotalArmorReduction } = require("../data/armorReduction");
 const { getSlotForItem, getIconForSlot } = require("../data/itemSlots");
 const { awardXp } = require("./leveling");
 const { getFreeformEncounter, advanceFreeformEncounter } = require("./freeformEncounter");
@@ -26,6 +28,34 @@ const { nanoid } = require("nanoid");
 const MAX_INVENTORY = 30;
 // scene.js'in /item/use'daki aynı iyileştirme miktarı ("iksir" adı geçen her eşya).
 const POTION_HEAL_AMOUNT = 5;
+// services/enemyAI.js'teki AYNI sabitler (runEnemyTurn) - grid'in düşman
+// saldırı dengesiyle tutarlı kalması için.
+const ENEMY_ATTACK_MODIFIER = 2;
+const ENEMY_DAMAGE_DIE = 6;
+
+// Faz 12-C-hazırlık 2 (PM onaylı): freeform'da hiç düşman karşılığı yoktu -
+// oyuncu sonsuza kadar hasarsız saldırabiliyordu, ölüm riski/gerginlik hiç
+// yoktu. `enemyAI.js`'teki AYNI D20+hasar+zırh-indirimi mantığı (x/y/hareket
+// kısmı hariç, freeform'da anlamsız) - sadece oyuncunun KENDİ saldırı/saldırı
+// büyüsü aksiyonundan SONRA, hâlâ canlı düşman varsa TEK bir düşman karşılık
+// veriyor (PM ile kararlaştırıldığı gibi - hepsi değil, basitleştirme).
+function resolveEnemyRetaliation(character, state, preferredEnemyId) {
+  if (state.enemies.length === 0 || character.hp.current <= 0) return null;
+  const attacker = state.enemies.find((e) => e.id === preferredEnemyId) ?? state.enemies[0];
+
+  const roll = rollD20();
+  const total = roll + ENEMY_ATTACK_MODIFIER;
+  if (roll === 1 || total < DIFFICULTY_CLASS) {
+    return { enemyName: attacker.name, hit: false };
+  }
+
+  const rawDamage = rollDie(ENEMY_DAMAGE_DIE) + (roll === 20 ? ENEMY_DAMAGE_DIE : 0);
+  const armorReduction = getTotalArmorReduction(character);
+  const damage = Math.max(0, rawDamage - armorReduction);
+  character.hp.current = Math.max(0, character.hp.current - damage);
+
+  return { enemyName: attacker.name, hit: true, damage };
+}
 
 function findTargetEnemy(state, text) {
   const lower = (text || "").toLocaleLowerCase("tr");
@@ -80,6 +110,8 @@ function resolveAttack(character, sessionId, text) {
     completedFullLap = next.completedFullLap;
   }
 
+  const enemyRetaliation = resolveEnemyRetaliation(character, state, target.id);
+
   return {
     kind: "attack",
     target: { id: target.id, name: target.name },
@@ -90,6 +122,7 @@ function resolveAttack(character, sessionId, text) {
     encounterCleared,
     nextEncounterName,
     completedFullLap,
+    enemyRetaliation,
   };
 }
 
@@ -156,6 +189,8 @@ function resolveCast(character, sessionId, text) {
     completedFullLap = next.completedFullLap;
   }
 
+  const enemyRetaliation = resolveEnemyRetaliation(character, state);
+
   return {
     kind: "cast",
     spell: { id: spell.id, name: spell.name },
@@ -165,6 +200,7 @@ function resolveCast(character, sessionId, text) {
     encounterCleared,
     nextEncounterName,
     completedFullLap,
+    enemyRetaliation,
   };
 }
 
@@ -177,6 +213,33 @@ function resolveConsume(character) {
   character.hp.current = Math.min(character.hp.max, character.hp.current + POTION_HEAL_AMOUNT);
 
   return { kind: "consume", item: { id: potion.id, name: potion.name }, healed };
+}
+
+// Faz 12-C-hazırlık 2: grid'in `/item/equip`'iyle AYNI paper-doll mantığı
+// (aynı slotta başka bir şey kuşanılıysa önce onu çıkar). Türkçe'de bir eşyaya
+// çekim eki eklenince ünsüz yumuşaması olabileceğinden ("Kılıç" + "-ı" →
+// "Kılıcı") tam ad her zaman birebir metinde geçmeyebilir - önce isim
+// eşleşmesi denenir, yoksa (`resolveAttack`'in target-fallback'iyle aynı
+// desen) kuşanılabilir İLK eşya hedef alınır.
+function resolveEquip(character, text) {
+  const equippable = character.inventory.filter((i) => i.slot);
+  if (equippable.length === 0) return null;
+
+  const lower = (text || "").toLocaleLowerCase("tr");
+  const item = equippable.find((i) => lower.includes(i.name.toLocaleLowerCase("tr"))) ?? equippable[0];
+
+  if (item.equipped) {
+    item.equipped = false;
+  } else {
+    for (const other of character.inventory) {
+      if (other.id !== item.id && other.slot === item.slot && other.equipped) {
+        other.equipped = false;
+      }
+    }
+    item.equipped = true;
+  }
+
+  return { kind: "equip", item: { id: item.id, name: item.name }, equipped: item.equipped };
 }
 
 function resolvePickup(character, sessionId) {
@@ -210,6 +273,10 @@ function resolveFreeformAction(character, sessionId, text) {
   }
   if (isConsumeIntent(text)) {
     const result = resolveConsume(character);
+    if (result) return result;
+  }
+  if (isEquipIntent(text)) {
+    const result = resolveEquip(character, text);
     if (result) return result;
   }
   if (isPickupIntent(text)) {
