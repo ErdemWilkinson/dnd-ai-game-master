@@ -3,10 +3,10 @@
 ## Konsept
 Tek oyunculu, sohbet tabanlı, taktik ızgaralı bir D&D RPG simülatörü.
 - Oyuncu karakter oluşturur (ırk/sınıf seçimi, isim).
-- Game Master (GM) şimdilik **kural tabanlı / mock** metinlerle anlatım yapar (gerçek LLM entegrasyonu sonraki faz).
+- Game Master (GM) Google Gemini API ile gerçek AI anlatım üretir; key yoksa/hata/timeout/kota aşımı olursa sessizce kural tabanlı mock metinlere düşer (bkz. aşağıdaki "AI GM" notu).
 - Karakter kartı: HP, mana, attributes, envanter (kullan/kuşan/at/fırlat).
 - Taktik grid harita: token hareketi, engeller, loot, tur sistemi.
-- Sahne görseli (statik placeholder resimler).
+- Taktik grid, sadece düşman varken görünür olacak şekilde tam ekran metin/sohbet moduyla otomatik geçiş yapar (Faz 11).
 
 ## Kapsam kararları
 - Sadece **D&D evreni** (Star Wars / Naruto YOK — ileride eklenebilir ama şimdi değil).
@@ -20,8 +20,9 @@ Tek oyunculu, sohbet tabanlı, taktik ızgaralı bir D&D RPG simülatörü.
 - Konum: bu repo kökü (`frontend/`, `backend/`)
 
 ## Roller
-- **coder** session (claude-game-b7): implementasyon
-- **tester** session (claude-game-5c): test yazımı + QA
+Güncel session isimleri sıkça değişir (pencere yeniden başlatıldıkça) — güncel isimler için `AGENTS.md`'ye bakın, burada tekrar edilmiyor.
+- **coder**: implementasyon
+- **tester**: test yazımı + QA
 - **PM** (bu session): görev dağıtımı, karar koordinasyonu, kullanıcıyla iletişim
 
 ## Çalışma düzeni
