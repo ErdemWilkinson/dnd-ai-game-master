@@ -2,7 +2,7 @@ import { describe, it, expect, vi, afterEach } from "vitest";
 import { createRequire } from "module";
 
 const require = createRequire(import.meta.url);
-const { resolveAction, detectActionAttribute, abilityModifier, DIFFICULTY_CLASS } =
+const { resolveAction, detectActionAttribute, abilityModifier, DIFFICULTY_CLASS, isAttackIntent, isPickupIntent, isConsumeIntent } =
   require("../services/actionResolver.js");
 
 afterEach(() => {
@@ -48,6 +48,50 @@ describe("detectActionAttribute", () => {
   it("kelime ortasında geçen 'it' kökü artık STR'e yanlışlıkla düşmüyor (aşırı genel kök kaldırıldı)", () => {
     expect(detectActionAttribute("itiraz ediyorum")).not.toBe("str");
     expect(detectActionAttribute("onu itiyorum")).not.toBe("str");
+  });
+});
+
+describe("REGRESYON (Faz 12-A sonrası bağımsız tester QA'sının bulduğu bug, TASKS.md'de repro'lu): isAttackIntent/isPickupIntent/isConsumeIntent artık masum kelimelerle yanlışlıkla eşleşmiyor", () => {
+  // Faz 12-A'dan önce STR_PATTERN/kısa kökler sadece anlatım rengi (flavor)
+  // seçiyordu, düşük riskliydi. Faz 12-A bu tespiti GERÇEK mekaniğe (hasar/
+  // envanter mutasyonu) bağlayınca "kır" (3 harf), "al" (2 harf), "iç" (2 harf)
+  // gibi çok kısa/çapasız kökler artık tehlikeli hale geldi - tester canlıda
+  // "Altına bakıyorum" yazınca sessizce bir loot'un envantere eklendiğini
+  // doğruladı. Kökler daha spesifik/çekim-farkında formlarla değiştirildi.
+  it("isAttackIntent: 'kırmızı' gibi alakasız kelimeler artık gerçek bir saldırı zarı tetiklemiyor", () => {
+    expect(isAttackIntent("Kırmızı pelerinimi çıkarıyorum")).toBe(false);
+    expect(isAttackIntent("Kırlara doğru yürüyorum")).toBe(false);
+  });
+
+  it("isAttackIntent: gerçek saldırı/kırma niyetleri (çekimli VE emir kipi) hâlâ doğru tespit ediliyor", () => {
+    expect(isAttackIntent("Goblin'e saldırıyorum")).toBe(true);
+    expect(isAttackIntent("Kapıyı kırıyorum")).toBe(true);
+    expect(isAttackIntent("Kapıyı kır")).toBe(true); // emir kipi, ek almaz
+  });
+
+  it("isPickupIntent: 'altın'/'almanya'/'alışveriş' gibi alakasız kelimeler artık gerçek bir envanter mutasyonu tetiklemiyor", () => {
+    expect(isPickupIntent("Altına bakıyorum")).toBe(false);
+    expect(isPickupIntent("Alacakaranlıkta yürüyorum")).toBe(false);
+    expect(isPickupIntent("Almanya'dan geldim")).toBe(false);
+    expect(isPickupIntent("Alkışlıyorum")).toBe(false);
+    expect(isPickupIntent("Alışveriş yapıyorum")).toBe(false);
+  });
+
+  it("isPickupIntent: gerçek alma/toplama niyetleri hâlâ doğru tespit ediliyor", () => {
+    expect(isPickupIntent("Yerdeki eşyayı alıyorum")).toBe(true);
+    expect(isPickupIntent("Eşyayı topluyorum")).toBe(true);
+    expect(isPickupIntent("Kalkanı kaldırıyorum")).toBe(true);
+  });
+
+  it("isConsumeIntent: 'içeri'/'içinde'/'içimden' gibi son derece yaygın kelimeler artık gerçek bir eşya tüketimini tetiklemiyor", () => {
+    expect(isConsumeIntent("İçeri giriyorum")).toBe(false);
+    expect(isConsumeIntent("Odanın içinde bakınıyorum")).toBe(false);
+    expect(isConsumeIntent("İçimden bir ses diyor ki")).toBe(false);
+  });
+
+  it("isConsumeIntent: gerçek içme/kullanma niyetleri hâlâ doğru tespit ediliyor", () => {
+    expect(isConsumeIntent("İksiri içiyorum")).toBe(true);
+    expect(isConsumeIntent("İksiri kullanıyorum")).toBe(true);
   });
 });
 
