@@ -129,15 +129,25 @@ router.post("/", publicRateLimit, async (req, res) => {
   history.push(playerMessage);
 
   const character = getActiveCharacter(sessionId);
-  // Faz 12-A/12-C-hazırlık: saldırı/saldırı büyüsü niyeti algılanıp GERÇEK bir
-  // mekanik sonuç üretilirse (aktif düşman varsa), anlatım için o gerçek D20
-  // sonucunu kullan - aksi halde (eşya/roleplay/iyileştirme büyüsü/düşmansız
-  // saldırı denemesi) eskisi gibi sadece anlatım rengi için `resolveAction()`'ın
-  // metinden tahmin ettiği zar. İyileştirme büyüsünün (`kind:"cast"` ama
-  // `spell.id==="heal"`) hiç D20'si yok (grid'in `/cast` heal dalıyla aynı),
-  // bu yüzden `actionResult` alanı sadece saldırı büyüsünde dolu.
   const freeformResult = resolveFreeformAction(character, sessionId, playerMessage.text);
-  const actionResult = freeformResult?.actionResult ?? resolveAction(character, playerMessage.text);
+  // Tester QA'sının bulduğu ek not (Faz 12-C-hazırlık sonrası, TASKS.md'de):
+  // eskiden GERÇEK bir mekanik sonuç (heal cast/eşya kullan/eşya al)
+  // D20 içermediğinde `resolveAction()`'ın metinden tahmin ettiği ALAKASIZ bir
+  // flavor-zarına düşülüyordu - garanti-başarılı bir İyileştir cast'inde bile
+  // yanlışlıkla "Başarısız" rozeti görünebiliyordu. Artık üç durum ayrı ayrı
+  // ele alınıyor: (1) freeformResult'ın kendi D20'si varsa (saldırı/saldırı
+  // büyüsü) onu kullan; (2) GERÇEK bir mekanik sonuç var ama D20'süz (heal
+  // cast, eşya kullan/al) - hiç roll badge'i gösterme (`null`); (3) hiçbir
+  // mekanik sonuç yoksa (saf roleplay/düşmansız saldırı denemesi) eskisi gibi
+  // sadece anlatım rengi için `resolveAction()`'ın tahmini zarı.
+  let actionResult;
+  if (freeformResult?.actionResult) {
+    actionResult = freeformResult.actionResult;
+  } else if (freeformResult) {
+    actionResult = null;
+  } else {
+    actionResult = resolveAction(character, playerMessage.text);
+  }
   const { text, source } = await generateNarration({
     character,
     scene: getScene(sessionId),
@@ -163,7 +173,15 @@ router.post("/", publicRateLimit, async (req, res) => {
   trimChatHistory(history);
   saveChatHistory(sessionId, history);
 
-  res.status(201).json({ playerMessage, gmMessage });
+  // Tester QA'sının bulduğu KRİTİK bug (Faz 12-C-hazırlık sonrası, TASKS.md'de
+  // repro'lu): yanıt eskiden güncel `character`'ı hiç içermiyordu - Faz 12-B
+  // ile chat varsayılan/tek arayüz olduktan sonra saldırı/büyü/eşya kullanımı
+  // sunucuda HP/Mana/XP/Level/envanteri GERÇEKTEN değiştiriyordu ama frontend
+  // bunu görecek hiçbir yola sahip değildi (grid'e dokunmadıkça ya da sayfa
+  // yenilenmedikçe). `character` her zaman (freeform mutasyon olsun olmasın)
+  // dahil ediliyor - `null` da olabilir (aktif karakter yoksa), frontend zaten
+  // `Character | null` bekleyecek şekilde güncellendi.
+  res.status(201).json({ playerMessage, gmMessage, character });
 });
 
 module.exports = router;

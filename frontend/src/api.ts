@@ -94,7 +94,7 @@ export function getChatHistory() {
 }
 
 export function sendChatMessage(message: string) {
-  return request<{ playerMessage: ChatMessage; gmMessage: ChatMessage }>('/chat', {
+  return request<{ playerMessage: ChatMessage; gmMessage: ChatMessage; character: Character | null }>('/chat', {
     method: 'POST',
     body: JSON.stringify({ message }),
   });

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { getChatHistory, sendChatMessage } from '../api';
-import type { ActionRoll, ChatMessage } from '../types';
+import type { ActionRoll, ChatMessage, Character } from '../types';
 
 const ATTR_LABELS_TR: Record<ActionRoll['attribute'], string> = {
   str: 'Güç',
@@ -20,6 +20,7 @@ const OUTCOME_LABELS_TR: Record<ActionRoll['outcome'], string> = {
 
 interface Props {
   refreshKey?: number;
+  onCharacterChange?: (character: Character) => void;
 }
 
 // İnovasyon fikri #42: backend'deki chat.js MAX_MESSAGE_LENGTH ile aynı -
@@ -28,7 +29,7 @@ interface Props {
 // sabitleriyle aynı desen).
 const MAX_MESSAGE_LENGTH = 500;
 
-export function ChatPanel({ refreshKey = 0 }: Props) {
+export function ChatPanel({ refreshKey = 0, onCharacterChange }: Props) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
   const [sending, setSending] = useState(false);
@@ -53,8 +54,14 @@ export function ChatPanel({ refreshKey = 0 }: Props) {
     setSending(true);
     setError(null);
     try {
-      const { playerMessage, gmMessage } = await sendChatMessage(text);
+      const { playerMessage, gmMessage, character } = await sendChatMessage(text);
       setMessages((prev) => [...prev, playerMessage, gmMessage]);
+      // Tester QA'sının bulduğu kritik bug (Faz 12-C-hazırlık sonrası): chat
+      // üzerinden tetiklenen GERÇEK mekanik sonuçlar (saldırı/büyü/eşya)
+      // backend'de HP/Mana/XP/Level/envanteri değiştiriyordu ama bu değişiklik
+      // frontend'e hiç ulaşmıyordu - grid'e dokunmadıkça ya da sayfa
+      // yenilenmedikçe HeaderHud/karakter paneli eskimiş veri gösteriyordu.
+      if (character) onCharacterChange?.(character);
       // Yaratıcı cron fikir #37: input eskiden istek başlamadan ÖNCE
       // boşaltılıyordu - istek başarısız olursa (ör. #36'nın rate-limit'i)
       // hem mesaj hiçbir yere eklenmiyor hem kullanıcı yazdığını kaybediyordu,

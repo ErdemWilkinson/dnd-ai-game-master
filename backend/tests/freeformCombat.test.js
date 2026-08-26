@@ -68,6 +68,12 @@ describe("Faz 12-A: /chat serbest metinden GERÇEK mekanik sonuç (saldırı/eş
     const goblinAfter = after.enemies.find((e) => e.id === "goblin-1");
     expect(goblinAfter.hp).toBeLessThan(hpBefore);
     expect(res.body.gmMessage.text).toMatch(/hasar verdin/);
+
+    // Tester QA'sının bulduğu kritik bug: /chat yanıtı güncel character'ı
+    // hiç içermiyordu - saldırı Aksiyon puanı tüketmez ama yine de karakter
+    // objesinin yanıtta gerçekten döndüğünü doğruluyoruz (frontend senkronu).
+    expect(res.body.character).toBeTruthy();
+    expect(res.body.character.id).toBe((await request(app).get("/api/character")).body.id);
   });
 
   it("düşman yenilince karakter gerçekten XP kazanır ve karşılaşma bir sonrakine geçer", async () => {
@@ -147,6 +153,16 @@ describe("Faz 12-A: /chat serbest metinden GERÇEK mekanik sonuç (saldırı/eş
     expect(updated.hp.current).toBeGreaterThan(hpBefore);
     expect(updated.mana.current).toBe(character.mana.max - 4); // heal manaCost=4
     expect(res.body.gmMessage.text).toMatch(/İyileştir büyüsünü kendine uyguladın.*HP iyileştirdin/);
+
+    // Tester QA'sının bulduğu kritik bug: yanıt eskiden güncel character'ı
+    // hiç içermiyordu - frontend'in HP/Mana'yı sayfa yenilemeden görebilmesi
+    // için artık her zaman dahil ediliyor.
+    expect(res.body.character.hp.current).toBe(updated.hp.current);
+    expect(res.body.character.mana.current).toBe(updated.mana.current);
+
+    // Tester QA'sının bulduğu ek not: rolsüz (D20'siz) bir cast (heal) artık
+    // ALAKASIZ bir flavor-zarı ("Başarılı"/"Başarısız" rozeti) göstermiyor.
+    expect(res.body.gmMessage.roll).toBeNull();
   });
 
   it("Faz 12-C-hazırlık: Ateş Topu büyüsü algılanınca aktif düşmana GERÇEKTEN hasar uygular, mana düşer", async () => {
@@ -241,6 +257,12 @@ describe("Faz 12-A: /chat serbest metinden GERÇEK mekanik sonuç (saldırı/eş
     expect(updated.hp.current).toBeGreaterThan(hpBefore);
     expect(updated.inventory.find((i) => i.id === potion.id)).toBeUndefined();
     expect(res.body.gmMessage.text).toMatch(/kullanıldı.*HP iyileştirdin/);
+
+    // Tester QA'sının bulduğu iki bulgu: yanıt güncel character'ı içeriyor
+    // (envanterden eşyanın gerçekten kalktığı yanıtta da görünüyor) VE
+    // rolsüz bu eşya-kullan aksiyonu ALAKASIZ bir flavor-zarı göstermiyor.
+    expect(res.body.character.inventory.find((i) => i.id === potion.id)).toBeUndefined();
+    expect(res.body.gmMessage.roll).toBeNull();
   });
 
   it("eşya alma niyeti algılanınca sahnedeki loot GERÇEKTEN envantere ekleniyor", async () => {
@@ -267,6 +289,7 @@ describe("Faz 12-A: /chat serbest metinden GERÇEK mekanik sonuç (saldırı/eş
     const res = await request(app).post("/api/chat").send({ message: "Goblin'e saldırıyorum" });
     expect(res.status).toBe(201);
     expect(res.body.gmMessage.text).not.toMatch(/hasar verdin|yenildi/);
+    expect(res.body.character).toBeNull(); // aktif karakter yok, yanıt bunu doğru yansıtıyor
   });
 
   it("/character/reset serbest-form düşman/loot state'ini de sıfırlar (bir sonraki karakter baştan Terk Edilmiş Mahzen ile başlar)", async () => {

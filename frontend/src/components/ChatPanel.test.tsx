@@ -16,6 +16,7 @@ describe('ChatPanel', () => {
     vi.mocked(api.sendChatMessage).mockResolvedValue({
       playerMessage: { id: 'p1', role: 'player', text: 'etrafa bak', timestamp: 1 },
       gmMessage: { id: 'g1', role: 'gm', text: 'Karanlık bir koridor.', source: 'ai', timestamp: 2 },
+      character: null,
     });
 
     const user = userEvent.setup();
@@ -27,6 +28,56 @@ describe('ChatPanel', () => {
 
     await waitFor(() => expect(screen.getByText('Karanlık bir koridor.')).toBeInTheDocument());
     expect(screen.getByText('etrafa bak')).toBeInTheDocument();
+  });
+
+  it('Tester QA bulgusu: yanıttaki güncel character onCharacterChange ile üst bileşene bildirilir (chat üzerinden HP/Mana senkronu)', async () => {
+    const updatedCharacter = {
+      id: 'c1',
+      name: 'Kalıcı Kahraman',
+      race: 'human',
+      class: 'wizard',
+      appearance: null,
+      level: 1,
+      xp: 0,
+      hp: { current: 7, max: 7 },
+      mana: { current: 8, max: 12 },
+      attributes: { str: 10, dex: 10, con: 10, int: 12, wis: 10, cha: 10 },
+      inventory: [],
+    };
+    vi.mocked(api.sendChatMessage).mockResolvedValue({
+      playerMessage: { id: 'p1', role: 'player', text: 'Ateş Topu\'nu fırlatıyorum', timestamp: 1 },
+      gmMessage: { id: 'g1', role: 'gm', text: 'Goblin\'e 4 hasar verdin.', source: 'ai', timestamp: 2 },
+      character: updatedCharacter,
+    });
+    const onCharacterChange = vi.fn();
+
+    const user = userEvent.setup();
+    render(<ChatPanel onCharacterChange={onCharacterChange} />);
+    await waitFor(() => expect(api.getChatHistory).toHaveBeenCalled());
+
+    await user.type(screen.getByPlaceholderText('Ne yapmak istersin?'), 'Ateş Topu\'nu fırlatıyorum');
+    await user.click(screen.getByRole('button', { name: 'Gönder' }));
+
+    await waitFor(() => expect(onCharacterChange).toHaveBeenCalledWith(updatedCharacter));
+  });
+
+  it('character alanı null gelirse (aktif karakter yoksa) onCharacterChange hiç çağrılmaz', async () => {
+    vi.mocked(api.sendChatMessage).mockResolvedValue({
+      playerMessage: { id: 'p1', role: 'player', text: 'merhaba', timestamp: 1 },
+      gmMessage: { id: 'g1', role: 'gm', text: 'Selam.', source: 'mock', timestamp: 2 },
+      character: null,
+    });
+    const onCharacterChange = vi.fn();
+
+    const user = userEvent.setup();
+    render(<ChatPanel onCharacterChange={onCharacterChange} />);
+    await waitFor(() => expect(api.getChatHistory).toHaveBeenCalled());
+
+    await user.type(screen.getByPlaceholderText('Ne yapmak istersin?'), 'merhaba');
+    await user.click(screen.getByRole('button', { name: 'Gönder' }));
+
+    await waitFor(() => expect(screen.getByText('Selam.')).toBeInTheDocument());
+    expect(onCharacterChange).not.toHaveBeenCalled();
   });
 
   it('source "mock" olan mesajlarda "(mock)" etiketi gösterir, "ai" olanlarda göstermez', async () => {
@@ -103,6 +154,7 @@ describe('ChatPanel', () => {
     vi.mocked(api.sendChatMessage).mockResolvedValue({
       playerMessage: { id: 'p2', role: 'player', text: 'ikinci mesaj', timestamp: 2 },
       gmMessage: { id: 'g2', role: 'gm', text: 'cevap', source: 'mock', timestamp: 3 },
+      character: null,
     });
     await user.type(screen.getByPlaceholderText('Ne yapmak istersin?'), 'ikinci mesaj');
     await user.click(screen.getByRole('button', { name: 'Gönder' }));

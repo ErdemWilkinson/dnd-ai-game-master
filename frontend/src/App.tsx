@@ -392,7 +392,7 @@ function App() {
             {continueError && <span className="error">{continueError}</span>}
           </div>
         )}
-        <ChatPanel refreshKey={chatRefreshTick} />
+        <ChatPanel refreshKey={chatRefreshTick} onCharacterChange={setCharacter} />
         <TacticalGrid
           characterId={character.id}
           playerHp={character.hp.current}
