@@ -111,6 +111,18 @@ describe("Faz 12-C-hazırlık: detectSpellId", () => {
     expect(detectSpellId("Goblin'e saldırıyorum")).toBeNull();
     expect(detectSpellId("Etrafı inceliyorum")).toBeNull();
   });
+
+  it("İnovasyon fikri #90: tam büyü adı içermeyen ama doğal/eşanlamlı ifadeler de doğru spellId'yi döner", () => {
+    expect(detectSpellId("Alev topu fırlatıyorum")).toBe("fireball");
+    expect(detectSpellId("Ateş küresi oluşturuyorum")).toBe("fireball");
+    expect(detectSpellId("Ateş büyüsü kullanıyorum")).toBe("fireball");
+    expect(detectSpellId("Kendimi tedavi ediyorum")).toBe("heal");
+  });
+
+  it("İnovasyon fikri #90: genişletilmiş eşleşme kısa-kök ailesindeki (fikir #88) hatayı tekrarlamıyor - alakasız cümleler hâlâ null döner", () => {
+    expect(detectSpellId("Kırmızı bir alev görüyorum uzakta")).toBeNull();
+    expect(detectSpellId("Ateşin yanına oturuyorum")).toBeNull();
+  });
 });
 
 describe("abilityModifier", () => {

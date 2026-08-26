@@ -92,10 +92,24 @@ function isConsumeIntent(text) {
 // geçip geçmediğine bakılarak tespit ediliyor - yukarıdaki "kır"/"al"/"iç"
 // bug'larının aksine bu isimler tesadüfen başka kelimelerin içinde geçecek
 // kadar kısa/genel değil, ayrı bir çekim-farkında kök seti gerekmiyor.
+//
+// Yaratıcı cron fikir #90: SADECE tam büyü adı ("Ateş Topu") aranınca, aynı
+// niyeti anlatan doğal ama isim içermeyen ifadeler ("alev topu fırlatıyorum")
+// hiç tetiklenmiyordu - projenin "doğal dilde yaz" vaadiyle kısmen çelişiyordu.
+// Fikir #88'in "kaldır" bug'ını (tek kelime/kısa kök çok genel kalıyor)
+// tekrarlamamak için TEK kelimelik/kısa eklenti YAPILMADI - hepsi en az iki
+// kelimelik, kendi başına spesifik/tesadüfen çakışma riski düşük ifadeler.
+const SPELL_ALIASES = {
+  fireball: ["ateş küre", "alev topu", "ateş büyüsü"],
+  heal: ["kendimi tedavi"],
+};
+
 function detectSpellId(text) {
   const t = (text || "").toLocaleLowerCase("tr");
   for (const spell of Object.values(SPELLS)) {
     if (t.includes(spell.name.toLocaleLowerCase("tr"))) return spell.id;
+    const aliases = SPELL_ALIASES[spell.id] ?? [];
+    if (aliases.some((alias) => t.includes(alias))) return spell.id;
   }
   return null;
 }
