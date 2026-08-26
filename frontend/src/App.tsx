@@ -75,6 +75,13 @@ function App() {
   // tek yolu ölmekti - karakter panelinde bir "Yeni Karaktere Başla" seçeneği
   // ekliyoruz, yanlışlıkla silmeyi önlemek için önce inline bir onay istiyor.
   const [confirmingRestart, setConfirmingRestart] = useState(false);
+  // İnovasyon fikri #82: handleRestart()'ta hiç try/catch yoktu - resetSession()
+  // başarısız olursa (ağ hatası/Render soğuk başlangıcı) oyuncu Game Over
+  // ekranında ya da yeniden başlatma onay kutusunda sessizce takılı kalıyordu.
+  // ErrorBoundary (fikir #55) bunu YAKALAMAZ - event handler'daki async
+  // hatalar React error boundary kapsamı dışında.
+  const [restarting, setRestarting] = useState(false);
+  const [restartError, setRestartError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -189,17 +196,25 @@ function App() {
   }
 
   async function handleRestart() {
-    await resetSession();
-    setCharacter(null);
-    setPendingIntro(null);
-    setThrowingItemId(null);
-    setCastingSpellId(null);
-    setSceneRefreshTick(0);
-    setChatRefreshTick(0);
-    setEncountersCleared(null);
-    setPendingEncounter(false);
-    setContinueError(null);
-    setConfirmingRestart(false);
+    setRestartError(null);
+    setRestarting(true);
+    try {
+      await resetSession();
+      setCharacter(null);
+      setPendingIntro(null);
+      setThrowingItemId(null);
+      setCastingSpellId(null);
+      setSceneRefreshTick(0);
+      setChatRefreshTick(0);
+      setEncountersCleared(null);
+      setPendingEncounter(false);
+      setContinueError(null);
+      setConfirmingRestart(false);
+    } catch (e) {
+      setRestartError((e as Error).message);
+    } finally {
+      setRestarting(false);
+    }
   }
 
   function closeCharacterPanel() {
@@ -248,6 +263,8 @@ function App() {
           xp={character.xp}
           encountersCleared={encountersCleared}
           onRestart={handleRestart}
+          restarting={restarting}
+          restartError={restartError}
         />
       </div>
     );
@@ -319,13 +336,19 @@ function App() {
                 <div className="restart-confirm">
                   <span>Mevcut karakterin silinecek, emin misin?</span>
                   <div className="restart-confirm-actions">
-                    <button type="button" className="restart-confirm-yes" onClick={handleRestart}>
-                      Evet, Sil
+                    <button
+                      type="button"
+                      className="restart-confirm-yes"
+                      onClick={handleRestart}
+                      disabled={restarting}
+                    >
+                      {restarting ? 'Siliniyor...' : 'Evet, Sil'}
                     </button>
-                    <button type="button" onClick={() => setConfirmingRestart(false)}>
+                    <button type="button" onClick={() => setConfirmingRestart(false)} disabled={restarting}>
                       Vazgeç
                     </button>
                   </div>
+                  {restartError && <span className="error">{restartError} Tekrar dene.</span>}
                 </div>
               ) : (
                 <button

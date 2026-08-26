@@ -4,12 +4,22 @@ interface Props {
   xp?: number;
   encountersCleared?: number | null;
   onRestart: () => void;
+  restarting?: boolean;
+  restartError?: string | null;
 }
 
 // Yaratıcı cron fikir #9: eskiden ekran bomboştu (sadece isim+seviye) -
 // backend zaten bu verileri tutuyordu (character.xp, scene.encounterIndex),
 // sadece kullanıcıya hiç gösterilmiyordu.
-export function GameOverScreen({ characterName, level, xp = 0, encountersCleared = null, onRestart }: Props) {
+export function GameOverScreen({
+  characterName,
+  level,
+  xp = 0,
+  encountersCleared = null,
+  onRestart,
+  restarting = false,
+  restartError = null,
+}: Props) {
   return (
     <div className="game-over-screen" role="alertdialog" aria-modal="true" aria-label="Oyun Bitti">
       <h2>Oyun Bitti</h2>
@@ -22,9 +32,10 @@ export function GameOverScreen({ characterName, level, xp = 0, encountersCleared
           : ''}
         {xp} XP kazandın.
       </p>
-      <button type="button" onClick={onRestart}>
-        Yeniden Başla
+      <button type="button" onClick={onRestart} disabled={restarting}>
+        {restarting ? 'Yeniden başlatılıyor...' : 'Yeniden Başla'}
       </button>
+      {restartError && <p className="error">{restartError} Tekrar dene.</p>}
     </div>
   );
 }

@@ -116,6 +116,25 @@ describe('App — Faz 6-C: Game Over ve Yeniden Başla', () => {
     await waitFor(() => expect(screen.getByText('Kalıcı Kahraman')).toBeInTheDocument());
     expect(screen.queryByText('Oyun Bitti')).not.toBeInTheDocument();
   });
+
+  it('İnovasyon fikri #82: resetSession() başarısız olursa Game Over ekranında sessizce takılı kalmaz, hata gösterip tekrar denemeye izin verir', async () => {
+    vi.mocked(api.getCurrentCharacter).mockResolvedValue({ ...CHARACTER, hp: { current: 0, max: 12 } });
+    vi.mocked(api.resetSession).mockRejectedValueOnce(new Error('Bağlantı kurulamadı.'));
+    const user = userEvent.setup();
+    render(<App />);
+
+    await waitFor(() => expect(screen.getByText('Oyun Bitti')).toBeInTheDocument());
+    await user.click(screen.getByRole('button', { name: 'Yeniden Başla' }));
+
+    await waitFor(() => expect(screen.getByText(/Bağlantı kurulamadı\..*Tekrar dene\./)).toBeInTheDocument());
+    // Sessizce takılı kalmadı - buton hâlâ tıklanabilir, ekran hâlâ Game Over (karakter oluşturma formuna geçmedi).
+    expect(screen.getByRole('button', { name: 'Yeniden Başla' })).not.toBeDisabled();
+    expect(screen.getByText('Oyun Bitti')).toBeInTheDocument();
+
+    vi.mocked(api.resetSession).mockResolvedValueOnce({ ok: true });
+    await user.click(screen.getByRole('button', { name: 'Yeniden Başla' }));
+    await waitFor(() => expect(screen.getByText('Karakter Oluştur')).toBeInTheDocument());
+  });
 });
 
 describe('App — İnovasyon fikri #80: footer atıf linki tıklanabilir olmalı', () => {
