@@ -553,7 +553,12 @@ Frontend tarafında ilk yazımda TacticalGrid'i `pendingEncounterIndex` sırası
 
 **Faz 12-A (kısa-kök fix dahil) ve Faz 12-B tester tarafından bağımsız olarak TAMAMEN doğrulandı — bilinen açık bug yok.** Faz 12-C'ye (grid'in tamamen kaldırılması) geçiş için PM/kullanıcı kararı bekleniyor.
 
-### Faz 12-C (12-A/B canlıda kanıtlandıktan SONRA)
+### Faz 12-C-hazırlık (PM'in 12-C öncesi fark ettiği boşluk, coder'a atandı)
+**PM notu (2026-08-26):** Faz 12-C'ye (grid'i kaldırma) geçmeden önce `resolveFreeformAction`'ın sadece saldırı/eşya-kullan/eşya-al'ı kapsadığı, büyü atmayı (mana harcayan Ateş Topu/İyileştir) HİÇ kapsamadığı fark edildi — grid şimdi kaldırılırsa Büyücü/Rahip sınıfları büyülerini hiç kullanamaz hale gelir, gerçek bir işlevsellik kaybı olurdu. Bu yüzden ara bir hazırlık adımı eklendi:
+- [ ] Serbest metinde büyü atma niyeti algılansın (`routes/scene.js`'in `/cast`'indeki aynı mantık: mana kontrolü, D20+hasar ya da iyileştirme) ve gerçek sonuç üretsin.
+- [ ] Eşya fırlatma (throw) için: x/y hedefsiz bir ortamda ayrı bir "fırlat" mekaniği anlamsızlaşıyor — fırlatılabilir eşyaları "kullan" niyetine dahil etmek (basitleştirme, kabul edilebilir bir kayıp) önerildi, coder'ın onayı bekleniyor.
+
+### Faz 12-C (12-A/B canlıda kanıtlandıktan SONRA, 12-C-hazırlık bitince)
 - [ ] `TacticalGrid.tsx` ve grid-özel backend endpoint'lerini/route'larını temiz bir şekilde kaldır (kullanılmayan attack surface disiplini).
 
 ## İnovasyon Fikirleri (yaratıcı cron)
