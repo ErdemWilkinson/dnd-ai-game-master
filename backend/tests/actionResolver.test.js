@@ -2,7 +2,7 @@ import { describe, it, expect, vi, afterEach } from "vitest";
 import { createRequire } from "module";
 
 const require = createRequire(import.meta.url);
-const { resolveAction, detectActionAttribute, abilityModifier, DIFFICULTY_CLASS, isAttackIntent, isPickupIntent, isConsumeIntent } =
+const { resolveAction, detectActionAttribute, abilityModifier, DIFFICULTY_CLASS, isAttackIntent, isPickupIntent, isConsumeIntent, detectSpellId } =
   require("../services/actionResolver.js");
 
 afterEach(() => {
@@ -92,6 +92,24 @@ describe("REGRESYON (Faz 12-A sonrası bağımsız tester QA'sının bulduğu bu
   it("isConsumeIntent: gerçek içme/kullanma niyetleri hâlâ doğru tespit ediliyor", () => {
     expect(isConsumeIntent("İksiri içiyorum")).toBe(true);
     expect(isConsumeIntent("İksiri kullanıyorum")).toBe(true);
+  });
+
+  it("İnovasyon fikri #88: isPickupIntent'teki 'kaldır' kökü artık 'kaldırım' gibi alakasız bir kelimeyle çakışmıyor, gerçek kaldırma niyetleri (çekimli VE emir kipi) hâlâ çalışıyor", () => {
+    expect(isPickupIntent("Kaldırımda yürüyorum")).toBe(false);
+    expect(isPickupIntent("Kalkanı kaldırıyorum")).toBe(true);
+    expect(isPickupIntent("Kalkanı kaldır")).toBe(true); // emir kipi, ek almaz
+  });
+});
+
+describe("Faz 12-C-hazırlık: detectSpellId", () => {
+  it("büyünün Türkçe adı metinde geçince doğru spellId'yi döner", () => {
+    expect(detectSpellId("Ateş Topu büyüsünü fırlatıyorum")).toBe("fireball");
+    expect(detectSpellId("Kendime İyileştir büyüsünü uyguluyorum")).toBe("heal");
+  });
+
+  it("hiçbir büyü adı geçmiyorsa null döner", () => {
+    expect(detectSpellId("Goblin'e saldırıyorum")).toBeNull();
+    expect(detectSpellId("Etrafı inceliyorum")).toBeNull();
   });
 });
 

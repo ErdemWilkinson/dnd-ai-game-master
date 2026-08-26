@@ -5,8 +5,16 @@
 // vuruş) - tek fark hedefin bitişik/menzil kontrolü olmaması (x/y yok) ve
 // hedefin metinden isim eşleşmesiyle seçilmesi (yoksa ilk canlı düşman).
 const { rollD20, rollDie } = require("./dice");
-const { abilityModifier, DIFFICULTY_CLASS, isAttackIntent, isPickupIntent, isConsumeIntent } = require("./actionResolver");
+const {
+  abilityModifier,
+  DIFFICULTY_CLASS,
+  isAttackIntent,
+  isPickupIntent,
+  isConsumeIntent,
+  detectSpellId,
+} = require("./actionResolver");
 const { CLASSES } = require("../data/dnd");
+const { SPELLS } = require("../data/spells");
 const { getWeaponDamageDie } = require("../data/weaponDamage");
 const { getSlotForItem, getIconForSlot } = require("../data/itemSlots");
 const { awardXp } = require("./leveling");
@@ -85,6 +93,81 @@ function resolveAttack(character, sessionId, text) {
   };
 }
 
+// Faz 12-C-hazırlık: `/cast`'in AYNI mana kontrolü + D20+hasar/iyileştirme
+// mantığı - tek gerçek fark, Ateş Topu'nun grid'deki "bitişik hücreler"
+// (Manhattan mesafe) AoE'si yerine (x/y yok) mevcut karşılaşmadaki TÜM canlı
+// düşmanlara isabet etmesi (PM onaylı: kavramsal olarak tutarlı bir uyarlama).
+function resolveCast(character, sessionId, text) {
+  const spellId = detectSpellId(text);
+  if (!spellId) return null;
+  if (!character.mana || character.mana.max <= 0) return null;
+
+  const spell = SPELLS[spellId];
+  if (character.mana.current < spell.manaCost) return null;
+
+  if (spell.type === "heal") {
+    character.mana.current -= spell.manaCost;
+    const healed = Math.min(character.hp.max, character.hp.current + spell.healAmount) - character.hp.current;
+    character.hp.current = Math.min(character.hp.max, character.hp.current + spell.healAmount);
+    return { kind: "cast", spell: { id: spell.id, name: spell.name }, healed };
+  }
+
+  // Saldırı büyüsü (Ateş Topu) - hedef gerektirir, freeform'da bu "mevcut
+  // karşılaşmadaki tüm canlı düşmanlar" demek.
+  const state = getFreeformEncounter(sessionId);
+  if (state.enemies.length === 0) return null;
+
+  character.mana.current -= spell.manaCost;
+
+  const primaryAttribute = CLASSES[character.class]?.primaryAttribute ?? "int";
+  const modifier = abilityModifier(character.attributes[primaryAttribute]);
+  const roll = rollD20();
+  const total = roll + modifier;
+
+  let outcome;
+  if (roll === 20) outcome = "critical-success";
+  else if (roll === 1) outcome = "critical-failure";
+  else if (total >= DIFFICULTY_CLASS) outcome = "success";
+  else outcome = "failure";
+
+  const blastHits = [];
+  if (outcome === "success" || outcome === "critical-success") {
+    for (const enemy of state.enemies) {
+      const enemyDamage = rollDie(spell.damageDie) + (outcome === "critical-success" ? rollDie(spell.damageDie) : 0);
+      enemy.hp = Math.max(0, enemy.hp - enemyDamage);
+      blastHits.push({ id: enemy.id, name: enemy.name, damage: enemyDamage, defeated: enemy.hp <= 0 });
+    }
+    const defeatedIds = new Set(blastHits.filter((h) => h.defeated).map((h) => h.id));
+    state.enemies = state.enemies.filter((e) => !defeatedIds.has(e.id));
+  }
+
+  let levelsGained = 0;
+  for (const hit of blastHits) {
+    if (hit.defeated) levelsGained += awardXp(character, primaryAttribute);
+  }
+
+  let encounterCleared = false;
+  let nextEncounterName = null;
+  let completedFullLap = false;
+  if (blastHits.length > 0 && state.enemies.length === 0) {
+    encounterCleared = true;
+    const next = advanceFreeformEncounter(sessionId);
+    nextEncounterName = next.name;
+    completedFullLap = next.completedFullLap;
+  }
+
+  return {
+    kind: "cast",
+    spell: { id: spell.id, name: spell.name },
+    actionResult: { attribute: primaryAttribute, roll, modifier, total, dc: DIFFICULTY_CLASS, outcome },
+    blastHits,
+    levelsGained,
+    encounterCleared,
+    nextEncounterName,
+    completedFullLap,
+  };
+}
+
 function resolveConsume(character) {
   const potion = character.inventory.find((i) => i.name.toLocaleLowerCase("tr").includes("iksir"));
   if (!potion) return null;
@@ -110,10 +193,16 @@ function resolvePickup(character, sessionId) {
   return { kind: "pickup", item: { id: item.id, name: item.name }, inventoryFull: false };
 }
 
-// Öncelik sırası: saldırı > eşya kullan > eşya al - bir mesaj birden fazla
-// kalıba uysa bile (nadir) TEK bir mekanik sonuç üretilir, anlatım karışmaz.
+// Öncelik sırası: büyü > saldırı > eşya kullan > eşya al - bir mesaj birden
+// fazla kalıba uysa bile (nadir) TEK bir mekanik sonuç üretilir, anlatım
+// karışmaz. Büyü en başta çünkü tespiti en spesifik/kasıtlı sinyal (büyünün
+// kendi adının geçmesi) - bir sınıfın büyüsü yoksa/manası yetmezse
+// resolveCast zaten null döner, sıradaki kontrole (saldırı) düşülür.
 function resolveFreeformAction(character, sessionId, text) {
   if (!character) return null;
+
+  const castResult = resolveCast(character, sessionId, text);
+  if (castResult) return castResult;
 
   if (isAttackIntent(text)) {
     const result = resolveAttack(character, sessionId, text);

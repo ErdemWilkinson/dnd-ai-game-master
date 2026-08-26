@@ -30,6 +30,13 @@ async function createFighter(app) {
   return res.body;
 }
 
+async function createWizard(app) {
+  const res = await request(app)
+    .post("/api/character/create")
+    .send({ name: "Büyücü", raceId: "human", classId: "wizard" });
+  return res.body;
+}
+
 describe("Faz 12-A: /chat serbest metinden GERÇEK mekanik sonuç (saldırı/eşya)", () => {
   beforeEach(() => {
     chatHistories.clear();
@@ -122,6 +129,98 @@ describe("Faz 12-A: /chat serbest metinden GERÇEK mekanik sonuç (saldırı/eş
     // sarılıyor, ama alanın kendisi sarılmıyor.
     expect(stateAfter.encounterIndex).toBe(ENCOUNTERS.length);
     expect(stateAfter.name).toBe(ENCOUNTERS[0].name); // içerik başa sardı
+  });
+
+  it("Faz 12-C-hazırlık: İyileştir büyüsü algılanınca mana GERÇEKTEN düşer ve HP GERÇEKTEN iyileşir", async () => {
+    const app = buildApp();
+    const character = await createWizard(app);
+    expect(character.mana.current).toBe(character.mana.max); // wizard mana.max=12
+
+    const stored = characters.get(character.id);
+    stored.hp.current = Math.max(1, stored.hp.max - 5);
+    const hpBefore = stored.hp.current;
+
+    const res = await request(app).post("/api/chat").send({ message: "Kendime İyileştir büyüsünü uyguluyorum" });
+    expect(res.status).toBe(201);
+
+    const updated = characters.get(character.id);
+    expect(updated.hp.current).toBeGreaterThan(hpBefore);
+    expect(updated.mana.current).toBe(character.mana.max - 4); // heal manaCost=4
+    expect(res.body.gmMessage.text).toMatch(/İyileştir büyüsünü kendine uyguladın.*HP iyileştirdin/);
+  });
+
+  it("Faz 12-C-hazırlık: Ateş Topu büyüsü algılanınca aktif düşmana GERÇEKTEN hasar uygular, mana düşer", async () => {
+    vi.spyOn(Math, "random").mockReturnValue(0.9);
+    const app = buildApp();
+    const character = await createWizard(app);
+
+    const before = getFreeformEncounter(DEFAULT_SESSION_ID);
+    const hpBefore = before.enemies.find((e) => e.id === "goblin-1").hp;
+
+    const res = await request(app).post("/api/chat").send({ message: "Ateş Topu'nu fırlatıyorum" });
+    expect(res.status).toBe(201);
+    expect(res.body.gmMessage.roll).toMatchObject({ attribute: "int", dc: 12 }); // wizard primary: int
+
+    const after = getFreeformEncounter(DEFAULT_SESSION_ID);
+    expect(after.enemies.find((e) => e.id === "goblin-1").hp).toBeLessThan(hpBefore);
+    const updatedCharacter = characters.get(character.id);
+    expect(updatedCharacter.mana.current).toBe(character.mana.max - 4); // fireball manaCost=4
+    expect(res.body.gmMessage.text).toMatch(/hasar verdin/);
+  });
+
+  it("Faz 12-C-hazırlık: Ateş Topu, karşılaşmadaki TÜM canlı düşmanlara isabet eder (grid'in bitişik-hücre AoE'sinin freeform karşılığı)", async () => {
+    const app = buildApp();
+    const character = await createWizard(app);
+
+    // İskelet Mezarlığı (index 2) - 2 düşmanlı tek karşılaşma, AoE'yi test etmek için ideal.
+    advanceFreeformEncounter(DEFAULT_SESSION_ID);
+    advanceFreeformEncounter(DEFAULT_SESSION_ID);
+    const before = getFreeformEncounter(DEFAULT_SESSION_ID);
+    expect(before.enemies.length).toBe(2);
+    // `getFreeformEncounter` her zaman AYNI canlı state referansını döndürüyor
+    // (snapshot değil) - saldırıdan ÖNCEKİ HP'leri id'ye göre ayrı bir Map'te
+    // saklıyoruz, aksi halde "before"/"after" aynı (mutasyona uğramış) diziyi
+    // gösterir.
+    const hpBeforeById = new Map(before.enemies.map((e) => [e.id, e.hp]));
+
+    // Tek bir sabit Math.random değeri hem D20'yi hem hasar zarını (d8)
+    // AYNI ANDA belirlediğinden "garantili isabet + düşük hasar" (iki
+    // düşmanın da HAYATTA kalıp gerçek bir HP azalması gözlemlenmesi) için
+    // int modifier'ı doğrudan store üzerinden yükseltip zayıf bir zarla
+    // (0.3 -> d20:7, d8:3) bile isabeti garantiliyoruz.
+    characters.get(character.id).attributes.int = 20; // modifier +5
+    vi.spyOn(Math, "random").mockReturnValue(0.3); // total 7+5=12 >= DC12 -> success (tam sınırda), hasar 3 (öldürmeye yetmez)
+
+    const res = await request(app).post("/api/chat").send({ message: "Ateş Topu'nu fırlatıyorum" });
+    expect(res.status).toBe(201);
+
+    const after = getFreeformEncounter(DEFAULT_SESSION_ID);
+    expect(after.enemies.length).toBe(2); // ikisi de hayatta kaldı, HP karşılaştırması yapılabilir
+    for (const enemy of after.enemies) {
+      expect(enemy.hp).toBeLessThan(hpBeforeById.get(enemy.id));
+    }
+    expect(res.body.gmMessage.text).toMatch(/düşmana çarptı/);
+  });
+
+  it("Faz 12-C-hazırlık: mana yetersizse büyü niyeti sessizce hiçbir mekanik sonuç üretmez (eski davranış korunur)", async () => {
+    const app = buildApp();
+    const character = await createWizard(app);
+    const stored = characters.get(character.id);
+    stored.mana.current = 1; // fireball/heal ikisi de 4 mana gerektiriyor
+
+    const res = await request(app).post("/api/chat").send({ message: "Ateş Topu'nu fırlatıyorum" });
+    expect(res.status).toBe(201);
+    expect(res.body.gmMessage.text).not.toMatch(/hasar verdin|yenildi/);
+    expect(characters.get(character.id).mana.current).toBe(1); // mana harcanmadı
+  });
+
+  it("Faz 12-C-hazırlık: mana kullanamayan sınıf (fighter) büyü adı geçse bile hiçbir mekanik sonuç tetiklemez", async () => {
+    const app = buildApp();
+    await createFighter(app);
+
+    const res = await request(app).post("/api/chat").send({ message: "Ateş Topu'nu fırlatıyorum" });
+    expect(res.status).toBe(201);
+    expect(res.body.gmMessage.text).not.toMatch(/hasar verdin|yenildi/);
   });
 
   it("eşya kullanma niyeti algılanınca envanterdeki iksir GERÇEKTEN tüketilip HP iyileştiriyor", async () => {

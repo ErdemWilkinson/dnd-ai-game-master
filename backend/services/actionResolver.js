@@ -1,4 +1,5 @@
 const { rollD20 } = require("./dice");
+const { SPELLS } = require("../data/spells");
 
 const DIFFICULTY_CLASS = 12;
 
@@ -52,6 +53,12 @@ const DEX_PATTERN = buildCategoryPattern(["gizlen", "sıvış", "hızlı", "çev
 // ikisi de bare kısa kök yerine spesifik/çekim-farkında formlarla değiştirildi.
 // "topla" kökü Türkçe geniş zaman/şimdiki zaman çekiminde ünlü düşmesiyle
 // "topluyorum"/"topluyor" olur (kök "topla" harfiyen geçmez) - "toplu" ayrıca eklendi.
+// Yaratıcı cron fikir #88: "kaldır" da AYNI aile - bare kök "kaldırım" gibi
+// bambaşka bir kelimenin (yaya kaldırımı) başında geçiyor. "kır"daki AYNI
+// çözüm: çekimli formlar ayrı ayrı listelenir ("kaldırıyor" vb., bunlar zaten
+// "kaldırım"la çakışmaz - "kaldırımıyor" diye bir kelime yok), emir kipi
+// ("Kalkanı kaldır!") için ise ek almadığından AYRICA kelime SONUNDA da
+// çapalanan (negatif lookahead) bare bir form eklendi.
 const PICKUP_PATTERN = buildCategoryPattern([
   "alıyor",
   "alırım",
@@ -59,7 +66,11 @@ const PICKUP_PATTERN = buildCategoryPattern([
   "aldım",
   "topla",
   "toplu",
-  "kaldır",
+  "kaldırıyor",
+  "kaldırırım",
+  "kaldıracağım",
+  "kaldırdım",
+  "kaldır(?![a-zçğıiöşü])",
   "pick up",
 ]);
 const CONSUME_PATTERN = buildCategoryPattern(["içiyor", "içerim", "içeceğim", "içtim", "kullan", "tüket", "drink"]);
@@ -74,6 +85,19 @@ function isPickupIntent(text) {
 
 function isConsumeIntent(text) {
   return CONSUME_PATTERN.test((text || "").toLocaleLowerCase("tr"));
+}
+
+// Faz 12-C-hazırlık: büyü niyeti, kısa/genel bir fiil köküyle değil, büyünün
+// kendi (oldukça özgün) Türkçe adının ("Ateş Topu", "İyileştir") metinde
+// geçip geçmediğine bakılarak tespit ediliyor - yukarıdaki "kır"/"al"/"iç"
+// bug'larının aksine bu isimler tesadüfen başka kelimelerin içinde geçecek
+// kadar kısa/genel değil, ayrı bir çekim-farkında kök seti gerekmiyor.
+function detectSpellId(text) {
+  const t = (text || "").toLocaleLowerCase("tr");
+  for (const spell of Object.values(SPELLS)) {
+    if (t.includes(spell.name.toLocaleLowerCase("tr"))) return spell.id;
+  }
+  return null;
 }
 
 function abilityModifier(score) {
@@ -113,4 +137,5 @@ module.exports = {
   isAttackIntent,
   isPickupIntent,
   isConsumeIntent,
+  detectSpellId,
 };

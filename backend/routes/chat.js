@@ -58,6 +58,32 @@ function describeFreeformResult(result, character) {
     return suffix;
   }
 
+  if (result.kind === "cast") {
+    if (result.spell.id === "heal") {
+      return result.healed > 0
+        ? ` ${result.spell.name} büyüsünü kendine uyguladın, ${result.healed} HP iyileştirdin.`
+        : ` ${result.spell.name} büyüsünü kendine uyguladın.`;
+    }
+    let suffix = "";
+    const defeatedHits = result.blastHits.filter((h) => h.defeated);
+    if (result.blastHits.length > 1) {
+      suffix += ` ${result.spell.name} ${result.blastHits.length} düşmana çarptı, ${defeatedHits.length} tanesi yenildi!`;
+    } else if (result.blastHits.length === 1) {
+      const hit = result.blastHits[0];
+      suffix += ` ${hit.name}'e ${result.spell.name} ile ${hit.damage} hasar verdin.`;
+      if (hit.defeated) suffix += ` ${hit.name} yenildi!`;
+    }
+    if (result.levelsGained > 0) {
+      suffix += ` ${character.name} seviye ${character.level}'e ulaştı!`;
+    }
+    if (result.encounterCleared) {
+      suffix += result.completedFullLap
+        ? ` Tüm bölgeyi temizledin! Kahramanlığın efsaneleşiyor... ama tehlike hiç bitmiyor, yeni bir tehdit beliriyor: ${result.nextEncounterName}.`
+        : ` Alanı temizledin! Yeni alan: ${result.nextEncounterName}.`;
+    }
+    return suffix;
+  }
+
   if (result.kind === "consume") {
     return result.healed > 0
       ? ` ${result.item.name} kullanıldı, ${result.healed} HP iyileştirdin.`
@@ -103,12 +129,15 @@ router.post("/", publicRateLimit, async (req, res) => {
   history.push(playerMessage);
 
   const character = getActiveCharacter(sessionId);
-  // Faz 12-A: saldırı niyeti algılanıp GERÇEK bir mekanik sonuç üretilirse
-  // (aktif düşman varsa), anlatım için o gerçek D20 sonucunu kullan - aksi
-  // halde (eşya/roleplay/düşmansız saldırı denemesi) eskisi gibi sadece
-  // anlatım rengi için `resolveAction()`'ın metinden tahmin ettiği zar.
+  // Faz 12-A/12-C-hazırlık: saldırı/saldırı büyüsü niyeti algılanıp GERÇEK bir
+  // mekanik sonuç üretilirse (aktif düşman varsa), anlatım için o gerçek D20
+  // sonucunu kullan - aksi halde (eşya/roleplay/iyileştirme büyüsü/düşmansız
+  // saldırı denemesi) eskisi gibi sadece anlatım rengi için `resolveAction()`'ın
+  // metinden tahmin ettiği zar. İyileştirme büyüsünün (`kind:"cast"` ama
+  // `spell.id==="heal"`) hiç D20'si yok (grid'in `/cast` heal dalıyla aynı),
+  // bu yüzden `actionResult` alanı sadece saldırı büyüsünde dolu.
   const freeformResult = resolveFreeformAction(character, sessionId, playerMessage.text);
-  const actionResult = freeformResult?.kind === "attack" ? freeformResult.actionResult : resolveAction(character, playerMessage.text);
+  const actionResult = freeformResult?.actionResult ?? resolveAction(character, playerMessage.text);
   const { text, source } = await generateNarration({
     character,
     scene: getScene(sessionId),
