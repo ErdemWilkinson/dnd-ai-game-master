@@ -202,4 +202,15 @@ describe('Faz 12-B (serbest-form mimari sıfırlaması): chat varsayılan/tek g�
     expect(screen.getByText('🔮 2/4')).toBeInTheDocument();
     expect(screen.getByText('Lv 3')).toBeInTheDocument();
   });
+
+  it('İnovasyon fikri #89: HUD şeridi aria-live="polite" ile işaretli - ekran okuyucu HP/Mana değişikliklerini duyurabiliyor', async () => {
+    vi.mocked(api.getCurrentCharacter).mockResolvedValue(CHARACTER);
+    render(<App />);
+
+    await waitFor(() => expect(screen.getByText('Kalıcı Kahraman')).toBeInTheDocument());
+
+    const hud = document.querySelector('.header-hud');
+    expect(hud).toHaveAttribute('aria-live', 'polite');
+    expect(hud).toHaveAttribute('aria-atomic', 'true');
+  });
 });
