@@ -3,9 +3,10 @@ const { nanoid } = require("nanoid");
 const { chatHistories, characters, activeCharacterIdBySession } = require("../data/store");
 const { getScene } = require("../services/sceneState");
 const { resolveAction } = require("../services/actionResolver");
+const { resolveFreeformAction } = require("../services/freeformCombat");
 const { generateNarration } = require("../services/narrationService");
 const { getSessionId } = require("../services/sessionId");
-const { saveChatHistory } = require("../services/persistence");
+const { saveChatHistory, saveCharacter } = require("../services/persistence");
 const { trimChatHistory } = require("../services/chatHistoryLimit");
 const { publicRateLimit } = require("../services/publicRateLimit");
 
@@ -28,6 +29,43 @@ function getActiveCharacter(sessionId) {
   const characterId = activeCharacterIdBySession.get(sessionId);
   if (!characterId) return null;
   return characters.get(characterId) ?? null;
+}
+
+// Faz 12-A: serbest metinden algılanan GERÇEK mekanik sonucu (saldırı/eşya)
+// okunabilir bir Türkçe ek metne çevirir - grid'in `routes/scene.js`'teki
+// aynı narrationText'e ek yapma deseniyle (bkz. /attack, /move) tutarlı.
+function describeFreeformResult(result, character) {
+  if (!result) return "";
+
+  if (result.kind === "attack") {
+    let suffix = "";
+    if (result.damage > 0) {
+      suffix += ` ${result.target.name}'e ${result.damage} hasar verdin.`;
+    }
+    if (result.defeated) {
+      suffix += ` ${result.target.name} yenildi!`;
+    }
+    if (result.levelsGained > 0) {
+      suffix += ` ${character.name} seviye ${character.level}'e ulaştı!`;
+    }
+    if (result.encounterCleared) {
+      suffix += ` Alanı temizledin! Yeni alan: ${result.nextEncounterName}.`;
+    }
+    return suffix;
+  }
+
+  if (result.kind === "consume") {
+    return result.healed > 0
+      ? ` ${result.item.name} kullanıldı, ${result.healed} HP iyileştirdin.`
+      : ` ${result.item.name} kullanıldı.`;
+  }
+
+  if (result.kind === "pickup") {
+    if (result.inventoryFull) return " Envanterin dolu, eşyayı alamadın.";
+    return ` ${result.item.name} envanterine eklendi!`;
+  }
+
+  return "";
 }
 
 router.get("/", (req, res) => {
@@ -61,7 +99,12 @@ router.post("/", publicRateLimit, async (req, res) => {
   history.push(playerMessage);
 
   const character = getActiveCharacter(sessionId);
-  const actionResult = resolveAction(character, playerMessage.text);
+  // Faz 12-A: saldırı niyeti algılanıp GERÇEK bir mekanik sonuç üretilirse
+  // (aktif düşman varsa), anlatım için o gerçek D20 sonucunu kullan - aksi
+  // halde (eşya/roleplay/düşmansız saldırı denemesi) eskisi gibi sadece
+  // anlatım rengi için `resolveAction()`'ın metinden tahmin ettiği zar.
+  const freeformResult = resolveFreeformAction(character, sessionId, playerMessage.text);
+  const actionResult = freeformResult?.kind === "attack" ? freeformResult.actionResult : resolveAction(character, playerMessage.text);
   const { text, source } = await generateNarration({
     character,
     scene: getScene(sessionId),
@@ -70,10 +113,15 @@ router.post("/", publicRateLimit, async (req, res) => {
     actionResult,
   });
 
+  const narrationText = text + describeFreeformResult(freeformResult, character);
+  if (freeformResult) {
+    saveCharacter(character);
+  }
+
   const gmMessage = {
     id: nanoid(),
     role: "gm",
-    text,
+    text: narrationText,
     source,
     roll: actionResult,
     timestamp: Date.now(),

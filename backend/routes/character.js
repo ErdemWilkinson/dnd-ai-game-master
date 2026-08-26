@@ -12,6 +12,7 @@ const { getSessionId } = require("../services/sessionId");
 const { saveCharacter, saveChatHistory, saveActiveCharacterId, clearSession } = require("../services/persistence");
 const { publicRateLimit } = require("../services/publicRateLimit");
 const { trimChatHistory } = require("../services/chatHistoryLimit");
+const { resetFreeformEncounter } = require("../services/freeformEncounter");
 
 const router = express.Router();
 
@@ -191,6 +192,7 @@ router.post("/reset", (req, res) => {
   activeCharacterIdBySession.delete(sessionId);
   chatHistories.delete(sessionId);
   scenes.delete(sessionId);
+  resetFreeformEncounter(sessionId);
   clearSession(sessionId, characterId);
   res.json({ ok: true });
 });

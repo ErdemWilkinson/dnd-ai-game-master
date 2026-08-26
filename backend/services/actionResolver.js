@@ -17,6 +17,28 @@ const WIS_PATTERN = buildCategoryPattern(["bak", "incele", "gözlemle", "look", 
 const CHA_PATTERN = buildCategoryPattern(["konuş", "sor", "talk", "ikna", "soru", "pazarlık"]);
 const DEX_PATTERN = buildCategoryPattern(["gizlen", "sıvış", "hızlı", "çevik", "atla", "tırman"]);
 
+// Faz 12-A: serbest-form savaş/eşya niyeti algılama - STR_PATTERN zaten
+// "saldırı" fiillerini ayırt ediyordu (önceden sadece anlatım rengi için
+// kullanılıyordu), burada GERÇEK mekanik bir sonucu (hasar/HP) tetiklemek
+// için de kullanılıyor. Al/topla ve iç/kullan ayrı iki niyet - biri sahnedeki
+// loot'u envantere taşır, diğeri envanterdeki bir iksiri tüketir.
+// "topla" kökü Türkçe geniş zaman/şimdiki zaman çekiminde ünlü düşmesiyle
+// "topluyorum"/"topluyor" olur (kök "topla" harfiyen geçmez) - "toplu" ayrıca eklendi.
+const PICKUP_PATTERN = buildCategoryPattern(["al", "topla", "toplu", "kaldır", "pick up"]);
+const CONSUME_PATTERN = buildCategoryPattern(["iç", "kullan", "tüket", "drink"]);
+
+function isAttackIntent(text) {
+  return STR_PATTERN.test((text || "").toLocaleLowerCase("tr"));
+}
+
+function isPickupIntent(text) {
+  return PICKUP_PATTERN.test((text || "").toLocaleLowerCase("tr"));
+}
+
+function isConsumeIntent(text) {
+  return CONSUME_PATTERN.test((text || "").toLocaleLowerCase("tr"));
+}
+
 function abilityModifier(score) {
   return Math.floor(((score ?? 10) - 10) / 2);
 }
@@ -46,4 +68,12 @@ function resolveAction(character, playerText) {
   return { attribute, roll, modifier, total, dc: DIFFICULTY_CLASS, outcome };
 }
 
-module.exports = { resolveAction, detectActionAttribute, abilityModifier, DIFFICULTY_CLASS };
+module.exports = {
+  resolveAction,
+  detectActionAttribute,
+  abilityModifier,
+  DIFFICULTY_CLASS,
+  isAttackIntent,
+  isPickupIntent,
+  isConsumeIntent,
+};
