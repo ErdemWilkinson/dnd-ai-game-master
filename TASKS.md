@@ -493,6 +493,29 @@ Frontend tarafında ilk yazımda TacticalGrid'i `pendingEncounterIndex` sırası
 - Konsol hatası yok (sadece beklenen başlangıç 404'leri). Not: erken denemelerimde ekipman kuşanmadan dövüşe giren zayıf bir test karakteri RNG'ye yenilip öldü — gerçek bir bug değildi, sadece test metodolojim; ekipmanlı ikinci denemede sorunsuz tamamlandı.
 - Sonuç PM'e bildirildi, coder'a push için yeşil ışık verildi.
 
+## Faz 12 — Serbest-Form Mimari Sıfırlaması (kullanıcı kararı, 2026-08-26)
+
+**Karar:** Kullanıcı, Questsmith (thequestsmith.com) ve AI Dungeon'dan ilham alarak taktik grid tabanlı etkileşim modelinin tamamen kaldırılıp Questsmith/AI Dungeon tarzı **serbest-form (grid'siz, menüsüz) bir deneyime** geçilmesini istedi — "tam mimari sıfırlama" seçildi (görsel/UI yenilemeden daha büyük, ama grid'siz bir deneyime geçiş). **AI görsel/video üretimi İSTENMEDİ** — maliyet riski nedeniyle (kullanıcının Claude yerine Gemini'yi seçme sebebiyle aynı gerekçe) sadece metin AI'da kalıyor, bu kapsam dışı.
+
+**Neyin kalacağı / neyin gideceği (PM analizi):**
+- **KALACAK:** karakter oluşturma (ırk/sınıf/görünüş/stat), HP/mana/level/XP veri modeli, envanter/eşya veri modeli (artık grid-taktik değil, anlatımsal), persistence (SQLite/Postgres), session izolasyonu, AI entegrasyonu (Gemini+mock fallback+timeout+maxTokens), rate-limit'ler, güvenlik düzeltmeleri (CORS/IDOR/trust-proxy vb.), `services/actionResolver.js`'in D20+DC çözümleme mantığı (zaten `/chat`'te serbest metin için kısmen kullanılıyor — bu Faz'ın temel taşı).
+- **GİDECEK (kademeli):** `TacticalGrid.tsx`, grid tabanlı token/x-y/engel/hareket sistemi, `/scene/move` (grid hedefi anlamında), grid'e bağlı Aksiyon/Bonus Aksiyon ekonomisi, grid'e özel görsel efektler (damage-flash/token-slide/aoe-preview — anlamlarını kaybedecek).
+- **YENİ:** `/chat`'teki `resolveAction()` çözümlemesi GERÇEK mekanik sonuçlar üretecek şekilde genişletilecek (hasar/HP değişimi, XP/level, eşya bulma/kullanma) — oyuncu "Goblin'e saldırıyorum" yazınca gerçekten D20 atılıp gerçekten hasar/HP düşecek, şu an sadece anlatımsal.
+
+**Yaklaşım:** Büyük patlama (big-bang) rewrite yerine kademeli/test edilebilir adımlar — mevcut grid sistemi yeni sistem kanıtlanana kadar SİLİNMEYECEK, sonra kaldırılacak (kullanılmayan attack surface'ı silme konusunda zaten iyi bir disiplinimiz var, bkz. fikir #29/#63).
+
+### Faz 12-A (coder, ilk adım — atandı)
+- [ ] Backend: `/chat`'in `resolveAction()`/`actionResolver.js` çözümlemesini GERÇEK mekanik sonuçlara bağla — serbest metinde saldırı niyeti algılanınca (basit bir düşman state'i üzerinden, x/y'siz) gerçekten hasar uygulansın, düşman ölürse XP/level, eşya bulma/kullanma niyeti algılanınca envantere gerçekten eklensin/kullanılsın. Mevcut grid endpoint'lerine DOKUNMA (henüz kaldırma), sadece `/chat` yanında paralel çalışsın.
+- [ ] Basit bir "aktif düşman" scene state'i tasarla (x/y/obstacle YOK, sadece isim/HP/maxHP) — mevcut `encounters.js`'teki düşman verisini kaynak olarak kullanabilir.
+- [ ] Backend testleriyle kapsamlı doğrula, canlıda gerçek bir "saldırıyorum" mesajıyla gerçek HP değişimini doğrula.
+
+### Faz 12-B (sonraki adım, henüz atanmadı)
+- [ ] Frontend: Chat, oyunun varsayılan/tek arayüzü olsun — grid'i ZORUNLU açan mantığı kaldır (ama dosyayı henüz silme).
+- [ ] HP/Mana/Level gibi temel durumun her zaman görünür kalması (küçük bir HUD/şerit).
+
+### Faz 12-C (12-A/B canlıda kanıtlandıktan SONRA)
+- [ ] `TacticalGrid.tsx` ve grid-özel backend endpoint'lerini/route'larını temiz bir şekilde kaldır (kullanılmayan attack surface disiplini).
+
 ## İnovasyon Fikirleri (yaratıcı cron)
 (Bu bölümü yaratıcı cron dolduracak — her turda bir fikir ekler. Yukarıdaki maddeler Faz 9'a taşındı.)
 
