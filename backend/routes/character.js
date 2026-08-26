@@ -3,7 +3,7 @@ const { nanoid } = require("nanoid");
 const { RACES, CLASSES, BASE_ATTRIBUTES, ATTRIBUTE_KEYS } = require("../data/dnd");
 const { APPEARANCES } = require("../data/appearances");
 const { getSlotForItem, getIconForSlot } = require("../data/itemSlots");
-const { characters, chatHistories, scenes, activeCharacterIdBySession } = require("../data/store");
+const { characters, chatHistories, activeCharacterIdBySession } = require("../data/store");
 const { rollAttributes } = require("../services/dice");
 const { generateOpeningStory, isConfigured } = require("../services/aiGm");
 const { generateOpeningMock } = require("../data/openingFlavor");
@@ -184,14 +184,14 @@ router.get("/", (req, res) => {
 // component'ten çağrılmıyordu - ölü kod) - doğrulama eklemek yerine
 // kullanılmayan attack surface'ı tamamen kaldırmak tercih edildi.
 
-// Faz 6-C: oyuncu öldükten sonra "yeniden başla" - session'ın karakter/sahne/
-// sohbet bağını temizler, frontend karakter oluşturma ekranına döner.
+// Faz 6-C: oyuncu öldükten sonra "yeniden başla" - session'ın karakter/
+// sohbet/serbest-form karşılaşma bağını temizler, frontend karakter
+// oluşturma ekranına döner.
 router.post("/reset", (req, res) => {
   const sessionId = getSessionId(req);
   const characterId = activeCharacterIdBySession.get(sessionId);
   activeCharacterIdBySession.delete(sessionId);
   chatHistories.delete(sessionId);
-  scenes.delete(sessionId);
   resetFreeformEncounter(sessionId);
   clearSession(sessionId, characterId);
   res.json({ ok: true });

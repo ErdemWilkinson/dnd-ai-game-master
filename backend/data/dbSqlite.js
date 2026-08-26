@@ -17,14 +17,15 @@ if (DB_PATH !== ":memory:") {
   db.pragma("journal_mode = WAL");
 }
 
+// Faz 12-C (serbest-form mimari sıfırlaması, grid kaldırıldı): "scenes"
+// tablosu artık burada OLUŞTURULMUYOR/OKUNMUYOR - grid-özel taktik harita
+// state'i tamamen kaldırıldı, serbest-form karşılaşma state'i (bkz.
+// services/freeformEncounter.js) bilinçli olarak persist edilmiyor. Prod
+// Postgres'teki mevcut "scenes" tablosu (varsa) BİLİNÇLİ OLARAK silinmedi -
+// sadece kod artık ona hiç dokunmuyor, orphan/zararsız kalıyor.
 db.exec(`
   CREATE TABLE IF NOT EXISTS characters (
     id TEXT PRIMARY KEY,
-    data TEXT NOT NULL
-  );
-
-  CREATE TABLE IF NOT EXISTS scenes (
-    session_id TEXT PRIMARY KEY,
     data TEXT NOT NULL
   );
 
@@ -52,11 +53,6 @@ const upsertCharacterStmt = db.prepare(
   "INSERT INTO characters (id, data) VALUES (?, ?) ON CONFLICT(id) DO UPDATE SET data = excluded.data",
 );
 
-const selectAllScenes = db.prepare("SELECT session_id, data FROM scenes");
-const upsertSceneStmt = db.prepare(
-  "INSERT INTO scenes (session_id, data) VALUES (?, ?) ON CONFLICT(session_id) DO UPDATE SET data = excluded.data",
-);
-
 const selectAllChatHistories = db.prepare("SELECT session_id, data FROM chat_histories");
 const upsertChatHistoryStmt = db.prepare(
   "INSERT INTO chat_histories (session_id, data) VALUES (?, ?) ON CONFLICT(session_id) DO UPDATE SET data = excluded.data",
@@ -67,7 +63,6 @@ const upsertSessionStmt = db.prepare(
   "INSERT INTO sessions (session_id, active_character_id, updated_at) VALUES (?, ?, ?) ON CONFLICT(session_id) DO UPDATE SET active_character_id = excluded.active_character_id, updated_at = excluded.updated_at",
 );
 const deleteSessionStmt = db.prepare("DELETE FROM sessions WHERE session_id = ?");
-const deleteSceneStmt = db.prepare("DELETE FROM scenes WHERE session_id = ?");
 const deleteChatHistoryStmt = db.prepare("DELETE FROM chat_histories WHERE session_id = ?");
 const deleteCharacterStmt = db.prepare("DELETE FROM characters WHERE id = ?");
 const selectStaleSessionsStmt = db.prepare(
@@ -91,14 +86,11 @@ module.exports = {
   init: () => {},
   getAllCharacters: () => selectAllCharacters.all(),
   upsertCharacter: (id, data) => upsertCharacterStmt.run(id, data),
-  getAllScenes: () => selectAllScenes.all(),
-  upsertScene: (sessionId, data) => upsertSceneStmt.run(sessionId, data),
   getAllChatHistories: () => selectAllChatHistories.all(),
   upsertChatHistory: (sessionId, data) => upsertChatHistoryStmt.run(sessionId, data),
   getAllSessions: () => selectAllSessions.all(),
   upsertSession: (sessionId, characterId) => upsertSessionStmt.run(sessionId, characterId, Date.now()),
   deleteSession: (sessionId) => deleteSessionStmt.run(sessionId),
-  deleteScene: (sessionId) => deleteSceneStmt.run(sessionId),
   deleteChatHistory: (sessionId) => deleteChatHistoryStmt.run(sessionId),
   deleteCharacter: (id) => deleteCharacterStmt.run(id),
   getStaleSessions: (beforeMs) => selectStaleSessionsStmt.all(beforeMs),

@@ -8,7 +8,6 @@ const db = require("./data/db");
 const { loadAll, cleanupStaleSessions } = require("./services/persistence");
 const characterRouter = require("./routes/character");
 const chatRouter = require("./routes/chat");
-const sceneRouter = require("./routes/scene");
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -89,7 +88,6 @@ app.get("/api/health", async (_req, res) => {
 
 app.use("/api/character", characterRouter);
 app.use("/api/chat", chatRouter);
-app.use("/api/scene", sceneRouter);
 
 // eslint-disable-next-line no-unused-vars
 app.use((err, _req, res, next) => {

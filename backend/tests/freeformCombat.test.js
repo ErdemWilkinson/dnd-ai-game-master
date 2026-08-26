@@ -3,14 +3,14 @@ import { createRequire } from "module";
 import express from "express";
 import request from "supertest";
 
-// bkz. chat.test.js/scene.test.js: require() ile aynı CJS module cache'ini
-// kullanmak gerekiyor, aksi halde store.js/freeformEncounter.js singleton'ları
-// testte ayrı bir kopya olarak yüklenir ve clear()/reset() gerçek router
-// state'ini etkilemez.
+// bkz. chat.test.js: require() ile aynı CJS module cache'ini kullanmak
+// gerekiyor, aksi halde store.js/freeformEncounter.js singleton'ları testte
+// ayrı bir kopya olarak yüklenir ve clear()/reset() gerçek router state'ini
+// etkilemez.
 const require = createRequire(import.meta.url);
 const chatRouter = require("../routes/chat.js");
 const characterRouter = require("../routes/character.js");
-const { chatHistories, characters, scenes, activeCharacterIdBySession } = require("../data/store.js");
+const { chatHistories, characters, activeCharacterIdBySession } = require("../data/store.js");
 const { DEFAULT_SESSION_ID } = require("../services/sessionId.js");
 const { getFreeformEncounter, advanceFreeformEncounter, resetFreeformEncounter } = require("../services/freeformEncounter.js");
 const { ENCOUNTERS } = require("../data/encounters.js");
@@ -41,7 +41,6 @@ describe("Faz 12-A: /chat serbest metinden GERÇEK mekanik sonuç (saldırı/eş
   beforeEach(() => {
     chatHistories.clear();
     characters.clear();
-    scenes.clear();
     activeCharacterIdBySession.clear();
     resetFreeformEncounter(DEFAULT_SESSION_ID);
   });
@@ -423,16 +422,4 @@ describe("Faz 12-A: /chat serbest metinden GERÇEK mekanik sonuç (saldırı/eş
     expect(res.body.gmMessage.text).not.toMatch(/hasar verdin|yenildi/);
   });
 
-  it("mevcut grid endpoint'lerine dokunulmadı - grid'in KENDİ goblin token'ının HP'si serbest-form saldırısından etkilenmez", async () => {
-    vi.spyOn(Math, "random").mockReturnValue(0.9);
-    const app = buildApp();
-    await createFighter(app);
-    // /chat, anlatım bağlamı için getScene() çağırır - bu çağrı grid sahnesini
-    // (data/store.js: scenes) lazy oluşturur ama HİÇ mutasyona uğratmamalı.
-    await request(app).post("/api/chat").send({ message: "Goblin'e saldırıyorum" });
-
-    const gridScene = scenes.get(DEFAULT_SESSION_ID);
-    const gridGoblin = gridScene.tokens.find((t) => t.id === "goblin-1");
-    expect(gridGoblin.hp).toBe(gridGoblin.maxHp); // hiç hasar almamış - grid tamamen ayrı kaldı
-  });
 });

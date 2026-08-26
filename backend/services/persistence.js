@@ -13,7 +13,7 @@
 // olduğundan bu kabul edilebilir bir tasarım (Faz 6-B'deki karardan devam).
 
 const db = require("../data/db");
-const { characters, scenes, chatHistories, activeCharacterIdBySession } = require("../data/store");
+const { characters, chatHistories, activeCharacterIdBySession } = require("../data/store");
 
 function fireAndForget(maybePromise) {
   Promise.resolve(maybePromise).catch((err) => {
@@ -25,10 +25,6 @@ function saveCharacter(character) {
   fireAndForget(db.upsertCharacter(character.id, JSON.stringify(character)));
 }
 
-function saveScene(sessionId, scene) {
-  fireAndForget(db.upsertScene(sessionId, JSON.stringify(scene)));
-}
-
 function saveChatHistory(sessionId, messages) {
   fireAndForget(db.upsertChatHistory(sessionId, JSON.stringify(messages)));
 }
@@ -38,13 +34,12 @@ function saveActiveCharacterId(sessionId, characterId) {
 }
 
 // Faz 6-C: oyuncu öldüğünde "yeniden başla" akışı - session'ın karakter/
-// sahne/sohbet state'ini temizler. Faz 9 (yaratıcı cron fikir #1): artık
+// sohbet state'ini temizler. Faz 9 (yaratıcı cron fikir #1): artık
 // karakter kaydını da (in-memory + DB) gerçekten siliyor - eskiden sadece
 // session bağı kesiliyordu ve karakter satırı kalıcı olarak "sahipsiz"
 // (orphan) kalıyordu, ücretsiz Postgres'in 1GB sınırına birikerek çarpardı.
 function clearSession(sessionId, characterId) {
   fireAndForget(db.deleteSession(sessionId));
-  fireAndForget(db.deleteScene(sessionId));
   fireAndForget(db.deleteChatHistory(sessionId));
   if (characterId) {
     characters.delete(characterId);
@@ -53,7 +48,7 @@ function clearSession(sessionId, characterId) {
 }
 
 // Faz 9: belirli bir süredir hiç aktivite görmemiş session'ları (ve onlara
-// bağlı karakter/sahne/sohbet verisini) temizler. Server açılışında bir kere
+// bağlı karakter/sohbet verisini) temizler. Server açılışında bir kere
 // ve periyodik olarak (bkz. server.js) çağrılır.
 async function cleanupStaleSessions(maxAgeMs) {
   const threshold = Date.now() - maxAgeMs;
@@ -61,7 +56,6 @@ async function cleanupStaleSessions(maxAgeMs) {
   for (const row of staleSessions) {
     clearSession(row.session_id, row.active_character_id);
     activeCharacterIdBySession.delete(row.session_id);
-    scenes.delete(row.session_id);
     chatHistories.delete(row.session_id);
   }
   return staleSessions.length;
@@ -76,9 +70,6 @@ async function loadAll() {
   for (const row of await db.getAllCharacters()) {
     characters.set(row.id, JSON.parse(row.data));
   }
-  for (const row of await db.getAllScenes()) {
-    scenes.set(row.session_id, JSON.parse(row.data));
-  }
   for (const row of await db.getAllChatHistories()) {
     chatHistories.set(row.session_id, JSON.parse(row.data));
   }
@@ -92,7 +83,6 @@ async function loadAll() {
 module.exports = {
   loadAll,
   saveCharacter,
-  saveScene,
   saveChatHistory,
   saveActiveCharacterId,
   clearSession,

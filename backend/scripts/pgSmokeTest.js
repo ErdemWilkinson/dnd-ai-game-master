@@ -60,11 +60,6 @@ async function main() {
   assert.strictEqual(match.length, 1, "upsertCharacter aynı id için ikinci satır oluşturmamalı");
   assert.strictEqual(JSON.parse(match[0].data).name, "Smoke2", "upsertCharacter veriyi güncellemiyor");
 
-  // scenes
-  await db.upsertScene(testId, JSON.stringify({ round: 1 }));
-  let scenes = await db.getAllScenes();
-  assert.ok(scenes.some((r) => r.session_id === testId), "upsertScene sonrası getAllScenes'te bulunamadı");
-
   // chat histories
   await db.upsertChatHistory(testId, JSON.stringify([{ text: "merhaba" }]));
   let histories = await db.getAllChatHistories();
@@ -79,16 +74,13 @@ async function main() {
 
   // delete'ler gerçekten siliyor mu
   await db.deleteCharacter(testId);
-  await db.deleteScene(testId);
   await db.deleteChatHistory(testId);
   await db.deleteSession(testId);
 
   characters = await db.getAllCharacters();
-  scenes = await db.getAllScenes();
   histories = await db.getAllChatHistories();
   sessions = await db.getAllSessions();
   assert.ok(!characters.some((r) => r.id === testId), "deleteCharacter sonrası hâlâ mevcut");
-  assert.ok(!scenes.some((r) => r.session_id === testId), "deleteScene sonrası hâlâ mevcut");
   assert.ok(!histories.some((r) => r.session_id === testId), "deleteChatHistory sonrası hâlâ mevcut");
   assert.ok(!sessions.some((r) => r.session_id === testId), "deleteSession sonrası hâlâ mevcut");
 

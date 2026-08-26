@@ -19,7 +19,7 @@ if (db.engine !== "postgres") {
 
 db.init()
   .then(() => {
-    console.log("Postgres şeması hazır (characters, scenes, chat_histories, sessions).");
+    console.log("Postgres şeması hazır (characters, chat_histories, sessions).");
     process.exit(0);
   })
   .catch((err) => {

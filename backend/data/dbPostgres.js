@@ -11,14 +11,15 @@ const pool = new Pool({
   ssl: process.env.DATABASE_SSL === "false" ? false : { rejectUnauthorized: false },
 });
 
+// Faz 12-C (serbest-form mimari sıfırlaması, grid kaldırıldı): "scenes"
+// tablosu artık burada OLUŞTURULMUYOR/OKUNMUYOR - grid-özel taktik harita
+// state'i tamamen kaldırıldı, serbest-form karşılaşma state'i (bkz.
+// services/freeformEncounter.js) bilinçli olarak persist edilmiyor. Prod
+// Postgres'teki mevcut "scenes" tablosu BİLİNÇLİ OLARAK silinmedi (DROP
+// TABLE atılmadı) - sadece kod artık ona hiç dokunmuyor, orphan/zararsız kalıyor.
 const SCHEMA = `
   CREATE TABLE IF NOT EXISTS characters (
     id TEXT PRIMARY KEY,
-    data TEXT NOT NULL
-  );
-
-  CREATE TABLE IF NOT EXISTS scenes (
-    session_id TEXT PRIMARY KEY,
     data TEXT NOT NULL
   );
 
@@ -55,18 +56,6 @@ async function upsertCharacter(id, data) {
   );
 }
 
-async function getAllScenes() {
-  const { rows } = await pool.query("SELECT session_id, data FROM scenes");
-  return rows;
-}
-
-async function upsertScene(sessionId, data) {
-  await pool.query(
-    "INSERT INTO scenes (session_id, data) VALUES ($1, $2) ON CONFLICT (session_id) DO UPDATE SET data = excluded.data",
-    [sessionId, data],
-  );
-}
-
 async function getAllChatHistories() {
   const { rows } = await pool.query("SELECT session_id, data FROM chat_histories");
   return rows;
@@ -93,10 +82,6 @@ async function upsertSession(sessionId, characterId) {
 
 async function deleteSession(sessionId) {
   await pool.query("DELETE FROM sessions WHERE session_id = $1", [sessionId]);
-}
-
-async function deleteScene(sessionId) {
-  await pool.query("DELETE FROM scenes WHERE session_id = $1", [sessionId]);
 }
 
 async function deleteChatHistory(sessionId) {
@@ -127,14 +112,11 @@ module.exports = {
   ping,
   getAllCharacters,
   upsertCharacter,
-  getAllScenes,
-  upsertScene,
   getAllChatHistories,
   upsertChatHistory,
   getAllSessions,
   upsertSession,
   deleteSession,
-  deleteScene,
   deleteChatHistory,
   deleteCharacter,
   getStaleSessions,

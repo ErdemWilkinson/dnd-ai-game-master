@@ -1,7 +1,7 @@
 const express = require("express");
 const { nanoid } = require("nanoid");
 const { chatHistories, characters, activeCharacterIdBySession } = require("../data/store");
-const { getScene } = require("../services/sceneState");
+const { getFreeformEncounter } = require("../services/freeformEncounter");
 const { resolveAction } = require("../services/actionResolver");
 const { resolveFreeformAction } = require("../services/freeformCombat");
 const { generateNarration } = require("../services/narrationService");
@@ -169,7 +169,7 @@ router.post("/", publicRateLimit, async (req, res) => {
   }
   const { text, source } = await generateNarration({
     character,
-    scene: getScene(sessionId),
+    scene: getFreeformEncounter(sessionId),
     recentMessages: history.slice(-HISTORY_CONTEXT_SIZE),
     playerMessage: playerMessage.text,
     actionResult,

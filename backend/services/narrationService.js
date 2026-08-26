@@ -10,7 +10,8 @@ const MOCK_OUTCOME_SUFFIX = {
 };
 
 // AI dene -> hata/limit/key yok -> sessizce mock'a düş (Faz 2 ilkesi).
-// chat.js ve routes/scene.js (saldırı, hareket anlatımı) arasında paylaşılır.
+// chat.js'in tek narrasyon giriş noktası (Faz 12-C'de grid kaldırılana kadar
+// routes/scene.js ile de paylaşılıyordu).
 async function generateNarration({ character, scene, recentMessages = [], playerMessage, actionResult }) {
   if (isConfigured() && allowRequest()) {
     try {
