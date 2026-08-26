@@ -398,3 +398,20 @@ describe('TacticalGrid — Faz 4 Bug B: hareket ekonomisi göstergesi', () => {
     expect(screen.getByText('Hareket: 0/3')).toBeInTheDocument();
   });
 });
+
+describe('TacticalGrid — İnovasyon fikri #83: "Turu Bitir" hata gösterimi', () => {
+  it('endTurn() başarısız olursa sessizce yutulmaz, hata gösterilir ve buton tekrar tıklanabilir kalır', async () => {
+    vi.mocked(api.getScene).mockResolvedValue(sceneWith('player'));
+    vi.mocked(api.endTurn).mockRejectedValueOnce(new Error('Bağlantı kurulamadı.'));
+
+    const user = userEvent.setup();
+    render(<TacticalGrid characterId="char-1" />);
+    await waitFor(() => expect(screen.getByText('Test Sahnesi')).toBeInTheDocument());
+
+    await user.click(screen.getByRole('button', { name: 'Turu Bitir' }));
+
+    await waitFor(() => expect(screen.getByText('Bağlantı kurulamadı.')).toBeInTheDocument());
+    // Softlock yok - buton finally sayesinde zaten disabled kalmıyordu, ama artık ayrıca gerçek bir hata da gösteriliyor.
+    expect(screen.getByRole('button', { name: 'Turu Bitir' })).not.toBeDisabled();
+  });
+});

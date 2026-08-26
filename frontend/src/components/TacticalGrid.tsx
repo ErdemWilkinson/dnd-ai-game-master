@@ -249,6 +249,7 @@ export function TacticalGrid({
 
   async function handleEndTurn() {
     if (pending) return;
+    setError(null);
     setPending(true);
     try {
       // İnovasyon fikri #47: düşman turu otomatik saldırıp oyuncuya hasar
@@ -273,6 +274,12 @@ export function TacticalGrid({
           // Görsel bir polish - sessizce yut, ana tur akışını etkilemesin.
         }
       }
+    } catch (e) {
+      // İnovasyon fikri #83: dış try'a hiç catch yoktu - endTurn() başarısız
+      // olursa (ağ hatası/backend 4xx-5xx) softlock yoktu (buton `finally`
+      // sayesinde her zaman tekrar tıklanabilir kalıyordu) ama oyuncu HİÇBİR
+      // hata görmüyordu, tıklama sessizce hiçbir şey yapmamış gibi duruyordu.
+      setError((e as Error).message);
     } finally {
       setPending(false);
     }
