@@ -590,6 +590,15 @@ Frontend tarafında ilk yazımda TacticalGrid'i `pendingEncounterIndex` sırası
 
 **Canlı doğrulama (gerçek çalışan `server.js`, tester'ın TAM repro'sunu tekrarlayarak):** Gerçek bir Büyücü oluşturup arka arkaya 3 kez "Kendime İyileştir büyüsünü uyguluyorum" gönderdim (chat-only, grid'e hiç dokunmadan) — HER ÜÇ yanıtta da `character.mana` alanı gerçekten GÜNCEL geldi: **12→8→4→0** (eskiden bu alan yanıtta hiç yoktu). Her üç yanıtta da `gmMessage.roll: null` (artık alakasız "Başarılı/Başarısız" rozeti yok). Son olarak `GET /api/character` ile karşılaştırdım — mana **0/12**, son chat yanıtındaki değerle BİREBİR eşleşiyor (API sözleşmesi tutarlı). Frontend tarafının gerçek bir tarayıcıda (bu oturumda Playwright yok) doğrulanamadığını not ediyorum — onun yerine `ChatPanel.test.tsx`'teki gerçek RTL render/click testleriyle `onCharacterChange`'in doğru payload'la çağrıldığı kanıtlandı; backend API sözleşmesi + frontend prop-wiring testi birlikte bug'ın kök nedenini (her iki parçasını da) kapatıyor. Geçici sunucu/dosyalar temizlendi.
 
+#### Tester (bağımsız doğrulama — kritik senkron fix, 2026-08-26, PM tarafından atandı)
+- [x] Backend **289/289**, frontend **92/92** doğrulandı.
+- [x] **Orijinal repro'yu bire bir tekrarladım (Playwright, canlı tarayıcı, chat-only akış, grid'e hiç dokunmadan):** Yeni bir Büyücü ile art arda 3 kez "İyileştir büyüsünü kullanıyorum" — HeaderHud **GERÇEKTEN** her adımda güncellendi (🔮 12/12 → 8/12 → 4/12 → 0/12), karakter panelini sonradan açtığımda Mana barı da **0/12** gösterdi, `GET /api/character` server-truth'u ile birebir eşleşti. Ekran görüntüsüyle doğrulandı.
+- [x] Rolsüz cast/consume/pickup'ta alakasız rozet kaldırılmış mı diye üçünü de ayrı ayrı test ettim: İyileştir cast, "Yerdeki eşyayı alıyorum" (pickup) ve "İksiri içiyorum" (consume) — **üçünde de `hasBadge:false`**, hiçbir "Başarılı/Başarısız" rozeti yok. Envanterin de senkron kaldığını doğruladım (pickup'la eklenen "Altın Kese" panelde göründü, consume'la tüketilen "İksir" panelden gerçekten kayboldu).
+- [x] Konsol/sayfa hatası: sıfır.
+- **Not (metodoloji, bug değil):** İlk denemede `node --watch` ile başlatılmış ESKİ bir dev server process'i (muhtemelen bu oturumdaki önceki bir restart'tan kalma) `PUBLIC_RATE_LIMIT_MAX`'i beklenmedik şekilde `3`'e sabitlemişti (taze `node server.js` ile `20`'ye döndü) — bu YANLIŞ NEGATİF bir okumaya yol açıp fix'in çalışmadığı izlenimi verdi, sunucuyu tamamen temiz yeniden başlatınca sorun kayboldu. Uygulama kodunda bir bug değil, sadece kendi QA ortamımın bir tuhaflığıydı, kayıt için not düşüyorum.
+
+**Kritik senkron bug'ı ve rozet düzeltmesi tam bağımsız olarak doğrulandı — bilinen açık bug yok. Faz 12-C'ye (grid'i kaldırma) geçişi ONAYLIYORUM.**
+
 ### Faz 12-C (12-A/B canlıda kanıtlandıktan SONRA, 12-C-hazırlık bitince)
 - [ ] `TacticalGrid.tsx` ve grid-özel backend endpoint'lerini/route'larını temiz bir şekilde kaldır (kullanılmayan attack surface disiplini).
 
