@@ -1,14 +1,7 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, within, waitFor, fireEvent } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
+import { describe, it, expect } from 'vitest';
+import { render, screen, within } from '@testing-library/react';
 import { CharacterCard } from './CharacterCard';
-import * as api from '../api';
 import type { Character } from '../types';
-
-// CharacterCard, use/equip/drop için '../api'yi doğrudan çağırıyor (prop
-// olarak enjekte edilmiyor). Slota tıklayınca çıkarma akışını test etmek
-// için gerçek fetch'e gitmesini engellemek adına burada mock'luyoruz.
-vi.mock('../api');
 
 const character: Character = {
   id: 'c1',
@@ -28,6 +21,12 @@ const character: Character = {
   ],
 };
 
+// Faz 12-C-hazırlık 2 (PM onaylı): CharacterCard artık salt-okunur bir
+// karakter kağıdı - saldırı/büyü/eşya kullan/kuşan/al chat üzerinden doğal
+// dille yapılıyor. Eskiden burada Kullan/Kuşan/At/Fırlat/Büyü-seç butonlarını
+// ve drag-and-drop kuşanmayı test eden çoğu senaryo artık geçersiz (bileşen
+// bu API çağrılarını hiç yapmıyor) - test dosyası salt-okunur render'ı
+// doğrulayacak şekilde yeniden yazıldı.
 describe('CharacterCard', () => {
   it('HP ve mana değerlerini gösterir', () => {
     render(<CharacterCard character={character} />);
@@ -47,45 +46,21 @@ describe('CharacterCard', () => {
     render(<CharacterCard character={character} />);
     expect(screen.getByText(/İnsan · Savaşçı/i)).toBeInTheDocument();
   });
-});
 
-describe('CharacterCard — Faz 3-E: fırlatma tetikleme', () => {
-  it('"Fırlat" tıklanınca onStartThrow ilgili itemId ile çağrılır', async () => {
-    const onStartThrow = vi.fn();
-    const user = userEvent.setup();
-    render(<CharacterCard character={character} onStartThrow={onStartThrow} />);
-
-    const kilicRow = screen.getByText(/Kısa Kılıç/).closest('li')!;
-    await user.click(within(kilicRow).getByRole('button', { name: /Fırlat/ }));
-
-    expect(onStartThrow).toHaveBeenCalledWith('i1');
-  });
-
-  it('fırlatma modundaki eşyanın butonu "Hedef Seçiliyor..." olur ve tekrar tıklanınca onCancelThrow çağrılır', async () => {
-    const onCancelThrow = vi.fn();
-    const user = userEvent.setup();
-    render(<CharacterCard character={character} throwingItemId="i1" onCancelThrow={onCancelThrow} />);
-
-    const kilicRow = screen.getByText(/Kısa Kılıç/).closest('li')!;
-    const throwButton = within(kilicRow).getByRole('button', { name: /Hedef Seçiliyor.../ });
-    expect(throwButton).toBeInTheDocument();
-
-    await user.click(throwButton);
-    expect(onCancelThrow).toHaveBeenCalledTimes(1);
-  });
-
-  it('throwingItemId set iken kullanıcıya ipucu metni gösterilir', () => {
-    render(<CharacterCard character={character} throwingItemId="i1" />);
-    expect(screen.getByText(/taktik haritada bir kareye tıkla/i)).toBeInTheDocument();
-  });
-
-  it('throwingItemId yokken ipucu metni gösterilmez', () => {
+  it('envanterde hiçbir aksiyon butonu (Kullan/Kuşan/At/Fırlat) YOK - tüm aksiyonlar artık chat üzerinden', () => {
     render(<CharacterCard character={character} />);
-    expect(screen.queryByText(/taktik haritada bir kareye tıkla/i)).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Kullan|Kuşan|Çıkar|At|Fırlat/ })).not.toBeInTheDocument();
+  });
+
+  it('büyü listesi/paneli hiç gösterilmiyor - büyü atma artık chat üzerinden', () => {
+    const wizard: Character = { ...character, class: 'wizard', mana: { current: 6, max: 10 } };
+    render(<CharacterCard character={wizard} />);
+    expect(screen.queryByText('Büyüler')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /İyileştir|Ateş Topu/ })).not.toBeInTheDocument();
   });
 });
 
-describe('CharacterCard — Faz 5-3: SS13 tarzı ikonlu paper-doll', () => {
+describe('CharacterCard — Faz 5-3: SS13 tarzı ikonlu paper-doll (salt-okunur)', () => {
   const ALL_SLOT_LABELS = [
     'Baş', 'Maske', 'Gözlük', 'Kulak', 'Boyun', 'Sırt',
     'Zırh', 'Üst Giysi', 'Eldiven', 'Kemer', 'Ayakkabı', 'Aksesuar', 'El',
@@ -126,85 +101,20 @@ describe('CharacterCard — Faz 5-3: SS13 tarzı ikonlu paper-doll', () => {
   });
 
   it('"hand" slotu (asset setinde ikonu yok) boşken bile ⚔ emoji fallback\'i gösterir', () => {
-    // Not: SLOT_FALLBACK_GLYPH sadece 'hand' için tanımlı ve equippedItem'dan
-    // bağımsız render ediliyor (bkz. CharacterCard.tsx: glyph ?? '·') — yani
-    // "El" slotu boşken de ⚔ görünüyor, dolu olduğunda ikon varsa ikon
-    // gösteriliyor. Bu, tester tarafından bilinçli belgelenen bir davranış.
     render(<CharacterCard character={character} />);
     const handSlot = screen.getByText(/^⚔️ El$/).closest('.paper-doll-slot') as HTMLElement;
     expect(within(handSlot).getByText('⚔')).toBeInTheDocument();
   });
 
-  it('dolu bir slota tıklamak eşyayı çıkarır (equipItem çağrılır), boş slot tıklamak no-op kalır', async () => {
-    vi.mocked(api.equipItem).mockResolvedValue({
-      character: { ...character, inventory: character.inventory.map((i) => (i.id === 'i2' ? { ...i, equipped: false } : i)) },
-    });
-    const onCharacterChange = vi.fn();
-    const user = userEvent.setup();
-    render(<CharacterCard character={character} onCharacterChange={onCharacterChange} />);
-
-    const suitSlot = within(paperDoll()).getByText(/Zırh/).closest('.paper-doll-slot') as HTMLElement;
-    expect(suitSlot).toHaveClass('filled');
-    await user.click(suitSlot);
-    await waitFor(() => expect(onCharacterChange).toHaveBeenCalled());
-    expect(api.equipItem).toHaveBeenCalledWith('c1', 'i2');
-
-    // Faz 8: boş slotlarda artık HTML disabled attribute yok (drag/drop event'i
-    // alabilmesi için kaldırıldı), guard onClick içinde (`equippedItem && ...`).
-    const headSlot = within(paperDoll()).getByText(/Baş/).closest('.paper-doll-slot') as HTMLElement;
-    expect(headSlot).not.toHaveClass('filled');
-    await user.click(headSlot);
-    expect(api.equipItem).toHaveBeenCalledTimes(1); // boş slota tıklamak yeni bir çağrı tetiklemedi
-  });
-
-  function makeDataTransfer() {
-    const data: Record<string, string> = {};
-    return {
-      setData: (type: string, val: string) => { data[type] = val; },
-      getData: (type: string) => data[type] ?? '',
-      dropEffect: '',
-      effectAllowed: '',
-    };
-  }
-
-  it('Faz 8: eşyayı sürükleyip uygun slota bırakınca kuşanılır (drag-and-drop)', async () => {
-    vi.mocked(api.equipItem).mockResolvedValue({
-      character: { ...character, inventory: character.inventory.map((i) => (i.id === 'i1' ? { ...i, equipped: true } : i)) },
-    });
-    const onCharacterChange = vi.fn();
-    render(<CharacterCard character={character} onCharacterChange={onCharacterChange} />);
-
-    const kilicRow = screen.getByText(/Kısa Kılıç/).closest('li') as HTMLElement;
-    expect(kilicRow).toHaveAttribute('draggable', 'true');
-    const handSlot = screen.getByText(/^⚔️ El$/).closest('.paper-doll-slot') as HTMLElement;
-    const dataTransfer = makeDataTransfer();
-
-    fireEvent.dragStart(kilicRow, { dataTransfer });
-    fireEvent.dragOver(handSlot, { dataTransfer });
-    fireEvent.drop(handSlot, { dataTransfer });
-
-    await waitFor(() => expect(api.equipItem).toHaveBeenCalledWith('c1', 'i1'));
-    expect(onCharacterChange).toHaveBeenCalled();
-  });
-
-  it('Faz 8: eşyayı slotu uyuşmayan bir hedefe bırakmak kuşandırmaz (sessizce yok sayılır)', () => {
-    vi.mocked(api.equipItem).mockClear();
+  it('paper-doll slotları artık tıklanabilir/sürüklenebilir DEĞİL (buton değil, düz div)', () => {
     render(<CharacterCard character={character} />);
-
-    const kilicRow = screen.getByText(/Kısa Kılıç/).closest('li') as HTMLElement;
-    const headSlot = within(paperDoll()).getByText(/Baş/).closest('.paper-doll-slot') as HTMLElement;
-    const dataTransfer = makeDataTransfer();
-
-    fireEvent.dragStart(kilicRow, { dataTransfer });
-    fireEvent.drop(headSlot, { dataTransfer });
-
-    expect(api.equipItem).not.toHaveBeenCalled();
+    expect(within(paperDoll()).queryAllByRole('button')).toHaveLength(0);
   });
 
-  it('Faz 8: kuşanılı bir eşya sürüklenemez (draggable=false)', () => {
+  it('envanter satırları artık sürüklenebilir DEĞİL (draggable attribute yok)', () => {
     render(<CharacterCard character={character} />);
-    const zirhRow = screen.getByText(/Deri Zırh/).closest('li') as HTMLElement;
-    expect(zirhRow).toHaveAttribute('draggable', 'false');
+    const kilicRow = screen.getByText(/Kısa Kılıç/).closest('li') as HTMLElement;
+    expect(kilicRow).not.toHaveAttribute('draggable');
   });
 
   it('envanter listesindeki eşya ikonu varsa küçük bir thumbnail gösterir', () => {
@@ -223,107 +133,5 @@ describe('CharacterCard — Faz 5-3: SS13 tarzı ikonlu paper-doll', () => {
     const inventoryList = document.querySelector('.inventory-list') as HTMLElement;
     const kilicRow = within(inventoryList).getByText(/Kısa Kılıç/).closest('li')!;
     expect(kilicRow.querySelector('img.inventory-icon')).not.toBeInTheDocument();
-  });
-
-  it('slotu olmayan eşyada (İksir) Kuşan/Çıkar butonu gösterilmez', () => {
-    render(<CharacterCard character={character} />);
-    const potionRow = screen.getByText(/İksir/).closest('li')!;
-    expect(within(potionRow).queryByRole('button', { name: /Kuşan|Çıkar/ })).not.toBeInTheDocument();
-    // Kullan/At/Fırlat hâlâ olmalı
-    expect(within(potionRow).getByRole('button', { name: /Kullan/ })).toBeInTheDocument();
-  });
-
-  it('slotu olan eşyada Kuşan/Çıkar butonu gösterilir', () => {
-    render(<CharacterCard character={character} />);
-    const kilicRow = screen.getByText(/Kısa Kılıç/).closest('li')!;
-    expect(within(kilicRow).getByRole('button', { name: /Kuşan/ })).toBeInTheDocument();
-  });
-
-  it('Faz 8: slotu olan eşyada (Kısa Kılıç) "Kullan" butonu HİÇ gösterilmez', () => {
-    render(<CharacterCard character={character} />);
-    const kilicRow = screen.getByText(/Kısa Kılıç/).closest('li')!;
-    expect(within(kilicRow).queryByRole('button', { name: /Kullan/ })).not.toBeInTheDocument();
-  });
-});
-
-describe('CharacterCard — Faz 6-C: büyü listesi', () => {
-  const wizard: Character = {
-    ...character,
-    mana: { current: 6, max: 10 },
-  };
-
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
-  it('mana.max 0 olan bir karakterde (büyü kullanmayan sınıf) "Büyüler" bölümü gösterilmez', () => {
-    render(<CharacterCard character={character} />);
-    expect(screen.queryByText('Büyüler')).not.toBeInTheDocument();
-  });
-
-  it('mana kullanan bir karakterde büyü butonları mana maliyetiyle gösterilir', () => {
-    render(<CharacterCard character={wizard} />);
-    expect(screen.getByText(/Büyüler/)).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /İyileştir \(4 mana\)/ })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /Ateş Topu \(4 mana\)/ })).toBeInTheDocument();
-  });
-
-  it('mana yetersizse büyü butonu devre dışı kalır', () => {
-    const lowMana: Character = { ...character, mana: { current: 1, max: 10 } };
-    render(<CharacterCard character={lowMana} />);
-    expect(screen.getByRole('button', { name: /İyileştir/ })).toBeDisabled();
-    expect(screen.getByRole('button', { name: /Ateş Topu/ })).toBeDisabled();
-  });
-
-  it('İyileştir (hedefsiz büyü) tıklanınca doğrudan castSpell çağrılır, hedef seçim moduna girmez', async () => {
-    vi.mocked(api.castSpell).mockResolvedValue({
-      character: { ...wizard, hp: { current: wizard.hp.max, max: wizard.hp.max } },
-      scene: {} as never,
-      spell: 'heal',
-      healed: 8,
-      narration: { text: 'İyileştin.', source: 'mock' },
-    });
-    const onCharacterChange = vi.fn();
-    const onChatActivity = vi.fn();
-    const onStartCast = vi.fn();
-    const user = userEvent.setup();
-    render(
-      <CharacterCard
-        character={wizard}
-        onCharacterChange={onCharacterChange}
-        onChatActivity={onChatActivity}
-        onStartCast={onStartCast}
-      />,
-    );
-
-    await user.click(screen.getByRole('button', { name: /İyileştir/ }));
-
-    expect(api.castSpell).toHaveBeenCalledWith('c1', 'heal');
-    expect(onStartCast).not.toHaveBeenCalled();
-    await waitFor(() => expect(onCharacterChange).toHaveBeenCalled());
-    expect(onChatActivity).toHaveBeenCalledTimes(1);
-  });
-
-  it('Ateş Topu (hedefli büyü) tıklanınca castSpell ÇAĞRILMAZ, onStartCast ile hedef seçim moduna girilir', async () => {
-    const onStartCast = vi.fn();
-    const user = userEvent.setup();
-    render(<CharacterCard character={wizard} onStartCast={onStartCast} />);
-
-    await user.click(screen.getByRole('button', { name: /Ateş Topu/ }));
-
-    expect(onStartCast).toHaveBeenCalledWith('fireball');
-    expect(api.castSpell).not.toHaveBeenCalled();
-  });
-
-  it('castingSpellId ilgili büyünün id\'sine eşitse buton "Hedef Seçiliyor..." olur ve tekrar tıklayınca onCancelCast çağrılır', async () => {
-    const onCancelCast = vi.fn();
-    const user = userEvent.setup();
-    render(<CharacterCard character={wizard} castingSpellId="fireball" onCancelCast={onCancelCast} />);
-
-    const activeButton = screen.getByRole('button', { name: 'Hedef Seçiliyor...' });
-    expect(activeButton).toHaveClass('active');
-
-    await user.click(activeButton);
-    expect(onCancelCast).toHaveBeenCalledTimes(1);
   });
 });

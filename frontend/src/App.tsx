@@ -49,20 +49,6 @@ function App() {
   const [chatRefreshTick, setChatRefreshTick] = useState(0);
   const [showHelp, setShowHelp] = useState(false);
   const [encountersCleared, setEncountersCleared] = useState<number | null>(null);
-  // Faz 11: kullanıcı geri bildirimi - sürekli görünen 3-panelli düzen "vs
-  // oyunu" gibi hissettiriyordu. Ana görünüm artık tam ekran metin/sohbet,
-  // taktik grid SADECE sahnede düşman varken otomatik görünüyor. Ekstra bir
-  // "savaş modu" state'i TUTMUYORUZ - hasEnemies doğrudan TacticalGrid'in
-  // en son çektiği sahne verisinden türetiliyor (onSceneUpdate callback'i).
-  const [hasEnemies, setHasEnemies] = useState(false);
-  // İnovasyon fikri #69: TacticalGrid'in fikir #51'de eklediği "kaynak
-  // tükenince devre dışı" mantığı CharacterCard'ın Kullan/Fırlat
-  // butonlarında yoktu - Bonus Aksiyon/Aksiyon tükenmişken hâlâ gereksiz bir
-  // backend round-trip'i oluyordu. Fikir #39'daki playerHp/playerMaxHp
-  // prop'larıyla aynı desen: TacticalGrid'in onSceneUpdate'inden bu değerler
-  // çıkarılıp CharacterCard'a prop olarak geçiriliyor.
-  const [playerActionAvailable, setPlayerActionAvailable] = useState(true);
-  const [playerBonusActionAvailable, setPlayerBonusActionAvailable] = useState(true);
   const [showCharacterPanel, setShowCharacterPanel] = useState(false);
   // Faz 11 (PM kararı): karşılaşma temizlenince yeni karşılaşma HEMEN sahneye
   // girmiyor - sahne "nefes alma" penceresine giriyor (backend:
@@ -154,13 +140,7 @@ function App() {
   }, [character]);
 
   function handleSceneUpdate(scene: Scene) {
-    setHasEnemies(scene.tokens.some((t) => t.type === 'enemy'));
     setPendingEncounter(scene.pendingEncounterIndex != null);
-    const playerToken = scene.tokens.find((t) => t.id === 'player');
-    if (playerToken) {
-      setPlayerActionAvailable(playerToken.actionAvailable);
-      setPlayerBonusActionAvailable(playerToken.bonusActionAvailable);
-    }
   }
 
   // Faz 11: "nefes alma" penceresinde (pendingEncounterIndex set) grid gizli -
@@ -181,13 +161,6 @@ function App() {
     } finally {
       setContinuing(false);
     }
-  }
-
-  function handleCharacterChange(updated: Character) {
-    setCharacter(updated);
-    // CharacterCard'daki eylemler (kullan/kuşan/at) sahnedeki Aksiyon/Bonus
-    // göstergesini de etkileyebilir - TacticalGrid'i tazelemesi için tetikle.
-    setSceneRefreshTick((tick) => tick + 1);
   }
 
   function handleTurnResolved(enemyMessages: string[]) {
@@ -332,24 +305,7 @@ function App() {
             >
               ✕
             </button>
-            <CharacterCard
-              character={character}
-              onCharacterChange={handleCharacterChange}
-              throwingItemId={throwingItemId}
-              onStartThrow={setThrowingItemId}
-              onCancelThrow={() => setThrowingItemId(null)}
-              castingSpellId={castingSpellId}
-              onStartCast={setCastingSpellId}
-              onCancelCast={() => setCastingSpellId(null)}
-              onChatActivity={handleChatActivity}
-              // İnovasyon fikri #69: Aksiyon ekonomisi savaş dışında (düşman
-              // yokken) backend'de tamamen bypass ediliyor (fikir #35) -
-              // aynı istisna burada da uygulanıyor, yoksa savaş bitip
-              // "nefes alma" penceresine girince (henüz taze end-turn
-              // gelmemişse) butonlar yanlışlıkla devre dışı görünebilirdi.
-              canUseItem={!hasEnemies || playerBonusActionAvailable}
-              canThrowItem={!hasEnemies || playerActionAvailable}
-            />
+            <CharacterCard character={character} />
             <div className="restart-character-section">
               {confirmingRestart ? (
                 <div className="restart-confirm">
