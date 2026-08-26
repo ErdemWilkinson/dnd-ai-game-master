@@ -599,7 +599,13 @@ Frontend tarafında ilk yazımda TacticalGrid'i `pendingEncounterIndex` sırası
 
 **Kritik senkron bug'ı ve rozet düzeltmesi tam bağımsız olarak doğrulandı — bilinen açık bug yok. Faz 12-C'ye (grid'i kaldırma) geçişi ONAYLIYORUM.**
 
-### Faz 12-C (12-A/B canlıda kanıtlandıktan SONRA, 12-C-hazırlık bitince)
+### Faz 12-C-hazırlık 2 (coder'ın grid'i kaldırmadan önce tespit ettiği, PM onaylı, 2026-08-26)
+Coder, grid'i kaldırmadan önce iki kritik boşluk fark etti — ikisi de doğrulandı, onaylandı:
+- [ ] **Düşman karşı saldırısı yok:** freeform'da hiç enemy-retaliation mekaniği yok, oyuncu asla hasar almıyor, ölüm/gerginlik/GameOverScreen'e ulaşma imkansız hale gelirdi. Çözüm: her oyuncu saldırı/büyü aksiyonundan SONRA, sahnede canlı düşman varsa TEK bir düşman `enemyAI.js`'in aynı D20+hasar+zırh-indirimi mantığıyla (x/y/hareket olmadan) karşılık versin.
+- [ ] **Equip mekaniği yok:** karakterler varsayılan olarak silahsız kuşanılı başlıyor (mevcut testlerle doğrulanmış) — equip olmadan oyuncular sonsuza kadar silahsız (d4 hasar) kalır. Çözüm: `resolveEquip` + `isEquipIntent` ("kuşan"/"tak"/"giy" çekim-farkında formlar, fikir #88 dersini tekrarlamadan), mevcut `/item/equip`'in aynı paper-doll mantığı.
+- [ ] **CharacterCard sadeleştirmesi:** equip/consume/pickup hepsi chat üzerinden yapılabilir hale gelince mevcut aksiyon butonları (Kullan/Kuşan/Fırlat/At/Büyü-seç) anlamsızlaşıyor — CharacterCard'ı salt-okunur bir karakter kağıdına (HP/mana/XP/attributes/envanter listesi, kuşanılan işaretli) indirgemek, "menü/buton yok" vizyonuyla tam uyumlu. Eşya atma (drop) için freeform karşılığı EKLENMEYECEK (önceden onaylanan fırlatma kararıyla aynı mantık, düşük önem/kabul edilebilir kayıp).
+
+### Faz 12-C (12-C-hazırlık 1+2 bitince)
 - [ ] `TacticalGrid.tsx` ve grid-özel backend endpoint'lerini/route'larını temiz bir şekilde kaldır (kullanılmayan attack surface disiplini).
 
 ## İnovasyon Fikirleri (yaratıcı cron)
