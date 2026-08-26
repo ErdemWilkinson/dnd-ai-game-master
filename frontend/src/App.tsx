@@ -373,7 +373,11 @@ function App() {
         />
       </main>
       <footer className="app-footer">
-        İkonlar /tg/station projesinden, CC BY-SA 3.0 lisansı altında alınmıştır (github.com/tgstation/tgstation).
+        İkonlar /tg/station projesinden, CC BY-SA 3.0 lisansı altında alınmıştır (
+        <a href="https://github.com/tgstation/tgstation" target="_blank" rel="noopener noreferrer">
+          github.com/tgstation/tgstation
+        </a>
+        ).
       </footer>
     </div>
   );

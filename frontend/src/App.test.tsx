@@ -117,3 +117,17 @@ describe('App — Faz 6-C: Game Over ve Yeniden Başla', () => {
     expect(screen.queryByText('Oyun Bitti')).not.toBeInTheDocument();
   });
 });
+
+describe('App — İnovasyon fikri #80: footer atıf linki tıklanabilir olmalı', () => {
+  it('tgstation atıf metni gerçek bir <a> linki içerir, doğru href/target/rel ile', async () => {
+    vi.mocked(api.getCurrentCharacter).mockResolvedValue(CHARACTER);
+    render(<App />);
+
+    await waitFor(() => expect(screen.getByText('Kalıcı Kahraman')).toBeInTheDocument());
+
+    const link = screen.getByRole('link', { name: 'github.com/tgstation/tgstation' });
+    expect(link).toHaveAttribute('href', 'https://github.com/tgstation/tgstation');
+    expect(link).toHaveAttribute('target', '_blank');
+    expect(link).toHaveAttribute('rel', 'noopener noreferrer');
+  });
+});
