@@ -28,6 +28,23 @@ const { nanoid } = require("nanoid");
 const MAX_INVENTORY = 30;
 // scene.js'in /item/use'daki aynı iyileştirme miktarı ("iksir" adı geçen her eşya).
 const POTION_HEAL_AMOUNT = 5;
+// Türkçe ünsüz yumuşaması: bir isme çekim eki (ör. belirtme hâli "-ı")
+// eklenince son sert ünsüz karşılık gelen yumuşak ünsüze döner ("Kılıç" +
+// "-ı" → "Kılıcı"). Fikir #93: eşya adı eşleştirmesi bu yüzden "Kısa Kılıç"
+// gibi bir ismi "Kısa Kılıcı kuşanıyorum" metninde literal olarak bulamıyordu
+// - eskiden bu, güvensiz bir "ilk eşyaya düş" fallback'iyle maskeleniyordu
+// (asıl bug), o kaldırılınca isim eşleştirmenin kendisinin bu yaygın durumu
+// da kapsaması gerekti.
+const CONSONANT_SOFTENING = { p: "b", ç: "c", t: "d", k: "ğ" };
+
+function nameMatchesText(itemName, lowerText) {
+  const lowerName = itemName.toLocaleLowerCase("tr");
+  if (lowerText.includes(lowerName)) return true;
+  const lastChar = lowerName.slice(-1);
+  const softened = CONSONANT_SOFTENING[lastChar];
+  if (!softened) return false;
+  return lowerText.includes(lowerName.slice(0, -1) + softened);
+}
 // services/enemyAI.js'teki AYNI sabitler (runEnemyTurn) - grid'in düşman
 // saldırı dengesiyle tutarlı kalması için.
 const ENEMY_ATTACK_MODIFIER = 2;
@@ -225,8 +242,16 @@ function resolveEquip(character, text) {
   const equippable = character.inventory.filter((i) => i.slot);
   if (equippable.length === 0) return null;
 
+  // Yaratıcı cron fikir #93: eskiden isim eşleşmeyince (`?? equippable[0]`)
+  // İLK kuşanılabilir eşyaya sessizce düşülüyordu - sahip olunmayan bir eşya
+  // istenince (ör. hiç miğfer yokken "Miğferimi takıyorum") bu, alakasız bir
+  // eşyayı (ör. kuşanılı kılıcı) yanlışlıkla çıkarabiliyordu. `resolveAttack`
+  // gibi TEK bir aday varken belirsizlik yaşanmayan bir durumdan farklı olarak
+  // (birden fazla eşya olabilir), burada isim eşleşmezse hiç mekanik sonuç
+  // üretilmiyor.
   const lower = (text || "").toLocaleLowerCase("tr");
-  const item = equippable.find((i) => lower.includes(i.name.toLocaleLowerCase("tr"))) ?? equippable[0];
+  const item = equippable.find((i) => nameMatchesText(i.name, lower));
+  if (!item) return null;
 
   if (item.equipped) {
     item.equipped = false;

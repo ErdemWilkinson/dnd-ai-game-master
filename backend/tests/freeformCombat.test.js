@@ -391,6 +391,37 @@ describe("Faz 12-A: /chat serbest metinden GERÇEK mekanik sonuç (saldırı/eş
     expect(res.body.gmMessage.text).not.toMatch(/kuşandın/);
   });
 
+  it("İnovasyon fikri #93: SAHİP OLUNMAYAN bir eşya istenince artık İLK kuşanılabilir eşyaya sessizce düşülmüyor (eskiden kuşanılı silahı yanlışlıkla çıkarabiliyordu)", async () => {
+    const app = buildApp();
+    const character = await createFighter(app);
+    const stored = characters.get(character.id);
+    const sword = stored.inventory.find((i) => i.name === "Kısa Kılıç");
+    sword.equipped = true; // kılıç zaten kuşanılı
+
+    // Karakterin envanterinde hiç miğfer yok - eskiden bu, isim eşleşmeyince
+    // İLK kuşanılabilir eşyaya (kılıç) düşüp onu YANLIŞLIKLA çıkarıyordu.
+    const res = await request(app).post("/api/chat").send({ message: "Miğferimi takıyorum" });
+    expect(res.status).toBe(201);
+    expect(res.body.gmMessage.text).not.toMatch(/kuşandın|çıkardın/);
+
+    const updated = characters.get(character.id);
+    expect(updated.inventory.find((i) => i.name === "Kısa Kılıç").equipped).toBe(true); // hâlâ kuşanılı, çıkarılmadı
+  });
+
+  it("İnovasyon fikri #93: Türkçe ünsüz yumuşamasıyla çekimlenen eşya adları (Kılıç→Kılıcı) hâlâ doğru eşleşiyor", async () => {
+    const app = buildApp();
+    const character = await createFighter(app);
+    const sword = character.inventory.find((i) => i.name === "Kısa Kılıç");
+    expect(sword.equipped).toBe(false);
+
+    const res = await request(app).post("/api/chat").send({ message: "Kısa Kılıcı kuşanıyorum" });
+    expect(res.status).toBe(201);
+    expect(res.body.gmMessage.text).toMatch(/Kısa Kılıç kuşandın/);
+
+    const updated = characters.get(character.id);
+    expect(updated.inventory.find((i) => i.id === sword.id).equipped).toBe(true);
+  });
+
   it("eşya alma niyeti algılanınca sahnedeki loot GERÇEKTEN envantere ekleniyor", async () => {
     const app = buildApp();
     const character = await createFighter(app);
