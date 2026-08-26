@@ -1,11 +1,11 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import type { getScene as GetScene, getChatHistory as GetChatHistory } from './api';
+import type { getCurrentCharacter as GetCurrentCharacter, getChatHistory as GetChatHistory } from './api';
 
 // Faz 6-A: her istek X-Session-Id header'ı taşımalı. Gerçek fetch'i mock'layıp
 // istek header'larını doğruca kontrol ediyoruz. session.ts modül-seviyesi bir
 // cachedSessionId tutuyor, bu yüzden localStorage.clear() ile birlikte
 // vi.resetModules() + dinamik import de gerekiyor (bkz. session.test.ts).
-let getScene: typeof GetScene;
+let getCurrentCharacter: typeof GetCurrentCharacter;
 let getChatHistory: typeof GetChatHistory;
 
 beforeEach(async () => {
@@ -19,7 +19,7 @@ beforeEach(async () => {
     }),
   );
   const api = await import('./api');
-  getScene = api.getScene;
+  getCurrentCharacter = api.getCurrentCharacter;
   getChatHistory = api.getChatHistory;
 });
 
@@ -29,7 +29,7 @@ afterEach(() => {
 
 describe('api.ts — Faz 6-A: X-Session-Id header', () => {
   it('her istek X-Session-Id header\'ı içerir', async () => {
-    await getScene();
+    await getCurrentCharacter();
 
     expect(fetch).toHaveBeenCalledTimes(1);
     const [, options] = vi.mocked(fetch).mock.calls[0];
@@ -39,7 +39,7 @@ describe('api.ts — Faz 6-A: X-Session-Id header', () => {
   });
 
   it('aynı oturumda ardışık isteklerin hepsi AYNI session id\'yi kullanır', async () => {
-    await getScene();
+    await getCurrentCharacter();
     await getChatHistory();
 
     const calls = vi.mocked(fetch).mock.calls;
@@ -53,7 +53,7 @@ describe('api.ts — Faz 6-A: X-Session-Id header', () => {
   });
 
   it('session id localStorage\'a kaydedilir, sayfa yenilense bile aynı kalır', async () => {
-    await getScene();
+    await getCurrentCharacter();
     const stored = localStorage.getItem('dnd-session-id');
     expect(stored).toBeTruthy();
 

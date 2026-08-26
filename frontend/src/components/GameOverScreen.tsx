@@ -9,8 +9,11 @@ interface Props {
 }
 
 // Yaratıcı cron fikir #9: eskiden ekran bomboştu (sadece isim+seviye) -
-// backend zaten bu verileri tutuyordu (character.xp, scene.encounterIndex),
-// sadece kullanıcıya hiç gösterilmiyordu.
+// backend zaten character.xp'yi tutuyordu, sadece kullanıcıya hiç
+// gösterilmiyordu. `encountersCleared` grid'in scene.encounterIndex'inden
+// geliyordu (Faz 12-C'de grid kaldırıldı, freeform bu bilgiyi henüz expose
+// etmiyor) - prop hâlâ opsiyonel/geriye dönük duruyor, App.tsx artık hiç
+// geçmiyor, bileşen `null` ile de düzgün render ediyor.
 export function GameOverScreen({
   characterName,
   level,

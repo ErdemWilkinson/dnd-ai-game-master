@@ -58,11 +58,8 @@
 }
 
 /* Faz 11: karakter kartı artık sürekli bir sütun değil, header'daki bu
-   butonla açılıp kapanan bir overlay panel. Savaşta (grid görünürken) da
-   erişilebilir kalması gerekiyor (envanter kullanımı için) - App.tsx bu
-   butonu her zaman render ediyor, layout moduna bağlı değil. */
-.character-toggle-button,
-.grid-toggle-button {
+   butonla açılıp kapanan bir overlay panel. */
+.character-toggle-button {
   display: flex;
   align-items: center;
   gap: 0.4rem;
@@ -77,17 +74,14 @@
 }
 
 .character-toggle-button:hover,
-.character-toggle-button[aria-pressed='true'],
-.grid-toggle-button:hover,
-.grid-toggle-button[aria-pressed='true'] {
+.character-toggle-button[aria-pressed='true'] {
   box-shadow: 0 0 10px rgba(242, 193, 78, 0.35);
   border-color: var(--gold);
 }
 
-/* Faz 12-B (serbest-form mimari sıfırlaması): chat artık varsayılan/tek
-   görünüm, taktik grid manuel bir toggle'la (⚔️ Harita) açılıyor - HP/Mana/
-   Seviye gibi temel durumu görmek için artık karakter panelini açmaya gerek
-   kalmasın diye her zaman görünen küçük bir şerit. */
+/* Faz 12-B: chat varsayılan/tek görünüm oldu - HP/Mana/Seviye gibi temel
+   durumu görmek için artık karakter panelini açmaya gerek kalmasın diye her
+   zaman görünen küçük bir şerit. */
 .header-hud {
   display: flex;
   align-items: center;
@@ -290,93 +284,26 @@
   opacity: 0.6;
 }
 
-/* Faz 11: kullanıcı geri bildirimi - sürekli 3 panelli düzen "vs oyunu"
-   gibi hissettiriyordu. Ana görünüm artık tam ekran metin/sohbet
-   (.mode-text), taktik grid SADECE sahnede düşman varken (ya da fırlatma/
-   büyü hedef-seçimi sırasında) otomatik açılıp yanına ekleniyor
-   (.mode-combat). Grid her zaman mount'lu kalıyor (TacticalGrid kendi sahne
-   state'ini/refetch mantığını kaybetmesin diye), CSS ile flex-basis/opacity
-   üzerinden yumuşak bir geçişle gösterilip gizleniyor.*/
+/* Faz 12-C (grid kaldırıldı): ana görünüm artık her zaman tam ekran metin/
+   sohbet - eskiden burada grid'in yanına açılıp kapandığı bir "savaş modu"
+   (.mode-combat/.mode-text) vardı, artık chat tek panel. */
 .app-main {
   position: relative;
   display: flex;
-  gap: 1rem;
   padding: 1rem;
   flex: 1;
   min-height: 0;
   overflow: hidden;
 }
 
-.pending-encounter-banner {
-  position: absolute;
-  top: 0.5rem;
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 5;
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  padding: 0.5rem 1rem;
-  border-radius: 999px;
-  background: rgba(20, 15, 10, 0.9);
-  border: 1px solid #8a6a3a;
-  color: #e8d9b8;
-  font-size: 0.9rem;
-  animation: fade-in 0.3s ease;
-}
-
-.pending-encounter-banner button {
-  border-radius: 999px;
-  border: 1px solid #8a6a3a;
-  background: #3a2c18;
-  color: #e8d9b8;
-  padding: 0.25rem 0.9rem;
-  cursor: pointer;
-}
-
-.pending-encounter-banner button:disabled {
-  opacity: 0.6;
-  cursor: default;
-}
-
 .app-main .chat-panel {
   flex: 1;
   min-width: 0;
-  transition: max-width 0.3s ease;
-}
-
-.app-main.mode-text .chat-panel {
   max-width: 800px;
   margin: 0 auto;
   width: 100%;
 }
 
-.app-main .tactical-grid {
-  flex-basis: 0;
-  width: 0;
-  min-width: 0;
-  opacity: 0;
-  padding: 0;
-  border-width: 0;
-  overflow: hidden;
-  pointer-events: none;
-  transition: flex-basis 0.3s ease, width 0.3s ease, opacity 0.25s ease, padding 0.3s ease;
-}
-
-.app-main.mode-combat .tactical-grid {
-  flex-basis: 380px;
-  width: 380px;
-  min-width: 260px;
-  opacity: 1;
-  padding: 1rem;
-  border-width: 1px;
-  pointer-events: auto;
-}
-
-/* Faz 9 (yaratıcı cron fikir #3, PM kararı) - Faz 11 sonrası yeniden
-   değerlendirildi: artık sadece 2 eleman (sohbet + grid) var, karakter
-   kartı ayrı bir overlay panel. Dar ekranlarda savaş modunda dikey
-   istifleniyor, metin modunda zaten tek panel (sohbet) var. */
 @media (max-width: 768px) {
   .app-header {
     flex-wrap: wrap;
@@ -391,23 +318,6 @@
 
   .app-main {
     padding: 0.75rem;
-    gap: 0.75rem;
-  }
-
-  .app-main.mode-combat {
-    flex-direction: column;
-    overflow-y: auto;
-  }
-
-  .app-main.mode-combat .chat-panel {
-    flex: none;
-    height: 45vh;
-  }
-
-  .app-main.mode-combat .tactical-grid {
-    flex-basis: auto;
-    width: 100%;
-    height: 45vh;
   }
 
   .character-panel {
@@ -431,7 +341,6 @@
 .intro-screen,
 .game-over-screen,
 .character-card,
-.tactical-grid,
 .chat-panel {
   background: linear-gradient(180deg, var(--bg-panel), var(--bg-inset));
   border: 1px solid var(--bronze);
@@ -539,8 +448,7 @@
 .character-creation button,
 .intro-screen button,
 .game-over-screen button,
-.chat-input-row button,
-.scene-header button {
+.chat-input-row button {
   padding: 0.6rem 1rem;
   background: linear-gradient(180deg, var(--blood), #5a2a20);
   border: 1px solid var(--bronze-bright);
@@ -556,15 +464,13 @@
 
 .character-creation button:hover,
 .intro-screen button:hover,
-.chat-input-row button:hover,
-.scene-header button:hover {
+.chat-input-row button:hover {
   box-shadow: 0 0 10px rgba(242, 193, 78, 0.35);
 }
 
 .character-creation button:active,
 .intro-screen button:active,
-.chat-input-row button:active,
-.scene-header button:active {
+.chat-input-row button:active {
   transform: translateY(1px);
 }
 
@@ -696,19 +602,6 @@
 }
 
 .paper-doll-slot.filled {
-  cursor: pointer;
-}
-
-.paper-doll-slot.filled:hover {
-  border-color: #e07a5f;
-  box-shadow: 0 0 8px rgba(224, 122, 95, 0.3);
-}
-
-.paper-doll-slot:hover {
-  border-color: var(--bronze-bright);
-}
-
-.paper-doll-slot.filled {
   border-color: var(--bronze-bright);
   box-shadow: inset 0 0 6px rgba(242, 193, 78, 0.15);
 }
@@ -774,12 +667,6 @@
   font-size: 0.8rem;
 }
 
-.inventory-item-row {
-  display: flex;
-  flex-direction: column;
-  gap: 0.35rem;
-}
-
 .inventory-item-name {
   display: inline-flex;
   align-items: center;
@@ -799,309 +686,6 @@
   height: 20px;
   font-size: 0.9rem;
   flex-shrink: 0;
-}
-
-.inventory-actions {
-  display: flex;
-  gap: 0.3rem;
-  flex-wrap: wrap;
-}
-
-.inventory-actions button {
-  font-size: 0.68rem;
-  padding: 0.3rem 0.55rem;
-  background: #2a241d;
-  border: 1px solid rgba(201, 163, 92, 0.3);
-  border-radius: 4px;
-  color: var(--parchment);
-  cursor: pointer;
-  text-transform: uppercase;
-  letter-spacing: 0.03em;
-}
-
-.inventory-actions button:hover {
-  background: #3a332a;
-  border-color: var(--bronze-bright);
-}
-
-.inventory-actions button.active {
-  background: var(--gold);
-  border-color: var(--gold);
-  color: var(--bg-void);
-  font-weight: 700;
-}
-
-/* İnovasyon fikri #69: Bonus Aksiyon/Aksiyon tükenmişken Kullan/Fırlat -
-   TacticalGrid'deki .enemy-disabled ile aynı görsel dil (soluklaştırma). */
-.inventory-actions button:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.inventory-actions button:disabled:hover {
-  background: #2a241d;
-  border-color: rgba(201, 163, 92, 0.3);
-}
-
-.throw-hint {
-  font-size: 0.8rem;
-  color: var(--gold);
-  margin: 0 0 0.5rem;
-}
-
-.spell-list {
-  display: flex;
-  flex-direction: column;
-  gap: 0.3rem;
-  margin: 0.5rem 0 0.75rem;
-}
-
-.spell-list button {
-  padding: 0.4rem 0.6rem;
-  background: linear-gradient(180deg, #24507a, var(--arcane-blue));
-  border: 1px solid var(--bronze-bright);
-  border-radius: 4px;
-  color: var(--parchment);
-  cursor: pointer;
-  font-size: 0.75rem;
-  text-align: left;
-}
-
-.spell-list button:hover:not(:disabled) {
-  box-shadow: 0 0 8px rgba(58, 110, 165, 0.5);
-}
-
-.spell-list button:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
-}
-
-.spell-list button.active {
-  background: var(--gold);
-  color: var(--bg-void);
-  font-weight: 700;
-  border-color: var(--gold);
-}
-
-/* Tactical grid */
-.tactical-grid {
-  padding: 1rem;
-  overflow-y: auto;
-  min-height: 0;
-}
-
-.scene-header {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-  margin-bottom: 0.75rem;
-  font-size: 0.85rem;
-  flex-wrap: wrap;
-}
-
-.scene-header h3 {
-  margin: 0;
-}
-
-.action-economy,
-.movement-economy,
-.encounter-progress {
-  font-size: 0.75rem;
-  color: var(--parchment-dim);
-}
-
-.encounter-progress {
-  color: var(--gold);
-  font-weight: 600;
-}
-
-.scene-header button {
-  margin-left: auto;
-  padding: 0.4rem 0.8rem;
-}
-
-/* İnovasyon fikri #53 */
-.pending-indicator {
-  font-size: 0.75rem;
-  color: var(--gold);
-}
-
-.grid {
-  position: relative;
-  display: grid;
-  gap: 2px;
-  padding: 0.4rem;
-  background: var(--bg-void);
-  border: 1px solid rgba(201, 163, 92, 0.15);
-  border-radius: 4px;
-}
-
-/* Faz 11 polish: token'lar CSS grid hücreleri yerine ölçülmüş piksel
-   konumlarına yerleştirilen ayrı bir overlay katmanında - böylece hareket
-   ettiklerinde anlık "zıplamak" yerine `left`/`top` transition'ıyla kayarlar. */
-.token-layer {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  z-index: 2;
-}
-
-.token-marker {
-  position: absolute;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 0.75rem;
-  font-weight: 700;
-  color: var(--parchment);
-  border-radius: 2px;
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.2);
-  transition: left 0.3s ease, top 0.3s ease;
-}
-
-.grid-disabled .cell {
-  cursor: not-allowed;
-  opacity: 0.75;
-}
-
-/* İnovasyon fikri #51: Aksiyon tükenmişken düşman hücreleri (saldırı hedefi)
-   görsel olarak devre dışı - grid-disabled'a benzer ama sadece düşmanları
-   kapsıyor, hareket hâlâ mümkün olduğundan grid'in tamamı değil. Token'lar
-   ayrı bir overlay katmanında (.token-layer) olduğundan asıl görsel
-   soluklaştırma orada (.token-marker), .cell'deki sınıf sadece imleç için. */
-.cell.enemy-disabled {
-  cursor: not-allowed;
-}
-
-.token-marker.token-disabled {
-  opacity: 0.5;
-  filter: grayscale(0.7);
-}
-
-.grid-throw-mode .cell {
-  cursor: crosshair;
-}
-
-.grid-throw-mode .cell:hover {
-  background: #4a4034;
-  outline: 2px solid var(--gold);
-}
-
-/* İnovasyon fikri #45: Ateş Topu hedef-seç modunda, hover edilen düşmana
-   bitişik (blast yarıçapı içindeki) DİĞER düşmanları önceden işaretle -
-   ana hover'ın altın rengiyle karışmasın diye turuncu kullanıldı. */
-.cell.aoe-preview {
-  outline: 2px solid #e0793a;
-  background: rgba(224, 121, 58, 0.25);
-}
-
-.cell {
-  position: relative;
-  aspect-ratio: 1;
-  min-width: 32px;
-  background: var(--bg-inset);
-  border: 1px solid #2a241d;
-  border-radius: 2px;
-  cursor: pointer;
-  color: var(--parchment);
-  font-size: 0.75rem;
-  padding: 0;
-}
-
-/* Faz 11 polish: saldırı isabet edince hedef karede kısa bir sallanma+flaş. */
-.cell.damage-flash {
-  animation: damage-shake 0.4s ease, damage-flash-bg 0.4s ease;
-}
-
-@keyframes damage-shake {
-  0%, 100% { transform: translateX(0); }
-  20% { transform: translateX(-3px); }
-  40% { transform: translateX(3px); }
-  60% { transform: translateX(-2px); }
-  80% { transform: translateX(2px); }
-}
-
-@keyframes damage-flash-bg {
-  0% { box-shadow: inset 0 0 0 999px rgba(255, 80, 60, 0.6); }
-  100% { box-shadow: inset 0 0 0 999px rgba(255, 80, 60, 0); }
-}
-
-.damage-popup {
-  position: absolute;
-  top: -0.2rem;
-  left: 50%;
-  transform: translateX(-50%);
-  color: #ff5a4a;
-  font-weight: 700;
-  font-size: 0.85rem;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
-  pointer-events: none;
-  animation: damage-popup-rise 0.7s ease forwards;
-}
-
-@keyframes damage-popup-rise {
-  0% { opacity: 1; transform: translate(-50%, 0); }
-  100% { opacity: 0; transform: translate(-50%, -1.4rem); }
-}
-
-.cell:hover {
-  background: #2a241d;
-}
-
-.cell.obstacle {
-  background: #3a332a;
-  cursor: not-allowed;
-  background-image: repeating-linear-gradient(
-    45deg,
-    rgba(0, 0, 0, 0.3),
-    rgba(0, 0, 0, 0.3) 3px,
-    transparent 3px,
-    transparent 6px
-  );
-}
-
-.token-marker.player-token {
-  background: linear-gradient(180deg, #4a86c0, var(--arcane-blue));
-}
-
-.token-marker.enemy-token {
-  background: linear-gradient(180deg, #9a4a3a, var(--blood));
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.15);
-}
-
-/* İnovasyon fikri #39: token'ların canı sadece title/aria-label'da (hover)
-   değil, görünür bir mini çubukla da gösterilsin - mobil/dokunmatikte hover
-   olmadığı ve zırh/silah mekaniğiyle (Faz 10) çok-vuruşluk savaşlarda
-   taktiksel bilgi eksikliği hissedildiği için eklendi. */
-.token-hp-bar {
-  position: absolute;
-  bottom: 1px;
-  left: 10%;
-  width: 80%;
-  height: 3px;
-  background: rgba(0, 0, 0, 0.65);
-  border-radius: 1px;
-  overflow: hidden;
-  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.4);
-}
-
-.token-hp-bar-fill {
-  height: 100%;
-  background: #5fbf5f;
-  transition: width 0.3s ease;
-}
-
-.token-hp-bar-fill.mid {
-  background: #e0a83a;
-}
-
-.token-hp-bar-fill.low {
-  background: #d9463a;
-}
-
-.cell.loot {
-  color: var(--gold);
-  text-shadow: 0 0 6px rgba(242, 193, 78, 0.6);
 }
 
 /* Chat panel */

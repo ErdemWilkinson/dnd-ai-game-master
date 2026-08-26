@@ -1,10 +1,5 @@
-import type { ActionRoll, AppearanceOption, Attributes, Character, ChatMessage, ClassOption, RaceOption, Scene, SpellId } from './types';
+import type { AppearanceOption, Attributes, Character, ChatMessage, ClassOption, RaceOption } from './types';
 import { getSessionId } from './session';
-
-export interface Narration {
-  text: string;
-  source: 'ai' | 'mock';
-}
 
 // Faz 7-C: yerelde Vite dev proxy'si "/api"yi backend'e yönlendirir (bkz.
 // vite.config.ts). Production build'de (Render Static Site gibi ayrı bir
@@ -100,97 +95,6 @@ export function sendChatMessage(message: string) {
   });
 }
 
-export function getScene() {
-  return request<Scene>('/scene');
-}
-
-export function moveToken(tokenId: string, x: number, y: number) {
-  return request<{
-    scene: Scene;
-    collectedLoot: unknown;
-    inventoryFull: boolean;
-    narration: Narration | null;
-    character: Character | null;
-  }>('/scene/move', {
-    method: 'POST',
-    body: JSON.stringify({ tokenId, x, y }),
-  });
-}
-
-export function attackTarget(characterId: string, targetTokenId: string) {
-  return request<{
-    character: Character;
-    scene: Scene;
-    attackResult: ActionRoll;
-    damage: number;
-    defeated: boolean;
-    levelsGained: number;
-    narration: Narration;
-  }>('/scene/attack', {
-    method: 'POST',
-    body: JSON.stringify({ characterId, targetTokenId }),
-  });
-}
-
-export function castSpell(characterId: string, spellId: SpellId, targetTokenId?: string) {
-  return request<{
-    character: Character;
-    scene: Scene;
-    spell: SpellId;
-    castResult?: ActionRoll;
-    damage?: number;
-    defeated?: boolean;
-    // İnovasyon fikri #43 (Ateş Topu AoE): isabet edilen her düşman için ayrı
-    // {id,name,damage,defeated} - fikir #46'da hasar popup'larını doğru
-    // hücrelerde göstermek için kullanılıyor.
-    blastHits?: { id: string; name: string; damage: number; defeated: boolean }[];
-    levelsGained?: number;
-    healed?: number;
-    narration: Narration;
-  }>('/scene/cast', {
-    method: 'POST',
-    body: JSON.stringify({ characterId, spellId, targetTokenId }),
-  });
-}
-
 export function resetSession() {
   return request<{ ok: boolean }>('/character/reset', { method: 'POST' });
-}
-
-export function endTurn() {
-  return request<Scene & { enemyMessages: string[] }>('/scene/end-turn', { method: 'POST' });
-}
-
-// İnovasyon fikri #60: adı "consumeItem" - eskiden "useItem" idi ama bu isim
-// React'in hook adlandırma kuralına (use...) yanlışlıkla uyduğundan
-// oxlint'in react-hooks/rules-of-hooks kuralı, bunu normal bir fonksiyondan
-// (component/hook olmayan `handleUse` içinde) çağırınca hatalı bir "hook
-// kuralı ihlali" raporluyordu - fonksiyonel bir sorun değil, sadece isim
-// çakışması, o yüzden yeniden adlandırıldı.
-export function consumeItem(characterId: string, itemId: string) {
-  return request<{ character: Character }>('/scene/item/use', {
-    method: 'POST',
-    body: JSON.stringify({ characterId, itemId }),
-  });
-}
-
-export function equipItem(characterId: string, itemId: string) {
-  return request<{ character: Character }>('/scene/item/equip', {
-    method: 'POST',
-    body: JSON.stringify({ characterId, itemId }),
-  });
-}
-
-export function dropItem(characterId: string, itemId: string) {
-  return request<{ character: Character }>('/scene/item/drop', {
-    method: 'POST',
-    body: JSON.stringify({ characterId, itemId }),
-  });
-}
-
-export function throwItem(characterId: string, itemId: string, x: number, y: number) {
-  return request<{ character: Character; scene: Scene }>('/scene/item/throw', {
-    method: 'POST',
-    body: JSON.stringify({ characterId, itemId, x, y }),
-  });
 }

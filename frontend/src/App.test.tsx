@@ -23,11 +23,7 @@ const CHARACTER: Character = {
 
 beforeEach(() => {
   vi.resetAllMocks();
-  // TacticalGrid ve ChatPanel de mount olacağı için ilgili API çağrılarını da mock'luyoruz.
-  vi.mocked(api.getScene).mockResolvedValue({
-    id: 's1', name: 'Sahne', width: 1, height: 1, round: 1, activeTokenId: 'player',
-    obstacles: [], loot: [], tokens: [{ id: 'player', type: 'player', name: 'Sen', x: 0, y: 0, speed: 1 }],
-  } as never);
+  // ChatPanel de mount olacağı için ilgili API çağrısını da mock'luyoruz.
   vi.mocked(api.getChatHistory).mockResolvedValue({ messages: [] });
   // Karakter yoksa CharacterCreation mount olur, o da bunu çağırır.
   vi.mocked(api.getCharacterOptions).mockResolvedValue({ races: [], classes: [], appearances: [] });
@@ -151,42 +147,7 @@ describe('App — İnovasyon fikri #80: footer atıf linki tıklanabilir olmalı
   });
 });
 
-describe('Faz 12-B (serbest-form mimari sıfırlaması): chat varsayılan/tek görünüm, grid manuel toggle', () => {
-  it('sahnede düşman OLSA BİLE grid otomatik açılmaz (chat varsayılan kalır) - eski hasEnemies→showGrid mantığı kaldırıldı', async () => {
-    vi.mocked(api.getCurrentCharacter).mockResolvedValue(CHARACTER);
-    vi.mocked(api.getScene).mockResolvedValue({
-      id: 's1', name: 'Sahne', width: 2, height: 1, round: 1, activeTokenId: 'player',
-      obstacles: [], loot: [],
-      tokens: [
-        { id: 'player', type: 'player', name: 'Sen', x: 0, y: 0, speed: 1 },
-        { id: 'goblin-1', type: 'enemy', name: 'Goblin', x: 1, y: 0, speed: 1 },
-      ],
-    } as never);
-    render(<App />);
-
-    await waitFor(() => expect(screen.getByText('Kalıcı Kahraman')).toBeInTheDocument());
-    // Sahnede düşman olmasına rağmen (TacticalGrid'in onSceneUpdate'i hasEnemies'i
-    // true yapmış olmalı) app-main hâlâ metin modunda - grid zorla açılmadı.
-    await waitFor(() => expect(document.querySelector('.app-main')).toHaveClass('mode-text'));
-    expect(document.querySelector('.app-main')).not.toHaveClass('mode-combat');
-  });
-
-  it('"Harita" toggle butonu grid\'i manuel açıp kapatır', async () => {
-    vi.mocked(api.getCurrentCharacter).mockResolvedValue(CHARACTER);
-    const user = userEvent.setup();
-    render(<App />);
-
-    await waitFor(() => expect(screen.getByText('Kalıcı Kahraman')).toBeInTheDocument());
-    expect(document.querySelector('.app-main')).toHaveClass('mode-text');
-
-    const toggle = screen.getByRole('button', { name: /Taktik haritayı aç\/kapat/i });
-    await user.click(toggle);
-    expect(document.querySelector('.app-main')).toHaveClass('mode-combat');
-
-    await user.click(toggle);
-    expect(document.querySelector('.app-main')).toHaveClass('mode-text');
-  });
-
+describe('Faz 12-C (grid kaldırıldı): chat artık TEK arayüz, HUD her zaman görünür', () => {
   it('HP/Mana/Seviye bilgisi karakter panelini açmadan HER ZAMAN header\'da görünür (HUD şeridi)', async () => {
     vi.mocked(api.getCurrentCharacter).mockResolvedValue({
       ...CHARACTER,
