@@ -5,7 +5,8 @@ Bu projede 3 Claude Code session'ı birlikte çalışır.
 ## Roller
 - **PM** (proje yöneticisi): Kullanıcıyla iletişim, kapsam/karar netleştirme, görev dağıtımı (`TASKS.md`), 15 dakikada bir coder/tester'a ilerleme kontrolü.
 - **coder** (`claude-game-ec`, önceki `claude-game-c8`/`claude-game-38` — pencereler 2026-08-25'te yeniden başladı, isimler değişti): Kullanıcı bu session'a doğrudan "sen codersın, PM ve tester işini de kendin yap" dediği için `claude-game-ec` hem coder hem kendi PM/tester doğrulamasını kendisi yapıyor.
-- **claude-game-34**: Rolü netleşmedi (yeni pencere, kullanıcıdan ayrı bir talimat almış olabilir) — PM tarafından soruldu, netleşince güncellenecek. Netleşene kadar `claude-game-ec`'in üzerinde çalıştığı işlere dokunmuyor.
+- **tester** (`claude-game-74`, 2026-08-26'da PM tarafından yeniden aktifleştirildi — Faz 8'de tester'dı, uzun süre yanıtsız kaldıktan sonra tekrar bağlandı): Faz 12 (yüksek riskli mimari değişiklik) için bağımsız QA sağlıyor, `claude-game-ec`'in üzerinde çalıştığı dosyalara dokunmuyor.
+- **claude-game-34**: Rolü hâlâ netleşmedi (kullanıcıdan ayrı bir talimat almış olabilir) — netleşene kadar boşta, kimsenin işine dokunmuyor.
 
 Not: session isimleri pencere/oturum yeniden başlatıldığında değişebilir (rastgele bir sonek atanıyor) — güncel isimler için PM ile teyit edin, bu dosya güncel olmayabilir.
 
