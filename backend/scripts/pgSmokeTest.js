@@ -20,6 +20,25 @@ if (process.env.VITEST) {
   console.error("VITEST set - bu script db.js'in SQLite'a düşmesine neden olur, kaldırıp tekrar dene.");
   process.exit(1);
 }
+// Yaratıcı cron fikir #84: script kendi test satırını yazıp sonunda SİLİYOR
+// (delete*() çağrıları) - bir geliştirici .env'inde gerçek bir prod
+// DATABASE_URL varken dalgınlıkla `node scripts/pgSmokeTest.js` çalıştırırsa
+// prod veritabanına yazıp kendi satırlarını (sadece kendi testId'sini,
+// ama yine de prod'a canlı yazma/silme) sessizce gerçekleştirebilirdi -
+// hiçbir "sen miydin bunu isteyen" kontrolü yoktu. GITHUB_ACTIONS, CI'ın
+// (bkz. test.yml) otomatik set ettiği bir env değişkeni - yerel bir
+// geliştiricinin ortamında bulunmaz, o yüzden "sadece CI'da ya da bilinçli
+// bir onayla çalış" için doğal bir imza. Yerelde kasıtlı bir çalıştırma
+// gerekiyorsa ALLOW_PG_SMOKE_TEST=true ile bypass edilebilir.
+if (!process.env.GITHUB_ACTIONS && process.env.ALLOW_PG_SMOKE_TEST !== "true") {
+  console.error(
+    "GITHUB_ACTIONS set değil - bu script GERÇEK bir Postgres'e yazıp siliyor, " +
+      "yanlışlıkla prod DATABASE_URL'e karşı çalıştırılmasını önlemek için sadece CI'da " +
+      "(GITHUB_ACTIONS otomatik set edilir) çalışacak şekilde kilitlendi. Yerelde bilinçli " +
+      "bir çalıştırma istiyorsan ALLOW_PG_SMOKE_TEST=true ile bypass edebilirsin.",
+  );
+  process.exit(1);
+}
 
 const assert = require("assert");
 const db = require("../data/db");
