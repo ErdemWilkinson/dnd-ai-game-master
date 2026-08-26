@@ -34,11 +34,17 @@ function getFreeformEncounter(sessionId) {
   return freeformEncounters.get(sessionId);
 }
 
+// Yaratıcı cron fikir #87: grid'in `routes/scene.js`'teki `checkEncounterCleared()`'ı
+// TÜM havuzu bir kere turlayınca ("clearedIndex+1 % totalEncounters === 0")
+// özel bir "Tüm bölgeyi temizledin!" anı yaşatıyordu - serbest-form yolunda
+// bu hiç yoktu. Aynı modulo kontrolü burada da uygulanıp `completedFullLap`
+// olarak döndürülüyor, `chat.js` bunu narrasyona ekliyor.
 function advanceFreeformEncounter(sessionId) {
   const current = getFreeformEncounter(sessionId);
+  const completedFullLap = (current.encounterIndex + 1) % ENCOUNTERS.length === 0;
   const next = buildState(current.encounterIndex + 1);
   freeformEncounters.set(sessionId, next);
-  return next;
+  return { ...next, completedFullLap };
 }
 
 function resetFreeformEncounter(sessionId) {

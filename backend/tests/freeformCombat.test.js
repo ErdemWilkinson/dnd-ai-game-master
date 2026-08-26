@@ -12,7 +12,8 @@ const chatRouter = require("../routes/chat.js");
 const characterRouter = require("../routes/character.js");
 const { chatHistories, characters, scenes, activeCharacterIdBySession } = require("../data/store.js");
 const { DEFAULT_SESSION_ID } = require("../services/sessionId.js");
-const { getFreeformEncounter, resetFreeformEncounter } = require("../services/freeformEncounter.js");
+const { getFreeformEncounter, advanceFreeformEncounter, resetFreeformEncounter } = require("../services/freeformEncounter.js");
+const { ENCOUNTERS } = require("../data/encounters.js");
 
 function buildApp() {
   const app = express();
@@ -89,6 +90,38 @@ describe("Faz 12-A: /chat serbest metinden GERÇEK mekanik sonuç (saldırı/eş
     const state = getFreeformEncounter(DEFAULT_SESSION_ID);
     expect(state.encounterIndex).toBe(1); // bir sonraki karşılaşmaya geçti
     expect(state.enemies.length).toBeGreaterThan(0); // yeni karşılaşmanın düşmanları yüklendi
+  });
+
+  it("İnovasyon fikri #87: tüm karşılaşma havuzu bir kez turlanınca özel bir 'Tüm bölgeyi temizledin' anı yaşatır (grid'in checkEncounterCleared()'ıyla aynı davranış)", async () => {
+    vi.spyOn(Math, "random").mockReturnValue(0.99);
+    const app = buildApp();
+    await createFighter(app);
+
+    // Havuzdaki SON karşılaşmaya kadar ilerlet (index ENCOUNTERS.length-1) -
+    // bu karşılaşma temizlenince (index+1) % length === 0 olacak.
+    for (let i = 0; i < ENCOUNTERS.length - 1; i++) {
+      advanceFreeformEncounter(DEFAULT_SESSION_ID);
+    }
+    expect(getFreeformEncounter(DEFAULT_SESSION_ID).encounterIndex).toBe(ENCOUNTERS.length - 1);
+
+    let lastRes;
+    let cleared = false;
+    for (let i = 0; i < 10 && !cleared; i++) {
+      lastRes = await request(app).post("/api/chat").send({ message: "Düşmana saldırıyorum" });
+      if (lastRes.body.gmMessage.text.includes("yenildi")) cleared = true;
+    }
+
+    expect(cleared).toBe(true);
+    expect(lastRes.body.gmMessage.text).toMatch(/Tüm bölgeyi temizledin!/);
+    // Normal ("Alanı temizledin! Yeni alan:") mesajı DEĞİL, özel tam-tur mesajı gösterilmeli.
+    expect(lastRes.body.gmMessage.text).not.toContain("Alanı temizledin! Yeni alan:");
+
+    const stateAfter = getFreeformEncounter(DEFAULT_SESSION_ID);
+    // encounterIndex sonsuza kadar artan bir sayaç (grid'in sceneFactory.js'iyle
+    // aynı desen) - içerik seçimi (name/enemies) % ENCOUNTERS.length ile
+    // sarılıyor, ama alanın kendisi sarılmıyor.
+    expect(stateAfter.encounterIndex).toBe(ENCOUNTERS.length);
+    expect(stateAfter.name).toBe(ENCOUNTERS[0].name); // içerik başa sardı
   });
 
   it("eşya kullanma niyeti algılanınca envanterdeki iksir GERÇEKTEN tüketilip HP iyileştiriyor", async () => {

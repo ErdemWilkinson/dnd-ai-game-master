@@ -64,9 +64,12 @@ function resolveAttack(character, sessionId, text) {
 
   let encounterCleared = false;
   let nextEncounterName = null;
+  let completedFullLap = false;
   if (defeated && state.enemies.length === 0) {
     encounterCleared = true;
-    nextEncounterName = advanceFreeformEncounter(sessionId).name;
+    const next = advanceFreeformEncounter(sessionId);
+    nextEncounterName = next.name;
+    completedFullLap = next.completedFullLap;
   }
 
   return {
@@ -78,6 +81,7 @@ function resolveAttack(character, sessionId, text) {
     levelsGained,
     encounterCleared,
     nextEncounterName,
+    completedFullLap,
   };
 }
 

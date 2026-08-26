@@ -49,7 +49,11 @@ function describeFreeformResult(result, character) {
       suffix += ` ${character.name} seviye ${character.level}'e ulaştı!`;
     }
     if (result.encounterCleared) {
-      suffix += ` Alanı temizledin! Yeni alan: ${result.nextEncounterName}.`;
+      // Fikir #87: grid'in `checkEncounterCleared()`'ındaki aynı "tüm havuzu
+      // bir kere turladın" özel anı - serbest-form yolunda eksikti.
+      suffix += result.completedFullLap
+        ? ` Tüm bölgeyi temizledin! Kahramanlığın efsaneleşiyor... ama tehlike hiç bitmiyor, yeni bir tehdit beliriyor: ${result.nextEncounterName}.`
+        : ` Alanı temizledin! Yeni alan: ${result.nextEncounterName}.`;
     }
     return suffix;
   }
