@@ -36,7 +36,18 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
     throw new NetworkError('Sunucudan geçersiz yanıt alındı.');
   }
   if (!res.ok) {
-    throw new Error(data.error || `İstek başarısız: ${path}`);
+    let message = data.error || `İstek başarısız: ${path}`;
+    // İnovasyon fikri #79: 429 durumunda backend (publicRateLimit.js,
+    // standardHeaders:true) bir Retry-After header'ı (saniye cinsinden)
+    // gönderiyordu ama hiçbir yerde okunmuyordu - kullanıcı ne kadar
+    // beklemesi gerektiğini bilmeden aynı hata mesajını görüyordu.
+    if (res.status === 429) {
+      const retryAfter = Number(res.headers.get('Retry-After'));
+      if (Number.isFinite(retryAfter) && retryAfter > 0) {
+        message += ` (${retryAfter} saniye sonra tekrar dene.)`;
+      }
+    }
+    throw new Error(message);
   }
   return data as T;
 }
