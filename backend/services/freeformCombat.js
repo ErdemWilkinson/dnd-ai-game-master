@@ -262,7 +262,11 @@ function resolvePickup(character, sessionId) {
 // kendi adının geçmesi) - bir sınıfın büyüsü yoksa/manası yetmezse
 // resolveCast zaten null döner, sıradaki kontrole (saldırı) düşülür.
 function resolveFreeformAction(character, sessionId, text) {
-  if (!character) return null;
+  // Yaratıcı cron fikir #92: ölü bir karakter (hp<=0) için hiçbir kontrol
+  // yoktu - hiçbir resolveXxx() hp>0 kontrolü yapmıyordu, chat.js'de de ayrı
+  // bir kontrol bulunmuyordu. Burada tek noktadan (savunma katmanı olarak,
+  // asıl engel chat.js'in erken dönüşü) kapatılıyor.
+  if (!character || character.hp.current <= 0) return null;
 
   const castResult = resolveCast(character, sessionId, text);
   if (castResult) return castResult;

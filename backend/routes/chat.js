@@ -148,6 +148,29 @@ router.post("/", publicRateLimit, async (req, res) => {
   history.push(playerMessage);
 
   const character = getActiveCharacter(sessionId);
+
+  // Yaratıcı cron fikir #92: Faz 12-C ile grid kalkınca `requireOwnedCharacter()`
+  // gibi bir sahiplik/durum kontrolü hiçbir yerde kalmadı - ölü bir karakter
+  // (hp<=0) chat üzerinden saldırıp XP kazanabiliyor, hatta İyileştir ile
+  // sessizce "dirilebiliyordu" (frontend'in GameOverScreen'i sadece görsel bir
+  // kapıydı, backend'de hiç zorlanmıyordu). AI çağrısına/mekanik çözümlemeye
+  // hiç girmeden en başta kesiliyor - hem güvenlik hem gereksiz AI bütçesi
+  // israfını önlemek için.
+  if (character && character.hp.current <= 0) {
+    const gmMessage = {
+      id: nanoid(),
+      role: "gm",
+      text: "Karakterin can çekişiyor, artık hareket edemiyor... Yeni bir maceraya başlamalısın.",
+      source: "mock",
+      roll: null,
+      timestamp: Date.now(),
+    };
+    history.push(gmMessage);
+    trimChatHistory(history);
+    saveChatHistory(sessionId, history);
+    return res.status(201).json({ playerMessage, gmMessage, character });
+  }
+
   const freeformResult = resolveFreeformAction(character, sessionId, playerMessage.text);
   // Tester QA'sının bulduğu ek not (Faz 12-C-hazırlık sonrası, TASKS.md'de):
   // eskiden GERÇEK bir mekanik sonuç (heal cast/eşya kullan/eşya al)

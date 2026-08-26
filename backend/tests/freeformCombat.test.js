@@ -86,6 +86,13 @@ describe("Faz 12-A: /chat serbest metinden GERÇEK mekanik sonuç (saldırı/eş
     const app = buildApp();
     const character = await createFighter(app);
     expect(character.xp).toBe(0);
+    // Fikir #92: düşman karşılığı artık GERÇEK hasar veriyor (Faz 12-C-hazırlık
+    // 2), sabit maksimum-hasar mock'uyla (0.99) her karşılık da kritik vuruyor
+    // - oyuncu goblin'i bitirmeden ölebilir (ki bu artık doğru bir davranış).
+    // Bu testin amacı XP/karşılaşma geçişi olduğundan, oyuncuyu ölmeyecek
+    // kadar yüksek HP'ye getiriyoruz.
+    characters.get(character.id).hp.current = 9999;
+    characters.get(character.id).hp.max = 9999;
 
     let cleared = false;
     // Goblin'in HP'sini (10) sıfıra indirmek için gerektiği kadar saldır -
@@ -113,7 +120,14 @@ describe("Faz 12-A: /chat serbest metinden GERÇEK mekanik sonuç (saldırı/eş
   it("İnovasyon fikri #87: tüm karşılaşma havuzu bir kez turlanınca özel bir 'Tüm bölgeyi temizledin' anı yaşatır (grid'in checkEncounterCleared()'ıyla aynı davranış)", async () => {
     vi.spyOn(Math, "random").mockReturnValue(0.99);
     const app = buildApp();
-    await createFighter(app);
+    const character = await createFighter(app);
+    // Fikir #92: düşman karşılığı artık GERÇEK hasar veriyor (Faz 12-C-hazırlık
+    // 2) - sabit maksimum-hasar mock'uyla (0.99) oyuncu, tüm havuzu bitirmeden
+    // ÖLEBİLİR (ki bu artık doğru/istenen bir davranış). Bu testin amacı ölüm
+    // mekaniği değil "tam tur" mesajı olduğundan, oyuncuyu bilinçli olarak
+    // ölmeyecek kadar yüksek HP'ye getiriyoruz.
+    characters.get(character.id).hp.current = 9999;
+    characters.get(character.id).hp.max = 9999;
 
     // Havuzdaki SON karşılaşmaya kadar ilerlet (index ENCOUNTERS.length-1) -
     // bu karşılaşma temizlenince (index+1) % length === 0 olacak.
@@ -197,7 +211,13 @@ describe("Faz 12-A: /chat serbest metinden GERÇEK mekanik sonuç (saldırı/eş
   it("Faz 12-C-hazırlık 2: son düşman öldürülünce O ANKİ mesajda KARŞILIK VERMEZ (kimse kalmadı)", async () => {
     vi.spyOn(Math, "random").mockReturnValue(0.99); // maksimum isabet + hasar, kritikler dahil
     const app = buildApp();
-    await createFighter(app);
+    const character = await createFighter(app);
+    // Fikir #92: bkz. yukarıdaki testteki aynı not - sabit maksimum-hasar
+    // mock'uyla düşman karşılığı da her zaman kritik vurur, oyuncu goblin'i
+    // bitirmeden ölebilir. Bu testin amacı "son düşman ölünce karşılık
+    // vermiyor" olduğundan, oyuncuyu ölmeyecek kadar yüksek HP'ye getiriyoruz.
+    characters.get(character.id).hp.current = 9999;
+    characters.get(character.id).hp.max = 9999;
 
     let lastRes;
     let cleared = false;
@@ -420,6 +440,44 @@ describe("Faz 12-A: /chat serbest metinden GERÇEK mekanik sonuç (saldırı/eş
     const res = await request(app).post("/api/chat").send({ message: "Boşluğa saldırıyorum" });
     expect(res.status).toBe(201);
     expect(res.body.gmMessage.text).not.toMatch(/hasar verdin|yenildi/);
+  });
+
+  it("İnovasyon fikri #92: ölü bir karakter (hp<=0) chat üzerinden HİÇBİR mekanik aksiyon gerçekleştiremez (saldırı/büyü/eşya/kuşanma dahil)", async () => {
+    const app = buildApp();
+    const character = await createFighter(app);
+    const stored = characters.get(character.id);
+    stored.hp.current = 0; // karakter "öldü"
+    const xpBefore = stored.xp;
+    const inventoryBefore = stored.inventory.length;
+
+    const res = await request(app).post("/api/chat").send({ message: "Goblin'e saldırıyorum" });
+    expect(res.status).toBe(201);
+    expect(res.body.gmMessage.text).toMatch(/Yeni bir maceraya başlamalısın/);
+    expect(res.body.gmMessage.roll).toBeNull();
+
+    const after = characters.get(character.id);
+    expect(after.xp).toBe(xpBefore); // XP kazanmadı
+    expect(after.inventory.length).toBe(inventoryBefore); // envanter değişmedi
+    expect(after.hp.current).toBe(0); // "dirilmedi"
+
+    const freeformState = getFreeformEncounter(DEFAULT_SESSION_ID);
+    expect(freeformState.enemies.find((e) => e.id === "goblin-1").hp).toBe(10); // düşmana hiç hasar verilmedi
+  });
+
+  it("İnovasyon fikri #92: ölü bir karakter İyileştir büyüsüyle bile 'dirilemez' (mana yeterli olsa dahi)", async () => {
+    const app = buildApp();
+    const character = await createWizard(app);
+    const stored = characters.get(character.id);
+    stored.hp.current = 0;
+    const manaBefore = stored.mana.current;
+
+    const res = await request(app).post("/api/chat").send({ message: "Kendime İyileştir büyüsünü uyguluyorum" });
+    expect(res.status).toBe(201);
+    expect(res.body.gmMessage.text).toMatch(/Yeni bir maceraya başlamalısın/);
+
+    const after = characters.get(character.id);
+    expect(after.hp.current).toBe(0); // hâlâ ölü
+    expect(after.mana.current).toBe(manaBefore); // mana harcanmadı
   });
 
 });
