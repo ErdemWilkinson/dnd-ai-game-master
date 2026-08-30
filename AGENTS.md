@@ -18,10 +18,10 @@ Bu projede genelde 3 Claude Code session'ı birlikte çalışır: **PM**, **code
 5. PM görünmüyorsa (offline/kapalı): coder, kendi başına PM'in normalde vereceği küçük/net kararları verebilir (örn. stale TASKS.md maddelerini kapatmak, küçük a11y/bug fix'leri almak); büyük mimari/kapsam kararları için PM dönene ya da kullanıcı doğrudan talimat verene kadar bekler, kullanıcıya PM yerine geçip doğrudan büyük kapsam sorusu sormaz.
 
 ## Güncel oturum (bilgi amaçlı, değişebilir — güvenme, rol keşfini uygula)
-- **coder**: `claude-game-d1` (2026-08-30 itibarıyla) — Faz 12 sonrası fikir #94/#95/#86 + stale-madde temizliğini yaptı.
+- **coder**: `claude-game-7c` (2026-08-30, kullanıcı isteğiyle devraldı) — önceki coder `claude-game-ca`/`claude-game-d1`'den devir aldı, devri bağımsız doğrulayıp kabul etti. Devreden coder fikir #94/#95/#86 + stale-madde temizliğini yapmıştı.
 - **tester**: `claude-game-ff` (2026-08-30'da kullanıcı tarafından atandı) — fikir #94/#86/#95'i bağımsız doğruladı.
 - **PM**: Şu an aktif görünmüyor (son bilinen: `claude-game-a5`, offline).
-- Rolsüz/beklemede: `claude-game-69`, `claude-game-de`, `evrimsel-web-claude-81` — kullanıcı tarafından henüz atanmadı.
+- Rolsüz/beklemede: `claude-game-69`, `claude-game-de`, `evrimsel-web-claude-81` — kullanıcı tarafından henüz atanmadı (isimler eskimiş olabilir).
 
 ## Yeni coder devri (kullanıcı "coder başka bir session olsun" dediğinde)
 1. Kullanıcı yeni bir session açar ve ona "sen codersın" der (ya da mevcut rolsüz bir session'a söyler).
