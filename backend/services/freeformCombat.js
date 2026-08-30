@@ -74,10 +74,18 @@ function resolveEnemyRetaliation(character, state, preferredEnemyId) {
   return { enemyName: attacker.name, hit: true, damage };
 }
 
+// Yaratıcı cron fikir #93'ün resolveEquip'te düzelttiği AYNI bug sınıfı:
+// eskiden isim eşleşmeyince (`?? state.enemies[0]`) sessizce İLK düşmana
+// düşülüyordu. Tek düşmanlı karşılaşmalarda (havuzdaki çoğu) zaten belirsizlik
+// yok - ama "İskelet Mezarlığı" gibi çoklu düşmanlı bir karşılaşmada, oyuncu
+// var olmayan/artık ölü bir ismi ("Okçu'ya vur" ama sadece Savaşçı kaldıysa)
+// yazınca bu, alakasız bir düşmana yanlışlıkla saldırıyordu. Birden fazla
+// düşman varken isim eşleşmezse hiç hedef seçilmiyor (mekanik sonuç `null`).
 function findTargetEnemy(state, text) {
   const lower = (text || "").toLocaleLowerCase("tr");
   const named = state.enemies.find((e) => lower.includes(e.name.toLocaleLowerCase("tr")));
-  return named ?? state.enemies[0] ?? null;
+  if (named) return named;
+  return state.enemies.length === 1 ? state.enemies[0] : null;
 }
 
 function resolveAttack(character, sessionId, text) {
@@ -235,9 +243,9 @@ function resolveConsume(character) {
 // Faz 12-C-hazırlık 2: grid'in `/item/equip`'iyle AYNI paper-doll mantığı
 // (aynı slotta başka bir şey kuşanılıysa önce onu çıkar). Türkçe'de bir eşyaya
 // çekim eki eklenince ünsüz yumuşaması olabileceğinden ("Kılıç" + "-ı" →
-// "Kılıcı") tam ad her zaman birebir metinde geçmeyebilir - önce isim
-// eşleşmesi denenir, yoksa (`resolveAttack`'in target-fallback'iyle aynı
-// desen) kuşanılabilir İLK eşya hedef alınır.
+// "Kılıcı") tam ad her zaman birebir metinde geçmeyebilir - `nameMatchesText`
+// bu yumuşamayı da dener. İsim hiç eşleşmezse (fikir #93) hiç mekanik sonuç
+// üretilmez - sahip olunmayan bir eşyaya sessizce başka bir eşyaya düşülmez.
 function resolveEquip(character, text) {
   const equippable = character.inventory.filter((i) => i.slot);
   if (equippable.length === 0) return null;

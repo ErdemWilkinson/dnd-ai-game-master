@@ -117,6 +117,31 @@ describe("Faz 12-A: /chat serbest metinden GERÇEK mekanik sonuç (saldırı/eş
     expect(state.enemies.length).toBeGreaterThan(0); // yeni karşılaşmanın düşmanları yüklendi
   });
 
+  it("İnovasyon fikri: birden fazla düşman varken var olmayan/yanlış isimli bir düşmana saldırı denenince (fikir #93'ün resolveEquip'te düzelttiği AYNI bug sınıfı) sessizce başka bir düşmana saldırılmaz", async () => {
+    vi.spyOn(Math, "random").mockReturnValue(0.9);
+    const app = buildApp();
+    await createFighter(app);
+
+    // İskelet Mezarlığı (index 2): iki düşman - İskelet Savaşçı + İskelet Okçu.
+    advanceFreeformEncounter(DEFAULT_SESSION_ID);
+    advanceFreeformEncounter(DEFAULT_SESSION_ID);
+    const before = getFreeformEncounter(DEFAULT_SESSION_ID);
+    expect(before.enemies.length).toBe(2);
+    const hpSnapshot = before.enemies.map((e) => ({ id: e.id, hp: e.hp }));
+
+    // "Ejderha" bu karşılaşmada yok - eskiden isim eşleşmeyince sessizce
+    // ilk düşmana (İskelet Savaşçı) düşülüyordu.
+    const res = await request(app).post("/api/chat").send({ message: "Ejderha'ya saldırıyorum" });
+    expect(res.status).toBe(201);
+    expect(res.body.gmMessage.text).not.toMatch(/hasar verdin/);
+
+    const after = getFreeformEncounter(DEFAULT_SESSION_ID);
+    for (const enemy of after.enemies) {
+      const before = hpSnapshot.find((e) => e.id === enemy.id);
+      expect(enemy.hp).toBe(before.hp); // hiçbir düşman hasar almadı
+    }
+  });
+
   it("İnovasyon fikri #87: tüm karşılaşma havuzu bir kez turlanınca özel bir 'Tüm bölgeyi temizledin' anı yaşatır (grid'in checkEncounterCleared()'ıyla aynı davranış)", async () => {
     vi.spyOn(Math, "random").mockReturnValue(0.99);
     const app = buildApp();
