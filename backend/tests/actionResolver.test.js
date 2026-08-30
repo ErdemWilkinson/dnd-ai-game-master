@@ -99,6 +99,22 @@ describe("REGRESYON (Faz 12-A sonrası bağımsız tester QA'sının bulduğu bu
     expect(isPickupIntent("Kalkanı kaldırıyorum")).toBe(true);
     expect(isPickupIntent("Kalkanı kaldır")).toBe(true); // emir kipi, ek almaz
   });
+
+  it("İnovasyon fikri #95 (yaratıcı cron taraması): fiil zincirleme için yaygın '-ip/-ıp' bağlaç eki artık dört niyet kalıbında da tespit ediliyor", () => {
+    expect(isConsumeIntent("İksiri içip iyileşiyorum")).toBe(true);
+    expect(isPickupIntent("Altını alıp kaçıyorum")).toBe(true);
+    expect(isPickupIntent("Kalkanı kaldırıp fırlatıyorum")).toBe(true);
+    expect(isEquipIntent("Kılıcı kuşanıp savaşıyorum")).toBe(true);
+    expect(isEquipIntent("Zırhı giyip meydan okuyorum")).toBe(true);
+    expect(isEquipIntent("Miğferi takıp ilerliyorum")).toBe(true);
+    expect(isAttackIntent("Kapıyı kırıp giriyorum")).toBe(true);
+  });
+
+  it("İnovasyon fikri #95: '-ip/-ıp' eki eklenirken yakın/benzer kelimelerle yeni bir yanlış-pozitif oluşmadı", () => {
+    expect(isEquipIntent("Onu takip ediyorum")).toBe(false); // takip ≠ takıp
+    expect(isPickupIntent("Alıcı bekliyorum")).toBe(false); // alıcı ≠ alıp
+    expect(isPickupIntent("Kaldırımda yürüyorum")).toBe(false); // fikir #88 regresyonu yok
+  });
 });
 
 describe("Faz 12-C-hazırlık: detectSpellId", () => {

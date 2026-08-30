@@ -30,6 +30,7 @@ const STR_PATTERN = buildCategoryPattern([
   "kırarım",
   "kıracağım",
   "kırdım",
+  "kırıp",
   // Emir kipi ("Kapıyı kır") ek almadan kullanılabildiğinden yukarıdaki
   // çekimli formlar bunu yakalamaz - "kır" burada AYRICA kelime SONUNDA da
   // çapalanıyor (negatif lookahead: ardından harf gelmemeli) ki "kırmızı"
@@ -59,21 +60,38 @@ const DEX_PATTERN = buildCategoryPattern(["gizlen", "sıvış", "hızlı", "çev
 // "kaldırım"la çakışmaz - "kaldırımıyor" diye bir kelime yok), emir kipi
 // ("Kalkanı kaldır!") için ise ek almadığından AYRICA kelime SONUNDA da
 // çapalanan (negatif lookahead) bare bir form eklendi.
+// Yaratıcı cron taraması (2026-08-30, coder tespit etti): Türkçe'de fiil
+// zincirleme için son derece yaygın olan "-ip/-ıp/-up/-üp" bağlaç eki
+// ("İksiri içip iyileşiyorum", "Altını alıp kaçıyorum") hiçbir kalıpta
+// kapsanmıyordu - "topla"/"kaldır" gibi çekimli formlar bu bağlaç halini
+// yakalamıyor. Kök ≥3 harf olduğundan (aynı disiplin: "al"/"iç" gibi kısa
+// kökler BARE eklenmiyor, sadece bu ekle çekimli halleri) güvenli.
 const PICKUP_PATTERN = buildCategoryPattern([
   "alıyor",
   "alırım",
   "alacağım",
   "aldım",
+  "alıp",
   "topla",
   "toplu",
   "kaldırıyor",
   "kaldırırım",
   "kaldıracağım",
   "kaldırdım",
+  "kaldırıp",
   "kaldır(?![a-zçğıiöşü])",
   "pick up",
 ]);
-const CONSUME_PATTERN = buildCategoryPattern(["içiyor", "içerim", "içeceğim", "içtim", "kullan", "tüket", "drink"]);
+const CONSUME_PATTERN = buildCategoryPattern([
+  "içiyor",
+  "içerim",
+  "içeceğim",
+  "içtim",
+  "içip",
+  "kullan",
+  "tüket",
+  "drink",
+]);
 
 // Faz 12-C-hazırlık 2: kuşanma niyeti - "kuşan" (5 harf) bare kök olarak
 // güvenli sayılabilirdi ama disiplin gereği (fikir #88) yine de çekimli
@@ -85,15 +103,18 @@ const EQUIP_PATTERN = buildCategoryPattern([
   "kuşanırım",
   "kuşanacağım",
   "kuşandım",
+  "kuşanıp",
   "kuşan(?![a-zçğıiöşü])",
   "giyiyor",
   "giyerim",
   "giyeceğim",
   "giydim",
+  "giyip",
   "takıyor",
   "takarım",
   "takacağım",
   "taktım",
+  "takıp",
 ]);
 
 function isEquipIntent(text) {
