@@ -19,4 +19,17 @@ describe('GameOverScreen — Faz 6-C', () => {
     await user.click(screen.getByRole('button', { name: 'Yeniden Başla' }));
     expect(onRestart).toHaveBeenCalledTimes(1);
   });
+
+  it('İnovasyon fikri #86: restartError mesajı aria-live="polite" ile duyurulur', () => {
+    render(
+      <GameOverScreen
+        characterName="Testeroth"
+        level={1}
+        onRestart={() => {}}
+        restartError="Bir hata oluştu."
+      />,
+    );
+    const errorEl = screen.getByText(/Bir hata oluştu\./);
+    expect(errorEl).toHaveAttribute('aria-live', 'polite');
+  });
 });

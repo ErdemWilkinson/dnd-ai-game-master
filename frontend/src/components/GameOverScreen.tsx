@@ -38,7 +38,11 @@ export function GameOverScreen({
       <button type="button" onClick={onRestart} disabled={restarting}>
         {restarting ? 'Yeniden başlatılıyor...' : 'Yeniden Başla'}
       </button>
-      {restartError && <p className="error">{restartError} Tekrar dene.</p>}
+      {restartError && (
+        <p className="error" aria-live="polite">
+          {restartError} Tekrar dene.
+        </p>
+      )}
     </div>
   );
 }
