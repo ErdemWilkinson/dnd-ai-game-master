@@ -187,7 +187,7 @@ router.get("/", (req, res) => {
 // Faz 6-C: oyuncu öldükten sonra "yeniden başla" - session'ın karakter/
 // sohbet/serbest-form karşılaşma bağını temizler, frontend karakter
 // oluşturma ekranına döner.
-router.post("/reset", (req, res) => {
+router.post("/reset", publicRateLimit, (req, res) => {
   const sessionId = getSessionId(req);
   const characterId = activeCharacterIdBySession.get(sessionId);
   activeCharacterIdBySession.delete(sessionId);
