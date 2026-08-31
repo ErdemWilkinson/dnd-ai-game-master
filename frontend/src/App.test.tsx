@@ -133,6 +133,24 @@ describe('App — Faz 6-C: Game Over ve Yeniden Başla', () => {
   });
 });
 
+describe('App — İnovasyon fikri #103: karakter panelindeki restartError da aria-live taşımalı (fikir #86 ile aynı bug sınıfı)', () => {
+  it('resetSession() canlı karakterken (karakter paneli üzerinden) başarısız olursa hata mesajı aria-live="polite" ile duyurulur', async () => {
+    vi.mocked(api.getCurrentCharacter).mockResolvedValue(CHARACTER);
+    vi.mocked(api.resetSession).mockRejectedValueOnce(new Error('Bağlantı kurulamadı.'));
+    const user = userEvent.setup();
+    render(<App />);
+
+    await waitFor(() => expect(screen.getByText('Kalıcı Kahraman')).toBeInTheDocument());
+    await user.click(screen.getByRole('button', { name: /karakter ve envanteri aç\/kapat/i }));
+    await user.click(screen.getByRole('button', { name: 'Yeni Karaktere Başla' }));
+    await user.click(screen.getByRole('button', { name: 'Evet, Sil' }));
+
+    await waitFor(() => expect(screen.getByText(/Bağlantı kurulamadı\..*Tekrar dene\./)).toBeInTheDocument());
+    const errorSpan = screen.getByText(/Bağlantı kurulamadı\..*Tekrar dene\./);
+    expect(errorSpan).toHaveAttribute('aria-live', 'polite');
+  });
+});
+
 describe('App — İnovasyon fikri #80: footer atıf linki tıklanabilir olmalı', () => {
   it('tgstation atıf metni gerçek bir <a> linki içerir, doğru href/target/rel ile', async () => {
     vi.mocked(api.getCurrentCharacter).mockResolvedValue(CHARACTER);

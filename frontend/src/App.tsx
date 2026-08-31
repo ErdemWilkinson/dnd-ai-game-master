@@ -230,7 +230,11 @@ function App() {
                       Vazgeç
                     </button>
                   </div>
-                  {restartError && <span className="error">{restartError} Tekrar dene.</span>}
+                  {restartError && (
+                    <span className="error" aria-live="polite">
+                      {restartError} Tekrar dene.
+                    </span>
+                  )}
                 </div>
               ) : (
                 <button
