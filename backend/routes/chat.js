@@ -114,6 +114,10 @@ function describeFreeformResult(result, character) {
     return result.equipped ? ` ${result.item.name} kuşandın.` : ` ${result.item.name} çıkardın.`;
   }
 
+  if (result.kind === "drop") {
+    return ` ${result.item.name} eşyasını yere bıraktın.`;
+  }
+
   return "";
 }
 

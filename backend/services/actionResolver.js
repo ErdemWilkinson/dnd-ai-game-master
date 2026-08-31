@@ -117,8 +117,38 @@ const EQUIP_PATTERN = buildCategoryPattern([
   "takıp",
 ]);
 
+// Yaratıcı cron fikir #96: eşya bırakma niyeti - grid'deki `/item/drop`
+// route'unun (Faz 12-C ile kaldırıldı) serbest-form karşılığı hiç yoktu,
+// MAX_INVENTORY=30'a ulaşınca envanter kalıcı dolu kalıyordu. Fikir #88'in
+// disipliniyle: "at"/"bırak" kökleri kısa/genel olduğundan (ör. "at" -
+// "atlıyorum"/"atıyorum" gibi tamamen alakasız kelimelerin BAŞINDA geçer,
+// "bırak" göreceli daha güvenli ama yine de disiplin gereği bare eklenmedi)
+// bare kök EKLENMEDİ - sadece çekimli formlar + kelime-sonu çapalı emir kipi.
+// "at" için EN AZ bir ünsüzle başlayan çekim eki gerektiren formlar seçildi
+// ("atıyorum" gibi tek başına "at" kökünü içeren ama aslında "atlıyorum"un
+// bir alt-dizesi OLMAYAN spesifik formlar) - "atlıyorum" içinde "atıyorum"
+// alt-dizesi geçmez, bu yüzden çakışma riski yok.
+const DROP_PATTERN = buildCategoryPattern([
+  "atıyorum",
+  "atarım",
+  "atacağım",
+  "attım",
+  "atıp",
+  "bırakıyor",
+  "bırakırım",
+  "bırakacağım",
+  "bıraktım",
+  "bırakıp",
+  "bırak(?![a-zçğıiöşü])",
+  "drop",
+]);
+
 function isEquipIntent(text) {
   return EQUIP_PATTERN.test((text || "").toLocaleLowerCase("tr"));
+}
+
+function isDropIntent(text) {
+  return DROP_PATTERN.test((text || "").toLocaleLowerCase("tr"));
 }
 
 function isAttackIntent(text) {
@@ -198,5 +228,6 @@ module.exports = {
   isPickupIntent,
   isConsumeIntent,
   isEquipIntent,
+  isDropIntent,
   detectSpellId,
 };

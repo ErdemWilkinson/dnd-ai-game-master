@@ -12,6 +12,7 @@ const {
   isPickupIntent,
   isConsumeIntent,
   isEquipIntent,
+  isDropIntent,
   detectSpellId,
 } = require("./actionResolver");
 const { CLASSES } = require("../data/dnd");
@@ -289,6 +290,29 @@ function resolvePickup(character, sessionId) {
   return { kind: "pickup", item: { id: item.id, name: item.name }, inventoryFull: false };
 }
 
+// Yaratıcı cron fikir #96: MAX_INVENTORY=30'a ulaşınca envanteri boşaltacak
+// hiçbir yol (chat üzerinden) yoktu - grid'deki `/item/drop` route'u Faz 12-C
+// ile kaldırılınca eşdeğeri hiç eklenmedi. `resolveEquip`'in AYNI isim
+// eşleştirme deseni (`nameMatchesText`, Türkçe ünsüz yumuşamasını da dener)
+// kullanılıyor - isim eşleşmezse (sahip olunmayan bir eşya istenirse) fikir
+// #93'ün disipliniyle hiç mekanik sonuç üretilmez (sessizce başka bir eşyaya
+// düşülmez). Bırakılan eşya sahnenin loot havuzuna eklenir (`resolvePickup`
+// ile aynı `{id,name}` şekli) - böylece başka bir "alıyorum" ile geri
+// toplanabilir, kayıp değil geçici bir yer değişikliği.
+function resolveDrop(character, sessionId, text) {
+  if (character.inventory.length === 0) return null;
+
+  const lower = (text || "").toLocaleLowerCase("tr");
+  const item = character.inventory.find((i) => nameMatchesText(i.name, lower));
+  if (!item) return null;
+
+  character.inventory = character.inventory.filter((i) => i.id !== item.id);
+  const state = getFreeformEncounter(sessionId);
+  state.loot.push({ id: nanoid(), name: item.name });
+
+  return { kind: "drop", item: { id: item.id, name: item.name } };
+}
+
 // Öncelik sırası: büyü > saldırı > eşya kullan > eşya al - bir mesaj birden
 // fazla kalıba uysa bile (nadir) TEK bir mekanik sonuç üretilir, anlatım
 // karışmaz. Büyü en başta çünkü tespiti en spesifik/kasıtlı sinyal (büyünün
@@ -314,6 +338,10 @@ function resolveFreeformAction(character, sessionId, text) {
   }
   if (isEquipIntent(text)) {
     const result = resolveEquip(character, text);
+    if (result) return result;
+  }
+  if (isDropIntent(text)) {
+    const result = resolveDrop(character, sessionId, text);
     if (result) return result;
   }
   if (isPickupIntent(text)) {

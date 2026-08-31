@@ -466,6 +466,97 @@ describe("Faz 12-A: /chat serbest metinden GERÇEK mekanik sonuç (saldırı/eş
     expect(res.body.gmMessage.text).toMatch(/envanterine eklendi/);
   });
 
+  it("İnovasyon fikri #96: eşya bırakma niyeti algılanınca envanterdeki eşya GERÇEKTEN çıkarılıp sahnenin loot havuzuna ekleniyor", async () => {
+    const app = buildApp();
+    const character = await createFighter(app);
+    const sword = character.inventory.find((i) => i.name === "Kısa Kılıç");
+    expect(sword).toBeTruthy();
+    const inventoryCountBefore = character.inventory.length;
+
+    const stateBefore = getFreeformEncounter(DEFAULT_SESSION_ID);
+    const lootCountBefore = stateBefore.loot.length;
+
+    const res = await request(app).post("/api/chat").send({ message: "Kısa Kılıcı bırakıyorum" });
+    expect(res.status).toBe(201);
+
+    const updated = characters.get(character.id);
+    expect(updated.inventory.find((i) => i.id === sword.id)).toBeUndefined();
+    expect(updated.inventory.length).toBe(inventoryCountBefore - 1);
+
+    const stateAfter = getFreeformEncounter(DEFAULT_SESSION_ID);
+    expect(stateAfter.loot.length).toBe(lootCountBefore + 1);
+    expect(stateAfter.loot.some((l) => l.name === "Kısa Kılıç")).toBe(true);
+    expect(res.body.gmMessage.text).toMatch(/Kısa Kılıç eşyasını yere bıraktın/);
+    expect(res.body.gmMessage.roll).toBeNull();
+    expect(res.body.character.inventory.find((i) => i.id === sword.id)).toBeUndefined();
+  });
+
+  it("İnovasyon fikri #96: bırakılan eşya sonradan tekrar 'alıyorum' ile envantere geri alınabilir (kayıp değil geçici yer değişikliği)", async () => {
+    const app = buildApp();
+    const character = await createFighter(app);
+    const sword = character.inventory.find((i) => i.name === "Kısa Kılıç");
+
+    await request(app).post("/api/chat").send({ message: "Kısa Kılıcı bırakıyorum" });
+    // Bırakılan eşya loot dizisinin SONUNA eklenir - önce sahnedeki orijinal
+    // loot'u tüketip sıraya girmesini bekliyoruz.
+    const state = getFreeformEncounter(DEFAULT_SESSION_ID);
+    state.loot = state.loot.filter((l) => l.name === "Kısa Kılıç"); // sadece bıraktığımız kalsın
+
+    const res = await request(app).post("/api/chat").send({ message: "Yerdeki eşyayı alıyorum" });
+    expect(res.status).toBe(201);
+
+    const updated = characters.get(character.id);
+    expect(updated.inventory.some((i) => i.name === "Kısa Kılıç" && i.id !== sword.id)).toBe(true);
+  });
+
+  it("İnovasyon fikri #96: sahip olunmayan bir eşya bırakılmak istenince (isim eşleşmezse) sessizce başka bir eşya bırakılmaz", async () => {
+    const app = buildApp();
+    const character = await createFighter(app);
+    const inventoryCountBefore = character.inventory.length;
+
+    const res = await request(app).post("/api/chat").send({ message: "Miğferimi bırakıyorum" });
+    expect(res.status).toBe(201);
+    expect(res.body.gmMessage.text).not.toMatch(/yere bıraktın/);
+
+    const updated = characters.get(character.id);
+    expect(updated.inventory.length).toBe(inventoryCountBefore);
+  });
+
+  it("İnovasyon fikri #96: envanter boşken bırakma niyeti sessizce hiçbir mekanik sonuç üretmez", async () => {
+    const app = buildApp();
+    const character = await createFighter(app);
+    const stored = characters.get(character.id);
+    stored.inventory = [];
+
+    const res = await request(app).post("/api/chat").send({ message: "Kılıcı bırakıyorum" });
+    expect(res.status).toBe(201);
+    expect(res.body.gmMessage.text).not.toMatch(/yere bıraktın/);
+  });
+
+  it("İnovasyon fikri #96: envanter MAX_INVENTORY'e ulaştığında bırakma ile boşaltılıp yeni eşya tekrar alınabilir hale gelir", async () => {
+    const app = buildApp();
+    const character = await createFighter(app);
+    const stored = characters.get(character.id);
+    // 30'a tamamla (mevcut başlangıç eşyalarının üzerine dolgu eşya ekle).
+    while (stored.inventory.length < 30) {
+      stored.inventory.push({ id: `filler-${stored.inventory.length}`, name: `Dolgu Eşya ${stored.inventory.length}`, equipped: false, slot: null, icon: null });
+    }
+    expect(stored.inventory.length).toBe(30);
+
+    const fullRes = await request(app).post("/api/chat").send({ message: "Yerdeki eşyayı alıyorum" });
+    expect(fullRes.body.gmMessage.text).toMatch(/Envanterin dolu/);
+
+    const fillerName = stored.inventory.find((i) => i.id.startsWith("filler-")).name;
+    const dropRes = await request(app).post("/api/chat").send({ message: `${fillerName}'ı bırakıyorum` });
+    expect(dropRes.status).toBe(201);
+    expect(dropRes.body.gmMessage.text).toMatch(/yere bıraktın/);
+    expect(characters.get(character.id).inventory.length).toBe(29);
+
+    const retryRes = await request(app).post("/api/chat").send({ message: "Yerdeki eşyayı alıyorum" });
+    expect(retryRes.body.gmMessage.text).toMatch(/envanterine eklendi/);
+    expect(characters.get(character.id).inventory.length).toBe(30);
+  });
+
   it("aktif karakter yoksa saldırı/eşya niyeti tespit edilse bile hiçbir mekanik sonuç üretmez (eski davranış korunur)", async () => {
     const app = buildApp();
     const res = await request(app).post("/api/chat").send({ message: "Goblin'e saldırıyorum" });

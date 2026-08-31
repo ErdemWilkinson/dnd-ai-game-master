@@ -2,7 +2,7 @@ import { describe, it, expect, vi, afterEach } from "vitest";
 import { createRequire } from "module";
 
 const require = createRequire(import.meta.url);
-const { resolveAction, detectActionAttribute, abilityModifier, DIFFICULTY_CLASS, isAttackIntent, isPickupIntent, isConsumeIntent, isEquipIntent, detectSpellId } =
+const { resolveAction, detectActionAttribute, abilityModifier, DIFFICULTY_CLASS, isAttackIntent, isPickupIntent, isConsumeIntent, isEquipIntent, isDropIntent, detectSpellId } =
   require("../services/actionResolver.js");
 
 afterEach(() => {
@@ -152,6 +152,26 @@ describe("Faz 12-C-hazırlık 2: isEquipIntent", () => {
   it("fikir #88'in aynı sınıfından bir hata tekrarlanmıyor - 'taktik'/'takas' gibi alakasız kelimeler tetiklenmiyor", () => {
     expect(isEquipIntent("Taktik bir hamle yapıyorum")).toBe(false);
     expect(isEquipIntent("Takas yapıyorum")).toBe(false);
+  });
+});
+
+describe("İnovasyon fikri #96: isDropIntent", () => {
+  it("gerçek bırakma niyetleri (çekimli VE emir kipi) doğru tespit ediliyor", () => {
+    expect(isDropIntent("Kısa Kılıcı bırakıyorum")).toBe(true);
+    expect(isDropIntent("Kalkanı atıyorum")).toBe(true);
+    expect(isDropIntent("Kılıcı bırak")).toBe(true); // emir kipi, ek almaz
+  });
+
+  it("fikir #88'in aynı sınıfından bir hata tekrarlanmıyor - 'atlıyorum'/'satıyorum'/'yatıyorum' gibi alakasız kelimeler tetiklenmiyor", () => {
+    expect(isDropIntent("Duvardan atlıyorum")).toBe(false);
+    expect(isDropIntent("Eşyayı satıyorum")).toBe(false);
+    expect(isDropIntent("Yere yatıyorum")).toBe(false);
+    expect(isDropIntent("Uzun uzun anlatıyorum")).toBe(false);
+  });
+
+  it("fikir #95'in '-ip/-ıp' bağlaç eki desteği burada da çalışıyor", () => {
+    expect(isDropIntent("Kılıcı bırakıp kaçıyorum")).toBe(true);
+    expect(isDropIntent("Kalkanı atıp koşuyorum")).toBe(true);
   });
 });
 
