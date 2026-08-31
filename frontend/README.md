@@ -2,6 +2,11 @@
 
 React + TypeScript + Vite. Backend'in (`../backend`) `http://localhost:3001` üzerinde çalıştığını varsayar; dev sunucusu `/api` isteklerini oraya proxy'ler (bkz. `vite.config.ts`).
 
+Faz 12 (2026-08) ile eski taktik-grid arayüzü (tıklanabilir harita, token hareketi, Aksiyon/Bonus
+Aksiyon ekonomisi) tamamen kaldırıldı. Oyun artık tek bir **tam ekran sohbet** (`ChatPanel`) — oyuncu
+ne yapmak istediğini doğal Türkçe ile yazar, backend mekanik sonucu çözer. Karakter/envanter artık
+"salt-okunur" bir kart (`CharacterCard`) — hiçbir buton/tıklama içermez, tüm aksiyonlar chat üzerinden.
+
 ## Kurulum
 
 ```bash
@@ -25,25 +30,34 @@ npm run preview  # build çıktısını yerelde önizler
 
 ## Yapı
 
-- `src/types.ts` — backend ile paylaşılan tipler (Character, Scene, ChatMessage, ...)
+- `src/types.ts` — backend ile paylaşılan tipler (Character, ChatMessage, ...)
 - `src/api.ts` — `/api/*` fetch sarmalayıcıları, `NetworkError` (bağlantı hatası) ile normal HTTP hatalarını ayırt eder
-- `src/App.tsx` — ekranlar arası akışı yönetir (yükleniyor → karakter oluşturma → açılış sahnesi → oyun → game over), session'ın aktif karakterini/sahnesini backend'den çeker
+- `src/App.tsx` — ekranlar arası akışı yönetir (yükleniyor → karakter oluşturma → açılış anlatımı → oyun → game over), session'ın aktif karakterini backend'den çeker
 - `src/components/`
   - `CharacterCreation.tsx` — isim + ırk + sınıf + görünüş seçimi formu, zar atma
   - `IntroScreen.tsx` — karakter oluşturulduktan sonra AI/mock açılış anlatımını gösteren tam ekran ara sahne
-  - `CharacterCard.tsx` — HP/mana barları, XP/seviye ilerleme çubuğu, attributes, envanter (kullan/kuşan/at/fırlat), büyü listesi
-  - `ChatPanel.tsx` — GM sohbet akışı
-  - `TacticalGrid.tsx` — tıklanabilir taktik grid harita: token hareketi, saldırı, büyü (tekli hedef ve Ateş Topu gibi alan etkili/AoE), tur bitirme, Aksiyon/Bonus Aksiyon göstergesi
-  - `HelpModal.tsx` — "Nasıl Oynanır?" yardım penceresi (ilk oyun ekranında bir kerelik otomatik açılır, `localStorage`'da işaretlenir)
-  - `GameOverScreen.tsx` — karakter öldüğünde gösterilen özet ekranı (seviye, XP, temizlenen karşılaşma sayısı), yeniden başlatma
+  - `HeaderHud.tsx` — header'da her zaman görünen kısa HP/Mana/Seviye şeridi (`aria-live` ile ekran okuyucu güncellemesi)
+  - `CharacterCard.tsx` — 🎒 butonuyla açılan overlay: HP/mana/XP barları, attributes, paper-doll ekipman görünümü, envanter listesi — **tamamen salt-okunur**, hiçbir buton/aksiyon içermez (saldırı/büyü/eşya kullan-kuşan-bırak-al artık chat üzerinden doğal dille yapılır)
+  - `ChatPanel.tsx` — GM sohbet akışı, oyuncunun tek etkileşim yüzeyi (mesaj yazıp gönderme)
+  - `HelpModal.tsx` — "Nasıl Oynanır?" yardım penceresi (ilk oyun ekranında bir kerelik otomatik açılır, `localStorage`'da işaretlenir) — serbest-form sohbet örnekleri anlatır
+  - `GameOverScreen.tsx` — karakter öldüğünde gösterilen özet ekranı (seviye, XP), yeniden başlatma
   - `ErrorBoundary.tsx` — beklenmeyen render hatalarını yakalayıp sayfayı yeniden yüklemeyi teklif eden genel hata sınırı
 
 ## Mimari notları
 
-- Sürekli görünen 3 panelli bir düzen yerine, ana görünüm normalde tam ekran metin/sohbet modundadır (`ChatPanel`); taktik grid SADECE sahnede düşman varken (ya da bir eşya fırlatma/büyü hedefi seçilirken) otomatik olarak görünür (`App.tsx`'teki `showGrid`/`mode-combat` / `mode-text`).
-- Karakter paneli (`CharacterCard`) artık sürekli görünen bir panel değil, üst çubuktaki bir düğmeyle açılıp kapanan bir overlay'dir.
-- Bir karşılaşma temizlendiğinde sahne hemen bir sonrakine geçmez — backend "nefes alma" penceresine girer (`pendingEncounterIndex`); bu sırada grid gizlenir ve oyuncuya ayrı bir "Devam Et" butonu gösterilir.
-- `App.tsx` sahne/token state'ini kendisi tutmaz; `TacticalGrid`'in `onSceneUpdate` callback'i üzerinden `hasEnemies`, oyuncunun `actionAvailable`/`bonusActionAvailable` durumu gibi bilgiler yukarı taşınıp `CharacterCard`'a prop olarak geçirilir (böylece envanterdeki "Kullan"/"Fırlat" butonları da Aksiyon ekonomisine uyar).
+- Grid/token/sahne state'i YOK — ana görünüm her zaman tam ekran sohbet (`ChatPanel`), `App.tsx`
+  başka bir "mod" (savaş/metin) yönetmez. Backend'deki serbest-form düşman/karşılaşma durumu
+  frontend'e hiç sızmaz, oyuncu sadece chat mesajlarının anlatımından (narration) öğrenir.
+- Karakter paneli (`CharacterCard`) sürekli görünen bir panel değil, üst çubuktaki 🎒 düğmesiyle
+  açılıp kapanan salt-okunur bir overlay'dir — HP/Mana'yı her an görmek için ayrıca `HeaderHud`
+  (header'da sabit, `CharacterCard` açık olmasa da görünür) kullanılır.
+  - "Menü/buton yok" tasarım kararı (PM onaylı): eskiden burada Kullan/Kuşan/At/Fırlat/Büyü-seç
+    butonları ve drag-and-drop kuşanma vardı, Faz 12-C-hazırlık 2 ile hepsi kaldırıldı — eşya
+    fırlatma (`throw`) için freeform karşılığı bilinçli olarak eklenmedi (kabul edilebilir bir
+    kayıp), bırakma (`drop`) ise sonradan chat'e eklendi (bkz. backend TASKS.md fikir #96).
+- `ChatPanel`, backend'den dönen güncel `character` nesnesini her mesajdan sonra `onCharacterChange`
+  callback'iyle `App.tsx`'e taşır — `App.tsx` bunu state'te tutup `HeaderHud`/`CharacterCard`'a prop
+  olarak geçirir (ayrı bir polling/refetch yok, sohbet cevabı zaten güncel karakteri içeriyor).
 - Render'ın soğuk başlangıcında ilk isteğin 30-60sn sürebilmesi ihtimaline karşı, başlangıç karakterini çekerken bağlantı hatalarında birkaç kez otomatik yeniden deneme yapılır (kullanıcıya "bağlanılıyor" geri bildirimiyle).
 
 ## Testler / lint
