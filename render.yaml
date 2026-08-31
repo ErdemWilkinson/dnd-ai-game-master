@@ -69,9 +69,11 @@ services:
     # Yaratıcı cron fikir #24: backend'e helmet (#23) eklendi ama statik
     # frontend site hiç güvenlik header'ı kullanmıyordu. Google Fonts
     # (index.html'de fonts.googleapis.com/fonts.gstatic.com) ve React'in
-    # inline style prop'ları (CharacterCard/TacticalGrid'deki HP/mana barları,
-    # grid-template-columns) CSP'yi kırmasın diye style-src'te 'unsafe-inline'
-    # + fonts.googleapis.com, font-src'te fonts.gstatic.com açıkça izinli.
+    # inline style prop'ları (CharacterCard'daki HP/XP/mana barları) CSP'yi
+    # kırmasın diye style-src'te 'unsafe-inline' + fonts.googleapis.com,
+    # font-src'te fonts.gstatic.com açıkça izinli. (Not: TacticalGrid.tsx ve
+    # grid-template-columns'a referans Faz 12-C'de grid kalkınca eskidi,
+    # bu turda güncellendi - CSP kuralının kendisi hâlâ doğru/gerekli.)
     # connect-src'e prod backend origin'i eklendi (VITE_API_BASE - yukarıdaki
     # sabit değer - bu URL'e gidiyor); ilk denemede (2026-08-24) VITE_API_BASE
     # henüz bozukken (fikir #25) bu CSP gerçek bir prod sorununu ortaya
