@@ -124,4 +124,18 @@ describe('CharacterCreation', () => {
     await waitFor(() => expect(screen.getByText('Sunucu hatası')).toBeInTheDocument());
     expect(api.getCharacterIntro).not.toHaveBeenCalled();
   });
+
+  it('İnovasyon fikri #104: hata mesajı aria-live="polite" ile duyurulur (fikir #86/#103 ile aynı bug sınıfı)', async () => {
+    vi.mocked(api.createCharacter).mockRejectedValue(new Error('Sunucu hatası'));
+    const user = userEvent.setup();
+    render(<CharacterCreation onCreated={vi.fn()} />);
+    await waitFor(() => expect(screen.getByText('İnsan')).toBeInTheDocument());
+
+    await user.type(screen.getByPlaceholderText('Karakter adı'), 'Test');
+    await rollDice(user);
+    await user.click(screen.getByRole('button', { name: /Maceraya Başla/i }));
+
+    await waitFor(() => expect(screen.getByText('Sunucu hatası')).toBeInTheDocument());
+    expect(screen.getByText('Sunucu hatası')).toHaveAttribute('aria-live', 'polite');
+  });
 });

@@ -172,4 +172,18 @@ describe('ChatPanel', () => {
     await user.click(screen.getByRole('button', { name: 'Gönder' }));
     expect(api.sendChatMessage).not.toHaveBeenCalled();
   });
+
+  it('İnovasyon fikri #104: sendChatMessage başarısız olursa hata mesajı aria-live="polite" ile duyurulur (fikir #86/#103 ile aynı bug sınıfı)', async () => {
+    vi.mocked(api.sendChatMessage).mockRejectedValueOnce(new Error('Çok fazla istek gönderildi, lütfen biraz bekleyip tekrar dene.'));
+    const user = userEvent.setup();
+    render(<ChatPanel />);
+    await waitFor(() => expect(api.getChatHistory).toHaveBeenCalled());
+
+    await user.type(screen.getByPlaceholderText('Ne yapmak istersin?'), 'saldırıyorum');
+    await user.click(screen.getByRole('button', { name: 'Gönder' }));
+
+    await waitFor(() => expect(screen.getByText('Çok fazla istek gönderildi, lütfen biraz bekleyip tekrar dene.')).toBeInTheDocument());
+    const errorEl = screen.getByText('Çok fazla istek gönderildi, lütfen biraz bekleyip tekrar dene.');
+    expect(errorEl).toHaveAttribute('aria-live', 'polite');
+  });
 });

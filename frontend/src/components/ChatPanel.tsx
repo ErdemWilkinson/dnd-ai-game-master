@@ -99,7 +99,7 @@ export function ChatPanel({ refreshKey = 0, onCharacterChange }: Props) {
           </div>
         ))}
       </div>
-      {error && <p className="error">{error}</p>}
+      {error && <p className="error" aria-live="polite">{error}</p>}
       <form className="chat-input-row" onSubmit={handleSend}>
         <input
           value={input}
