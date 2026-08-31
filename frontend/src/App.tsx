@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import './App.css';
 import { CharacterCreation } from './components/CharacterCreation';
 import { CharacterCard } from './components/CharacterCard';
@@ -55,6 +55,7 @@ function App() {
   // hatalar React error boundary kapsamı dışında.
   const [restarting, setRestarting] = useState(false);
   const [restartError, setRestartError] = useState<string | null>(null);
+  const characterPanelCloseRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -125,6 +126,22 @@ function App() {
     setShowCharacterPanel(false);
     setConfirmingRestart(false);
   }
+
+  // Yaratıcı cron fikir #106: HelpModal'ın fikir #17'de aldığı a11y desenleri
+  // (dialog rolü, açılınca focus, Escape ile kapatma) karakter paneli
+  // overlay'ine hiç uygulanmamıştı - envanter/ekipmana erişimin TEK yolu
+  // olmasına rağmen. HelpModal'daki AYNI desen.
+  useEffect(() => {
+    if (!showCharacterPanel) return;
+
+    characterPanelCloseRef.current?.focus();
+
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === 'Escape') closeCharacterPanel();
+    }
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [showCharacterPanel]);
 
   if (loading) {
     return (
@@ -203,9 +220,16 @@ function App() {
       {showHelp && <HelpModal onClose={() => setShowHelp(false)} />}
       {showCharacterPanel && (
         <div className="character-panel-overlay" onClick={closeCharacterPanel}>
-          <div className="character-panel" onClick={(e) => e.stopPropagation()}>
+          <div
+            className="character-panel"
+            role="dialog"
+            aria-modal="true"
+            aria-label={`${character.name} - karakter ve envanter`}
+            onClick={(e) => e.stopPropagation()}
+          >
             <button
               type="button"
+              ref={characterPanelCloseRef}
               className="character-panel-close"
               onClick={closeCharacterPanel}
               aria-label="Karakter panelini kapat"

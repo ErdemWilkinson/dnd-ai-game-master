@@ -151,6 +151,44 @@ describe('App — İnovasyon fikri #103: karakter panelindeki restartError da ar
   });
 });
 
+describe('App — İnovasyon fikri #106: karakter paneli overlay\'i HelpModal\'ın a11y desenlerini (dialog rolü, focus, Escape) taşımalı', () => {
+  it('panel role="dialog" + aria-modal="true" + aria-label taşır', async () => {
+    vi.mocked(api.getCurrentCharacter).mockResolvedValue(CHARACTER);
+    const user = userEvent.setup();
+    render(<App />);
+
+    await waitFor(() => expect(screen.getByText('Kalıcı Kahraman')).toBeInTheDocument());
+    await user.click(screen.getByRole('button', { name: /karakter ve envanteri aç\/kapat/i }));
+
+    const dialog = screen.getByRole('dialog', { name: 'Kalıcı Kahraman - karakter ve envanter' });
+    expect(dialog).toHaveAttribute('aria-modal', 'true');
+  });
+
+  it('panel açılınca kapatma butonuna (✕) otomatik focus verilir', async () => {
+    vi.mocked(api.getCurrentCharacter).mockResolvedValue(CHARACTER);
+    const user = userEvent.setup();
+    render(<App />);
+
+    await waitFor(() => expect(screen.getByText('Kalıcı Kahraman')).toBeInTheDocument());
+    await user.click(screen.getByRole('button', { name: /karakter ve envanteri aç\/kapat/i }));
+
+    expect(screen.getByRole('button', { name: 'Karakter panelini kapat' })).toHaveFocus();
+  });
+
+  it('Escape tuşuna basınca panel kapanır', async () => {
+    vi.mocked(api.getCurrentCharacter).mockResolvedValue(CHARACTER);
+    const user = userEvent.setup();
+    render(<App />);
+
+    await waitFor(() => expect(screen.getByText('Kalıcı Kahraman')).toBeInTheDocument());
+    await user.click(screen.getByRole('button', { name: /karakter ve envanteri aç\/kapat/i }));
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+
+    await user.keyboard('{Escape}');
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  });
+});
+
 describe('App — İnovasyon fikri #80: footer atıf linki tıklanabilir olmalı', () => {
   it('tgstation atıf metni gerçek bir <a> linki içerir, doğru href/target/rel ile', async () => {
     vi.mocked(api.getCurrentCharacter).mockResolvedValue(CHARACTER);
