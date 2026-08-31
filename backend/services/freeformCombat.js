@@ -313,11 +313,12 @@ function resolveDrop(character, sessionId, text) {
   return { kind: "drop", item: { id: item.id, name: item.name } };
 }
 
-// Öncelik sırası: büyü > saldırı > eşya kullan > eşya al - bir mesaj birden
-// fazla kalıba uysa bile (nadir) TEK bir mekanik sonuç üretilir, anlatım
-// karışmaz. Büyü en başta çünkü tespiti en spesifik/kasıtlı sinyal (büyünün
-// kendi adının geçmesi) - bir sınıfın büyüsü yoksa/manası yetmezse
-// resolveCast zaten null döner, sıradaki kontrole (saldırı) düşülür.
+// Öncelik sırası: büyü > saldırı > eşya kullan > eşya kuşan > eşya bırak >
+// eşya al - bir mesaj birden fazla kalıba uysa bile (nadir) TEK bir mekanik
+// sonuç üretilir, anlatım karışmaz. Büyü en başta çünkü tespiti en
+// spesifik/kasıtlı sinyal (büyünün kendi adının geçmesi) - bir sınıfın
+// büyüsü yoksa/manası yetmezse resolveCast zaten null döner, sıradaki
+// kontrole (saldırı) düşülür.
 function resolveFreeformAction(character, sessionId, text) {
   // Yaratıcı cron fikir #92: ölü bir karakter (hp<=0) için hiçbir kontrol
   // yoktu - hiçbir resolveXxx() hp>0 kontrolü yapmıyordu, chat.js'de de ayrı
