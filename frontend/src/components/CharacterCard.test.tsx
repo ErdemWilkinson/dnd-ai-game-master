@@ -28,10 +28,18 @@ const character: Character = {
 // bu API çağrılarını hiç yapmıyor) - test dosyası salt-okunur render'ı
 // doğrulayacak şekilde yeniden yazıldı.
 describe('CharacterCard', () => {
-  it('HP ve mana değerlerini gösterir', () => {
+  it('HP değerini gösterir, mana kullanmayan sınıfta mana şeridini gizler', () => {
     render(<CharacterCard character={character} />);
     expect(screen.getByText('6/12')).toBeInTheDocument();
-    expect(screen.getByText('0/0')).toBeInTheDocument();
+    expect(screen.queryByText('🔮 Mana')).not.toBeInTheDocument();
+    expect(screen.queryByText('0/0')).not.toBeInTheDocument();
+  });
+
+  it('mana kullanan sınıfta mana şeridini gösterir', () => {
+    const wizard: Character = { ...character, mana: { current: 3, max: 10 } };
+    render(<CharacterCard character={wizard} />);
+    expect(screen.getByText('🔮 Mana')).toBeInTheDocument();
+    expect(screen.getByText('3/10')).toBeInTheDocument();
   });
 
   it('envanterdeki eşyaları listeler', () => {

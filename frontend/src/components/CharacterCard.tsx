@@ -162,18 +162,20 @@ export function CharacterCard({ character }: Props) {
         )}
       </div>
 
-      <div className="bar-row">
-        <span>🔮 Mana</span>
-        <div className="bar">
-          <div
-            className="bar-fill mana"
-            style={{ width: `${character.mana.max === 0 ? 0 : (character.mana.current / character.mana.max) * 100}%` }}
-          />
+      {character.mana.max > 0 && (
+        <div className="bar-row">
+          <span>🔮 Mana</span>
+          <div className="bar">
+            <div
+              className="bar-fill mana"
+              style={{ width: `${(character.mana.current / character.mana.max) * 100}%` }}
+            />
+          </div>
+          <span>
+            {character.mana.current}/{character.mana.max}
+          </span>
         </div>
-        <span>
-          {character.mana.current}/{character.mana.max}
-        </span>
-      </div>
+      )}
 
       <div className="attributes-grid">
         {Object.entries(character.attributes).map(([key, value]) => (
