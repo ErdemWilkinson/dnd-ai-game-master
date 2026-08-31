@@ -32,4 +32,9 @@ describe('GameOverScreen — Faz 6-C', () => {
     const errorEl = screen.getByText(/Bir hata oluştu\./);
     expect(errorEl).toHaveAttribute('aria-live', 'polite');
   });
+
+  it('İnovasyon fikri #105: ekran açılınca "Yeniden Başla" butonuna otomatik focus verilir', () => {
+    render(<GameOverScreen characterName="Testeroth" level={1} onRestart={() => {}} />);
+    expect(screen.getByRole('button', { name: 'Yeniden Başla' })).toHaveFocus();
+  });
 });

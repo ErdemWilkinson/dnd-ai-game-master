@@ -1,3 +1,5 @@
+import { useEffect, useRef } from 'react';
+
 interface Props {
   characterName: string;
   level: number;
@@ -23,6 +25,14 @@ export function GameOverScreen({
   restarting = false,
   restartError = null,
 }: Props) {
+  const restartButtonRef = useRef<HTMLButtonElement>(null);
+
+  // Yaratıcı cron fikir #105: HelpModal'ın #17'de aldığı focus yönetimi
+  // (açılınca ana butona odaklan) bu tam-ekran dialog'a hiç uygulanmamıştı.
+  useEffect(() => {
+    restartButtonRef.current?.focus();
+  }, []);
+
   return (
     <div className="game-over-screen" role="alertdialog" aria-modal="true" aria-label="Oyun Bitti">
       <h2>Oyun Bitti</h2>
@@ -35,7 +45,7 @@ export function GameOverScreen({
           : ''}
         {xp} XP kazandın.
       </p>
-      <button type="button" onClick={onRestart} disabled={restarting}>
+      <button type="button" ref={restartButtonRef} onClick={onRestart} disabled={restarting}>
         {restarting ? 'Yeniden başlatılıyor...' : 'Yeniden Başla'}
       </button>
       {restartError && (

@@ -52,4 +52,14 @@ describe('ErrorBoundary — İnovasyon fikri #55', () => {
     await user.click(screen.getByRole('button', { name: 'Sayfayı Yenile' }));
     expect(reloadSpy).toHaveBeenCalledTimes(1);
   });
+
+  it('İnovasyon fikri #105: fallback UI gösterilince "Sayfayı Yenile" butonuna otomatik focus verilir', () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    render(
+      <ErrorBoundary>
+        <Boom />
+      </ErrorBoundary>,
+    );
+    expect(screen.getByRole('button', { name: 'Sayfayı Yenile' })).toHaveFocus();
+  });
 });
