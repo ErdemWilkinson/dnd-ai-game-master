@@ -38,13 +38,32 @@ const POTION_HEAL_AMOUNT = 5;
 // da kapsaması gerekti.
 const CONSONANT_SOFTENING = { p: "b", ç: "c", t: "d", k: "ğ" };
 
-function nameMatchesText(itemName, lowerText) {
-  const lowerName = itemName.toLocaleLowerCase("tr");
-  if (lowerText.includes(lowerName)) return true;
-  const lastChar = lowerName.slice(-1);
+// Bir isim varyantının (tam ad YA DA son kelime) metinde literal ya da
+// ünsüz-yumuşamış haliyle geçip geçmediğini kontrol eder.
+function variantMatchesText(lowerVariant, lowerText) {
+  if (lowerText.includes(lowerVariant)) return true;
+  const lastChar = lowerVariant.slice(-1);
   const softened = CONSONANT_SOFTENING[lastChar];
   if (!softened) return false;
-  return lowerText.includes(lowerName.slice(0, -1) + softened);
+  return lowerText.includes(lowerVariant.slice(0, -1) + softened);
+}
+
+// Yaratıcı cron fikir #97: eskiden SADECE tam eşya adı ("kısa kılıç")
+// denendiğinden, oyuncu doğal/kısaltılmış bir referans kullanınca ("Kılıcımı
+// bırakıyorum" - "Kısa" hiç geçmiyor) eşleşme sessizce kuruLAmıyordu.
+// `resolveEquip` VE `resolveDrop` bu ortak fonksiyonu paylaştığından bug
+// ikisini de etkiliyordu. Çok kelimeli isimlerde SON kelime de (AYNI
+// literal+yumuşama kontrolüyle) ayrıca deneniyor - "Kısa Kılıç" -> "kılıç"
+// -> "kılıcımı" metninde substring olarak eşleşir. Tek kelimelik isimlerde
+// (ör. "Kalkan") zaten tam ad == son kelime, ekstra bir şey değişmiyor.
+function nameMatchesText(itemName, lowerText) {
+  const lowerName = itemName.toLocaleLowerCase("tr");
+  if (variantMatchesText(lowerName, lowerText)) return true;
+
+  const words = lowerName.split(" ");
+  if (words.length <= 1) return false;
+  const lastWord = words[words.length - 1];
+  return variantMatchesText(lastWord, lowerText);
 }
 // services/enemyAI.js'teki AYNI sabitler (runEnemyTurn) - grid'in düşman
 // saldırı dengesiyle tutarlı kalması için.

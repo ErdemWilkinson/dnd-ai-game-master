@@ -447,6 +447,25 @@ describe("Faz 12-A: /chat serbest metinden GERÇEK mekanik sonuç (saldırı/eş
     expect(updated.inventory.find((i) => i.id === sword.id).equipped).toBe(true);
   });
 
+  it("İnovasyon fikri #97: çok kelimeli bir eşya adının SADECE son kelimesiyle (iyelik ekiyle) kısaltılmış doğal referanslar da kuşanma/bırakmada eşleşiyor", async () => {
+    const app = buildApp();
+    const character = await createFighter(app);
+    const sword = character.inventory.find((i) => i.name === "Kısa Kılıç");
+    expect(sword.equipped).toBe(false);
+
+    // "Kısa" hiç geçmiyor - eskiden nameMatchesText sadece TAM adı arıyordu,
+    // bu yüzden sessizce eşleşme kurulamıyordu.
+    const equipRes = await request(app).post("/api/chat").send({ message: "Kılıcımı kuşanıyorum" });
+    expect(equipRes.status).toBe(201);
+    expect(equipRes.body.gmMessage.text).toMatch(/Kısa Kılıç kuşandın/);
+    expect(characters.get(character.id).inventory.find((i) => i.id === sword.id).equipped).toBe(true);
+
+    const dropRes = await request(app).post("/api/chat").send({ message: "Kılıcımı bırakıyorum" });
+    expect(dropRes.status).toBe(201);
+    expect(dropRes.body.gmMessage.text).toMatch(/Kısa Kılıç eşyasını yere bıraktın/);
+    expect(characters.get(character.id).inventory.find((i) => i.id === sword.id)).toBeUndefined();
+  });
+
   it("eşya alma niyeti algılanınca sahnedeki loot GERÇEKTEN envantere ekleniyor", async () => {
     const app = buildApp();
     const character = await createFighter(app);
