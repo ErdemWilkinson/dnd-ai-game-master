@@ -197,7 +197,7 @@ router.post("/", publicRateLimit, async (req, res) => {
   const { text, source } = await generateNarration({
     character,
     scene: getFreeformEncounter(sessionId),
-    recentMessages: history.slice(-HISTORY_CONTEXT_SIZE),
+    recentMessages: history.slice(-HISTORY_CONTEXT_SIZE, -1),
     playerMessage: playerMessage.text,
     actionResult,
   });

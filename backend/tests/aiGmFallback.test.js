@@ -124,4 +124,19 @@ describe("POST /api/chat — AI GM entegrasyonu (Gemini require.cache ile mock'l
     expect(getRes.body.messages[0]).toMatchObject({ role: "player", text: "merhaba" });
     expect(getRes.body.messages[1]).toMatchObject({ role: "gm", source: "ai", text: "AI cevabı." });
   });
+
+  it("fikir #109: recentMessages, mevcut oyuncu mesajını TEKRAR içermiyor (playerMessage ayrı parametre olarak zaten geçiliyor)", async () => {
+    fakeAiGm.isConfigured.mockReturnValue(true);
+    fakeAiGm.generateAiNarration.mockResolvedValue("AI cevabı.");
+
+    const app = buildApp();
+    await request(app).post("/api/chat").send({ message: "ilk mesaj" });
+    await request(app).post("/api/chat").send({ message: "ikinci mesaj" });
+
+    expect(fakeAiGm.generateAiNarration).toHaveBeenCalledTimes(2);
+    const secondCallArgs = fakeAiGm.generateAiNarration.mock.calls[1][0];
+    expect(secondCallArgs.playerMessage).toBe("ikinci mesaj");
+    expect(secondCallArgs.recentMessages.map((m) => m.text)).not.toContain("ikinci mesaj");
+    expect(secondCallArgs.recentMessages.map((m) => m.text)).toContain("ilk mesaj");
+  });
 });
