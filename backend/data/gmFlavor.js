@@ -88,6 +88,11 @@ const ATTACK_PATTERN = buildCategoryPattern([
   "dövüş",
   "hücum",
 ]);
+// Yaratıcı cron fikir #111: "incele"/"gözlemle" gibi "e" ile biten kökler
+// Türkçe ünlü düşmesi yüzünden kendi çekimli hallerini ("inceliyorum") YAKALAMIYORDU
+// (kök "inceliyorum"un TAM alt-dizesi değil, "incel"+"iyorum" olur) -
+// actionResolver.js'nin "topla"/"toplu" çözümüyle AYNI: bare kökün yanına
+// çekimli (ünlü düşmüş) halini ayrıca ekle.
 const LOOK_PATTERN = buildCategoryPattern([
   "bakıyor",
   "bakarım",
@@ -96,7 +101,9 @@ const LOOK_PATTERN = buildCategoryPattern([
   "bakıp",
   "bak(?![a-zçğıiöşü])",
   "incele",
+  "inceliyor",
   "gözlemle",
+  "gözlemliyor",
   "look",
   "araştır",
   "kontrol et",
@@ -124,7 +131,9 @@ const MOVE_PATTERN = buildCategoryPattern([
   "git(?![a-zçğıiöşü])",
   "yürü",
   "ilerle",
+  "ilerliyor",
   "keşfet",
+  "keşfediyor",
   "yaklaş",
   "koş",
 ]);

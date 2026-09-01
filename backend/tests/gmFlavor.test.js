@@ -45,3 +45,25 @@ describe("generateGmResponse — fikir #110: kısa kök yanlış-pozitifleri", (
     expect(text).toMatch(/adım adım|önündeki yol|meşalenin ışığı|sessizce keşfe|adımların yankılanıyor/i);
   });
 });
+
+describe("generateGmResponse — fikir #111: ünlü düşmesi yüzünden kaçırılan LOOK/MOVE niyetleri", () => {
+  it("'inceliyorum' (ünlü düşmüş 'incele') artık LOOK kategorisini tetikliyor", () => {
+    const text = generateGmResponse("Odayı inceliyorum");
+    expect(text).toMatch(/çevrene dikkatlice|karanlığa alışıyor|kayda değer bir tehlike|oyma desenler|gölgeler arasında|gizli bir mekanizma/i);
+  });
+
+  it("'gözlemliyorum' (ünlü düşmüş 'gözlemle') artık LOOK kategorisini tetikliyor", () => {
+    const text = generateGmResponse("Düşmanı gözlemliyorum");
+    expect(text).toMatch(/çevrene dikkatlice|karanlığa alışıyor|kayda değer bir tehlike|oyma desenler|gölgeler arasında|gizli bir mekanizma/i);
+  });
+
+  it("'ilerliyorum' (ünlü düşmüş 'ilerle') artık MOVE kategorisini tetikliyor", () => {
+    const text = generateGmResponse("Koridorda ilerliyorum");
+    expect(text).toMatch(/adım adım|önündeki yol|meşalenin ışığı|sessizce keşfe|adımların yankılanıyor/i);
+  });
+
+  it("'keşfediyorum' (ünlü düşmüş 'keşfet') artık MOVE kategorisini tetikliyor", () => {
+    const text = generateGmResponse("Yeni odayı keşfediyorum");
+    expect(text).toMatch(/adım adım|önündeki yol|meşalenin ışığı|sessizce keşfe|adımların yankılanıyor/i);
+  });
+});
