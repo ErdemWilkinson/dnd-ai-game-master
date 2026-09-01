@@ -61,22 +61,90 @@ function pickRandom(list) {
   return list[Math.floor(Math.random() * list.length)];
 }
 
+// Yaratıcı cron fikir #110: bu kategori regex'leri actionResolver.js'de
+// fikir #88/#93'te düzeltilen AYNI bug sınıfını taşıyordu - "bak"/"git"/
+// "sor"/"vur" gibi kısa/genel kökler WORD_START'ın (sadece kelime BAŞINI
+// çapalar) sağladığı korumayı aşıp "bakkal"/"gitar"/"sorun"/"vurgu" gibi
+// bambaşka kelimelerle de eşleşiyordu. actionResolver.js'deki AYNI disiplin
+// uygulandı: kısa kökler bare eklenmedi, sadece çekimli formlar + kelime-
+// sonu çapalı (negatif lookahead) emir kipi. Bu SADECE mock-fallback'in
+// atmosferik cümle seçimini etkiliyor (gerçek mekanik sonuç tetiklemiyor),
+// bu yüzden actionResolver'daki kadar geniş bir çekim seti gerekmedi.
+const WORD_START = "(?:^|[^a-zçğıiöşü])";
+
+function buildCategoryPattern(roots) {
+  return new RegExp(`${WORD_START}(?:${roots.join("|")})`);
+}
+
+const ATTACK_PATTERN = buildCategoryPattern([
+  "vuruyor",
+  "vururum",
+  "vuracağım",
+  "vurdum",
+  "vurup",
+  "vur(?![a-zçğıiöşü])",
+  "sald[ıi]r",
+  "attack",
+  "dövüş",
+  "hücum",
+]);
+const LOOK_PATTERN = buildCategoryPattern([
+  "bakıyor",
+  "bakarım",
+  "bakacağım",
+  "baktım",
+  "bakıp",
+  "bak(?![a-zçğıiöşü])",
+  "incele",
+  "gözlemle",
+  "look",
+  "araştır",
+  "kontrol et",
+]);
+const TALK_PATTERN = buildCategoryPattern([
+  "konuş",
+  "talk",
+  "seslen",
+  "soruyor",
+  "sorarım",
+  "soracağım",
+  "sordum",
+  "sorup",
+  "sor(?![a-zçğıiöşü])",
+]);
+const MAGIC_PATTERN = buildCategoryPattern(["büyü", "sihir", "cast", "efsun"]);
+const MOVE_PATTERN = buildCategoryPattern([
+  "gidiyor",
+  "giderim",
+  "gideceğim",
+  "gittim",
+  "gidip",
+  "gitmek",
+  "gitme",
+  "git(?![a-zçğıiöşü])",
+  "yürü",
+  "ilerle",
+  "keşfet",
+  "yaklaş",
+  "koş",
+]);
+
 function generateGmResponse(playerMessage) {
   const text = (playerMessage || "").toLowerCase();
 
-  if (/(vur|saldır|attack|dövüş|hücum)/.test(text)) {
+  if (ATTACK_PATTERN.test(text)) {
     return pickRandom(ATTACK_RESPONSES);
   }
-  if (/(bak|incele|gözlemle|look|araştır|kontrol et)/.test(text)) {
+  if (LOOK_PATTERN.test(text)) {
     return pickRandom(LOOK_RESPONSES);
   }
-  if (/(konuş|sor|talk|soru|seslen)/.test(text)) {
+  if (TALK_PATTERN.test(text)) {
     return pickRandom(TALK_RESPONSES);
   }
-  if (/(büyü|sihir|cast|efsun)/.test(text)) {
+  if (MAGIC_PATTERN.test(text)) {
     return pickRandom(MAGIC_RESPONSES);
   }
-  if (/(git|yürü|ilerle|keşfet|yaklaş|koş)/.test(text)) {
+  if (MOVE_PATTERN.test(text)) {
     return pickRandom(MOVE_RESPONSES);
   }
   return pickRandom(GENERIC_RESPONSES);
