@@ -42,6 +42,8 @@ PM session'ında (aktifken) iki ayrı periyodik kontrol çalışır:
 1. **PM görev kontrolü**: `TASKS.md` okunur, coder ve tester'a ilerleme sorulur, bir sonraki görev hatırlatılır, blokaj varsa kullanıcıya iletilir.
 2. **Yaratıcı cron**: proje ve canlı uygulama incelenip henüz ele alınmamış bir inovasyon/eksik fikri bulunur, `TASKS.md` > "## İnovasyon Fikirleri" bölümüne eklenir; ekip boştaysa ve iş küçükse doğrudan atanır.
 
+**Kural (kullanıcı isteğiyle, 2026-08-31): coder boşta görününce yaratıcı cron BOŞ GEÇMEZ, mutlaka bir şey bulup atar.** PM görev kontrolünde coder'ın "boşum" dediği görülürse, aynı turda ya da bir sonraki yaratıcı cron turunda gerçekten yeni bir bulgu (kod tarayarak, tahmin etmeden) bulunup coder'a atanmalı — "bu turda net bir bulgu bulamadım" diye arka arkaya boş geçmek, coder sürekli beklerken kabul edilmez. Kolay bulgular tükendiğinde arama derinleştirilir: daha önce hiç bakılmamış dosyalar/modüller, geçmiş büyük refactor commit'lerinin diff'leri (`git show <commit> -- <dosya>` ile kaybolan satır var mı), veri modelleri arası çapraz tutarlılık kontrolleri, mevcut bir düzeltmenin (örn. #110/#111 zincirinde olduğu gibi) benzer kalıpları başka dosyalarda da tekrarlayıp tekrarlamadığı. Gerçekten TÜM kod tabanı tükendiyse (çok nadir), coder'a küçük bir iyileştirme/refactor/eksik test görevi bile bulup vermek, onu tamamen boş bırakmaktan iyidir.
+
 PM offline'ken bu periyodik kontroller çalışmaz — coder, kullanıcı "cron'u çalıştır" gibi bir istek yaparsa bu rolü manuel olarak (kod tabanını tarayıp yeni bir fikir bularak) tek seferlik üstlenebilir, ama bu gerçek bir zamanlanmış görev değildir.
 
 ## Deploy
