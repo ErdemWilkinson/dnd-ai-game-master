@@ -196,6 +196,7 @@ export function CharacterCard({ character }: Props) {
               key={slot}
               className={`paper-doll-slot ${equippedItem ? 'filled' : ''}`}
               title={equippedItem ? equippedItem.name : `${SLOT_LABELS[slot]} (boş)`}
+              aria-label={equippedItem ? equippedItem.name : `${SLOT_LABELS[slot]} (boş)`}
             >
               <span className="slot-icon">
                 {equippedItem?.icon ? (
