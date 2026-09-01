@@ -13,4 +13,4 @@ function trimChatHistory(history) {
   }
 }
 
-module.exports = { trimChatHistory, MAX_CHAT_HISTORY };
+module.exports = { trimChatHistory };

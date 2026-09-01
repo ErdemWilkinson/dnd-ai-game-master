@@ -25,4 +25,4 @@ async function generateNarration({ character, scene, recentMessages = [], player
   return { text: generateGmResponse(playerMessage) + suffix, source: "mock" };
 }
 
-module.exports = { generateNarration, MOCK_OUTCOME_SUFFIX };
+module.exports = { generateNarration };
