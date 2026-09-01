@@ -55,7 +55,7 @@ router.get("/options", (_req, res) => {
 
 router.post("/roll-stats", publicRateLimit, (req, res) => {
   const { raceId } = req.body || {};
-  const race = RACES[raceId];
+  const race = Object.hasOwn(RACES, raceId) ? RACES[raceId] : undefined;
   if (!race) {
     return res.status(400).json({ error: `Geçersiz ırk: ${raceId}` });
   }
@@ -74,15 +74,15 @@ router.post("/create", publicRateLimit, (req, res) => {
   if (name.trim().length > MAX_NAME_LENGTH) {
     return res.status(400).json({ error: `İsim en fazla ${MAX_NAME_LENGTH} karakter olabilir.` });
   }
-  const race = RACES[raceId];
-  const cls = CLASSES[classId];
+  const race = Object.hasOwn(RACES, raceId) ? RACES[raceId] : undefined;
+  const cls = Object.hasOwn(CLASSES, classId) ? CLASSES[classId] : undefined;
   if (!race) {
     return res.status(400).json({ error: `Geçersiz ırk: ${raceId}` });
   }
   if (!cls) {
     return res.status(400).json({ error: `Geçersiz sınıf: ${classId}` });
   }
-  const appearance = appearanceId ? APPEARANCES[appearanceId] : null;
+  const appearance = appearanceId && Object.hasOwn(APPEARANCES, appearanceId) ? APPEARANCES[appearanceId] : null;
   if (appearanceId && !appearance) {
     return res.status(400).json({ error: `Geçersiz dış görünüş: ${appearanceId}` });
   }

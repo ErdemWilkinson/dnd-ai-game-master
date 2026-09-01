@@ -46,6 +46,13 @@ describe("POST /api/character/roll-stats", () => {
     expect(res.status).toBe(400);
   });
 
+  // bkz. /create'teki fikir #114 notu - AYNI Object.hasOwn bug'ı roll-stats'ta da vardı.
+  it("raceId='constructor' gibi Object.prototype üyesi isimleri 500 ile çökmeden 400 döner", async () => {
+    const app = buildApp();
+    const res = await request(app).post("/api/character/roll-stats").send({ raceId: "constructor" });
+    expect(res.status).toBe(400);
+  });
+
   it("geçerli raceId ile D20 zarları + ırk bonusu uygulanmış attributes döner", async () => {
     vi.spyOn(Math, "random").mockReturnValue(0.5); // D20 -> 11 her attribute
     const app = buildApp();
@@ -223,6 +230,38 @@ describe("POST /api/character/create", () => {
       .send({ name: "Test", raceId: "human", classId: "necromancer" });
     expect(res.status).toBe(400);
     expect(res.body.error).toMatch(/sınıf/i);
+  });
+
+  // Yaratıcı cron fikir #114 (güvenlik): RACES[raceId]/CLASSES[classId]
+  // doğrulaması Object.hasOwn KULLANMIYORDU - "constructor" gibi
+  // Object.prototype'tan miras alınan bir üye adı gönderilince `!race`
+  // kontrolü yanlışlıkla geçiliyor, sonra race.attributeBonuses gibi
+  // olmayan alanlara erişilince 500 ile çöküyordu (400 "Geçersiz ırk" yerine).
+  it("raceId='constructor' gibi Object.prototype üyesi isimleri 500 ile çökmeden 400 döner", async () => {
+    const app = buildApp();
+    const res = await request(app)
+      .post("/api/character/create")
+      .send({ name: "Test", raceId: "constructor", classId: "fighter" });
+    expect(res.status).toBe(400);
+    expect(res.body.error).toMatch(/ırk/i);
+  });
+
+  it("classId='hasOwnProperty' gibi Object.prototype üyesi isimleri 500 ile çökmeden 400 döner", async () => {
+    const app = buildApp();
+    const res = await request(app)
+      .post("/api/character/create")
+      .send({ name: "Test", raceId: "human", classId: "hasOwnProperty" });
+    expect(res.status).toBe(400);
+    expect(res.body.error).toMatch(/sınıf/i);
+  });
+
+  it("appearanceId='toString' gibi Object.prototype üyesi isimleri 500 ile çökmeden 400 döner", async () => {
+    const app = buildApp();
+    const res = await request(app)
+      .post("/api/character/create")
+      .send({ name: "Test", raceId: "human", classId: "fighter", appearanceId: "toString" });
+    expect(res.status).toBe(400);
+    expect(res.body.error).toMatch(/görünüş/i);
   });
 
   it("body tamamen boşsa (undefined) çökmeden 400 döner", async () => {
