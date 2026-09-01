@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { createRequire } from "module";
 import express from "express";
 import request from "supertest";
@@ -11,6 +11,7 @@ const require = createRequire(import.meta.url);
 const characterRouter = require("../routes/character.js");
 const chatRouter = require("../routes/chat.js");
 const { characters, chatHistories, activeCharacterIdBySession } = require("../data/store.js");
+const { getFreeformEncounter, resetFreeformEncounter } = require("../services/freeformEncounter.js");
 
 function buildApp() {
   const app = express();
@@ -125,6 +126,43 @@ describe("Faz 6-A: oturum izolasyonu — sohbet", () => {
 
     // A'nın karakteri fighter (str primary) olduğu için zar A'nın karakterine göre atılmalı
     expect(chatA.body.gmMessage.roll.attribute).toBe("str");
+  });
+});
+
+describe("Faz 12: oturum izolasyonu — freeform karşılaşma", () => {
+  // Yaratıcı cron fikir #112: grid kaldırılırken (6ac6291) eski "sahne
+  // izolasyonu" testi de silinmişti, ama freeform'un `freeformEncounters`
+  // Map'i (kod olarak sessionId'ye göre anahtarlanmış, freeformEncounter.js)
+  // için eşdeğer bir davranış testi hiç eklenmemişti - kod doğru görünüyordu
+  // ama hiç doğrulanmamıştı. freeformCombat.test.js'deki yüksek-isabet
+  // mock'uyla AYNI teknik kullanılıyor.
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("session A'nın düşmana verdiği hasar session B'nin karşılaşma state'ini ETKİLEMEZ", async () => {
+    vi.spyOn(Math, "random").mockReturnValue(0.9); // yüksek isabet ihtimali (D20 -> 19)
+    resetFreeformEncounter(SESSION_A);
+    resetFreeformEncounter(SESSION_B);
+
+    const app = buildApp();
+    const a = withSession(app, SESSION_A);
+    const b = withSession(app, SESSION_B);
+
+    await a.post("/api/character/create").send({ name: "Aragorn", raceId: "human", classId: "fighter" });
+    await b.post("/api/character/create").send({ name: "Gimli", raceId: "dwarf", classId: "fighter" });
+
+    const goblinBBefore = getFreeformEncounter(SESSION_B).enemies.find((e) => e.id === "goblin-1");
+    const hpBBefore = goblinBBefore.hp;
+
+    const resA = await a.post("/api/chat").send({ message: "Goblin'e saldırıyorum" });
+    expect(resA.status).toBe(201);
+
+    const goblinAAfter = getFreeformEncounter(SESSION_A).enemies.find((e) => e.id === "goblin-1");
+    expect(goblinAAfter.hp).toBeLessThan(hpBBefore); // A'nın saldırısı kendi düşmanına işledi
+
+    const goblinBAfter = getFreeformEncounter(SESSION_B).enemies.find((e) => e.id === "goblin-1");
+    expect(goblinBAfter.hp).toBe(hpBBefore); // B'ninki A'nın saldırısından hiç etkilenmedi
   });
 });
 
