@@ -10,13 +10,13 @@ import request from "supertest";
 // mantığını burada yeniden kuruyoruz.
 function buildApp() {
   const app = express();
-  app.use(express.json());
+  app.use(express.json({ limit: "100kb" }));
   app.post("/echo", (req, res) => res.json(req.body));
 
   // eslint-disable-next-line no-unused-vars
   app.use((err, _req, res, _next) => {
-    if (err.type === "entity.parse.failed") {
-      return res.status(400).json({ error: "Geçersiz istek gövdesi." });
+    if (err.status && err.status >= 400 && err.status < 500) {
+      return res.status(err.status).json({ error: "Geçersiz istek gövdesi." });
     }
     res.status(500).json({ error: "Sunucu hatası." });
   });
@@ -45,5 +45,23 @@ describe("server.js genel hata middleware'i — fikir #115: bozuk JSON body", ()
 
     expect(res.status).toBe(200);
     expect(res.body).toEqual({ name: "Aragorn" });
+  });
+});
+
+describe("server.js genel hata middleware'i — fikir #116: aşırı büyük body", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("100kb limitini aşan body 500 yerine 413 ile 'Geçersiz istek gövdesi.' döner", async () => {
+    const app = buildApp();
+    const bigPayload = { name: "a".repeat(200 * 1024) };
+    const res = await request(app)
+      .post("/echo")
+      .set("Content-Type", "application/json")
+      .send(JSON.stringify(bigPayload));
+
+    expect(res.status).toBe(413);
+    expect(res.body).toEqual({ error: "Geçersiz istek gövdesi." });
   });
 });

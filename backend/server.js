@@ -103,13 +103,15 @@ app.use((err, _req, res, next) => {
 // ve projenin her yerde tutarlı olan `{error:"..."}` JSON formatını kırardı.
 // eslint-disable-next-line no-unused-vars
 app.use((err, _req, res, _next) => {
-  // Yaratıcı cron fikir #115: express.json()'ın bozuk JSON body'lerinde
-  // fırlattığı hata (`err.type === "entity.parse.failed"`, `err.status === 400`)
-  // burada kontrol edilmeden her şey 500'e çevriliyordu - bu bir sunucu
-  // hatası değil, bir istemci hatası (geçersiz istek). console.error yerine
-  // sessizce 400 döndürülüyor (gerçek sunucu hatalarından ayrı tutuluyor).
-  if (err.type === "entity.parse.failed") {
-    return res.status(400).json({ error: "Geçersiz istek gövdesi." });
+  // Yaratıcı cron fikir #115/#116: express.json() ve body-parser'ın istek
+  // gövdesiyle ilgili fırlattığı hatalar (bozuk JSON -> `entity.parse.failed`,
+  // 100kb limitini aşan body -> `entity.too.large`, vb.) kendi `err.status`
+  // alanlarında zaten doğru 4xx kodunu taşıyor. Sadece `entity.parse.failed`'e
+  // özel kontrol, diğer body-parser hatalarını (ör. 413) 500'e düşürüyordu -
+  // bunlar sunucu hatası değil, istemci hatası. console.error yerine
+  // sessizce ilgili 4xx döndürülüyor (gerçek sunucu hatalarından ayrı tutuluyor).
+  if (err.status && err.status >= 400 && err.status < 500) {
+    return res.status(err.status).json({ error: "Geçersiz istek gövdesi." });
   }
   console.error("Beklenmeyen sunucu hatası:", err);
   res.status(500).json({ error: "Sunucu hatası." });
