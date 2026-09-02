@@ -90,11 +90,26 @@ async function cleanupStaleSessions(maxAgeMs) {
 async function loadAll() {
   await db.init();
 
+  // Yaratıcı cron fikir #119 (savunma sağlamlaştırma): eskiden JSON.parse()
+  // hiç try/catch'siz çağrılıyordu - tek bir bozuk satır (normal akışta
+  // oluşmaz, ama manuel bir DB müdahalesi/yarım kalmış bir yazma sonrası
+  // olabilir) loadAll()'ı throw ettirip server.js'in start()'ını
+  // process.exit(1)'e sürüklüyordu - TEK kötü satır TÜM sunucunun açılışını
+  // engelleyebiliyordu. Artık bozuk satır loglanıp ATLANIYOR, geri kalan
+  // sağlam veri yine de yüklenmeye devam ediyor.
   for (const row of await db.getAllCharacters()) {
-    characters.set(row.id, JSON.parse(row.data));
+    try {
+      characters.set(row.id, JSON.parse(row.data));
+    } catch (err) {
+      console.error(`Bozuk karakter verisi atlandı (id=${row.id}):`, err.message);
+    }
   }
   for (const row of await db.getAllChatHistories()) {
-    chatHistories.set(row.session_id, JSON.parse(row.data));
+    try {
+      chatHistories.set(row.session_id, JSON.parse(row.data));
+    } catch (err) {
+      console.error(`Bozuk sohbet geçmişi atlandı (session_id=${row.session_id}):`, err.message);
+    }
   }
   for (const row of await db.getAllSessions()) {
     if (row.active_character_id) {

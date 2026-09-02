@@ -93,6 +93,35 @@ describe("persistence — loadAll() 'restart' senaryosunu doğru simüle ediyor"
     await loadAll();
     expect(activeCharacterIdBySession.has("session-y")).toBe(false);
   });
+
+  // Yaratıcı cron fikir #119: loadAll() eskiden JSON.parse()'ı try/catch'siz
+  // çağırıyordu - tek bir bozuk satır TÜM sunucunun açılışını engelliyordu
+  // (server.js'in start()'ı hatayı yakalayıp process.exit(1) çağırıyordu).
+  it("bozuk (geçersiz JSON) bir karakter satırı loadAll()'ı ÇÖKERTMEZ, sadece o satır atlanır", async () => {
+    db.prepare("INSERT INTO characters (id, data) VALUES (?, ?)").run("broken-char", "{ bozuk json");
+    db.prepare("INSERT INTO characters (id, data) VALUES (?, ?)").run(
+      "good-char",
+      JSON.stringify({ id: "good-char", name: "Sağlam" }),
+    );
+
+    await expect(loadAll()).resolves.toBeUndefined(); // throw etmedi
+
+    expect(characters.has("broken-char")).toBe(false); // bozuk satır atlandı
+    expect(characters.get("good-char")).toEqual({ id: "good-char", name: "Sağlam" }); // sağlam satır yine de yüklendi
+  });
+
+  it("bozuk (geçersiz JSON) bir sohbet geçmişi satırı loadAll()'ı ÇÖKERTMEZ, sadece o satır atlanır", async () => {
+    db.prepare("INSERT INTO chat_histories (session_id, data) VALUES (?, ?)").run("broken-session", "[ bozuk json");
+    db.prepare("INSERT INTO chat_histories (session_id, data) VALUES (?, ?)").run(
+      "good-session",
+      JSON.stringify([{ id: "m1", role: "player", text: "merhaba" }]),
+    );
+
+    await expect(loadAll()).resolves.toBeUndefined();
+
+    expect(chatHistories.has("broken-session")).toBe(false);
+    expect(chatHistories.get("good-session")).toEqual([{ id: "m1", role: "player", text: "merhaba" }]);
+  });
 });
 
 describe("persistence — uçtan uca: route mutasyonu → DB'ye yazılıyor → loadAll ile geri geliyor", () => {
