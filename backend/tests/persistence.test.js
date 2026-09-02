@@ -11,6 +11,7 @@ const {
   saveCharacter,
   saveChatHistory,
   saveActiveCharacterId,
+  touchSession,
   cleanupStaleSessions,
 } = require("../services/persistence.js");
 const { characters, chatHistories, activeCharacterIdBySession } = require("../data/store.js");
@@ -173,5 +174,71 @@ describe("persistence — fikir #117: cleanupStaleSessions() freeformEncounters'
     await cleanupStaleSessions(30 * 24 * 60 * 60 * 1000);
 
     expect(getFreeformEncounter(sessionId).encounterIndex).toBe(1); // değişmedi
+  });
+});
+
+describe("persistence — fikir #118: touchSession() aktif oynayan bir session'ı stale sayılmaktan korur", () => {
+  it("touchSession() çağrısı, updated_at'i günceller ve mevcut active_character_id'yi KORUR", () => {
+    const sessionId = "touch-test-session";
+    // touchSession() in-memory activeCharacterIdBySession Map'ini okur (gerçek
+    // istek akışında route'un kendisi bunu ayarlar, bkz. character.js:122) -
+    // saveActiveCharacterId() SADECE DB'ye yazar, in-memory Map'e dokunmaz.
+    activeCharacterIdBySession.set(sessionId, "char-1");
+    saveActiveCharacterId(sessionId, "char-1");
+
+    // Session'ı 31 gün önce güncellenmiş gibi geriye tarihle.
+    const thirtyOneDaysAgo = Date.now() - 31 * 24 * 60 * 60 * 1000;
+    db.prepare("UPDATE sessions SET updated_at = ? WHERE session_id = ?").run(thirtyOneDaysAgo, sessionId);
+
+    touchSession(sessionId);
+
+    const row = db.prepare("SELECT * FROM sessions WHERE session_id = ?").get(sessionId);
+    expect(row.active_character_id).toBe("char-1"); // characterId yanlışlıkla null'a düşürülmedi
+    expect(row.updated_at).toBeGreaterThan(thirtyOneDaysAgo);
+  });
+
+  it("henüz hiç karakteri olmayan (in-memory eşlemesi boş) bir session'da touchSession() active_character_id'yi NULL yazar ama çökmez", () => {
+    const sessionId = "touch-no-character-session";
+    touchSession(sessionId); // saveActiveCharacterId hiç çağrılmamış - ilk chat isteği senaryosu
+
+    const row = db.prepare("SELECT * FROM sessions WHERE session_id = ?").get(sessionId);
+    expect(row).toBeTruthy();
+    expect(row.active_character_id).toBeNull();
+  });
+
+  it("chat isteği sonrası session'ın updated_at'i güncellenmiş olur, 30+ gün sonra stale sayılmaz", async () => {
+    const express = require("express");
+    const request = require("supertest");
+    const characterRouter = require("../routes/character.js");
+    const chatRouter = require("../routes/chat.js");
+
+    function buildApp() {
+      const app = express();
+      app.use(express.json());
+      app.use("/api/character", characterRouter);
+      app.use("/api/chat", chatRouter);
+      return app;
+    }
+
+    const app = buildApp();
+    const sessionId = "chat-touches-session";
+    const withSession = (method, url) => request(app)[method](url).set("X-Session-Id", sessionId);
+
+    await withSession("post", "/api/character/create").send({ name: "Test", raceId: "human", classId: "fighter" });
+
+    // Karakter oluşturma sonrası updated_at'i geçmişe (31 gün önce) at - "uzun süre önce oluşturuldu ama hâlâ aktif oynuyor" senaryosu.
+    const thirtyOneDaysAgo = Date.now() - 31 * 24 * 60 * 60 * 1000;
+    db.prepare("UPDATE sessions SET updated_at = ? WHERE session_id = ?").run(thirtyOneDaysAgo, sessionId);
+
+    // Fikir #118 öncesi: chat.js hiçbir şey güncellemediği için bu session bir
+    // sonraki temizlikte stale sayılıp silinirdi. Şimdi /chat isteğinin kendisi
+    // touchSession() ile updated_at'i tazeler.
+    await withSession("post", "/api/chat").send({ message: "hâlâ buradayım" });
+
+    const cleanedCount = await cleanupStaleSessions(30 * 24 * 60 * 60 * 1000);
+    expect(cleanedCount).toBe(0); // session silinmedi - hâlâ aktif
+
+    const row = db.prepare("SELECT * FROM sessions WHERE session_id = ?").get(sessionId);
+    expect(row).toBeTruthy();
   });
 });

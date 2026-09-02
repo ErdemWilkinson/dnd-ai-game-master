@@ -34,6 +34,22 @@ function saveActiveCharacterId(sessionId, characterId) {
   fireAndForget(db.upsertSession(sessionId, characterId));
 }
 
+// Yaratıcı cron fikir #118 (ÖNEMLİ, veri kaybı riski): `sessions.updated_at`
+// (fikir #1'in stale-session temizliğinin dayandığı TEK alan) sadece
+// `/character/create`'de (`saveActiveCharacterId` ile) güncelleniyordu -
+// `chat.js` hiç çağırmıyordu. Sonuç: 30 gündür AKTİF oynayan ama yeni
+// karakter oluşturmamış bir kullanıcının session'ı bile `cleanupStaleSessions()`
+// tarafından yanlışlıkla stale sayılıp silinebiliyordu. `chat.js` her
+// başarılı istekte bunu çağırır - `activeCharacterIdBySession`'daki MEVCUT
+// eşlemeyi aynen geri yazar (upsertSession'ın `updated_at`'i güncelleyen
+// AYNI ON CONFLICT deseni), aktif karakteri olmayan (henüz karakter
+// oluşturmamış) bir session'ı da "aktif" olarak işaretlemiş olur - bu da
+// doğru, session gerçekten kullanımda.
+function touchSession(sessionId) {
+  const characterId = activeCharacterIdBySession.get(sessionId) ?? null;
+  fireAndForget(db.upsertSession(sessionId, characterId));
+}
+
 // Faz 6-C: oyuncu öldüğünde "yeniden başla" akışı - session'ın karakter/
 // sohbet state'ini temizler. Faz 9 (yaratıcı cron fikir #1): artık
 // karakter kaydını da (in-memory + DB) gerçekten siliyor - eskiden sadece
@@ -92,6 +108,7 @@ module.exports = {
   saveCharacter,
   saveChatHistory,
   saveActiveCharacterId,
+  touchSession,
   clearSession,
   cleanupStaleSessions,
 };

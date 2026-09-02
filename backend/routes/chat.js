@@ -6,7 +6,7 @@ const { resolveAction } = require("../services/actionResolver");
 const { resolveFreeformAction } = require("../services/freeformCombat");
 const { generateNarration } = require("../services/narrationService");
 const { getSessionId } = require("../services/sessionId");
-const { saveChatHistory, saveCharacter } = require("../services/persistence");
+const { saveChatHistory, saveCharacter, touchSession } = require("../services/persistence");
 const { trimChatHistory } = require("../services/chatHistoryLimit");
 const { publicRateLimit } = require("../services/publicRateLimit");
 
@@ -141,6 +141,12 @@ router.post("/", publicRateLimit, async (req, res) => {
   }
 
   const sessionId = getSessionId(req);
+  // Yaratıcı cron fikir #118 (ÖNEMLİ, veri kaybı riski): sessions.updated_at
+  // sadece /character/create'de güncelleniyordu - aktif oynayan ama yeni
+  // karakter oluşturmamış bir session, cleanupStaleSessions() tarafından
+  // yanlışlıkla stale sayılıp silinebiliyordu. Her başarılı chat isteği artık
+  // "son aktivite" sinyalini de güncelliyor.
+  touchSession(sessionId);
   const history = getHistory(sessionId);
 
   const playerMessage = {
