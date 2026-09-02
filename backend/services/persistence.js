@@ -14,6 +14,7 @@
 
 const db = require("../data/db");
 const { characters, chatHistories, activeCharacterIdBySession } = require("../data/store");
+const { resetFreeformEncounter } = require("./freeformEncounter");
 
 function fireAndForget(maybePromise) {
   Promise.resolve(maybePromise).catch((err) => {
@@ -57,6 +58,12 @@ async function cleanupStaleSessions(maxAgeMs) {
     clearSession(row.session_id, row.active_character_id);
     activeCharacterIdBySession.delete(row.session_id);
     chatHistories.delete(row.session_id);
+    // Yaratıcı cron fikir #117: freeformEncounters (services/freeformEncounter.js)
+    // bilinçli olarak DB'ye persist edilmiyor (sadece RAM), ama stale
+    // temizliği yine de onu unutmamalı - aksi halde haftalarca yeniden
+    // başlamayan bir sunucuda dönmeyen session'ların karşılaşma state'i
+    // RAM'de sonsuza kadar birikir.
+    resetFreeformEncounter(row.session_id);
   }
   return staleSessions.length;
 }

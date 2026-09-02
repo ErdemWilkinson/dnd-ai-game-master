@@ -11,8 +11,10 @@ const {
   saveCharacter,
   saveChatHistory,
   saveActiveCharacterId,
+  cleanupStaleSessions,
 } = require("../services/persistence.js");
 const { characters, chatHistories, activeCharacterIdBySession } = require("../data/store.js");
+const { getFreeformEncounter, advanceFreeformEncounter, resetFreeformEncounter } = require("../services/freeformEncounter.js");
 
 beforeEach(() => {
   characters.clear();
@@ -136,5 +138,40 @@ describe("persistence — uçtan uca: route mutasyonu → DB'ye yazılıyor → 
 
     const chatAfterRestart = await withSession2("get", "/api/chat");
     expect(chatAfterRestart.body.messages.some((m) => m.text === "merhaba dünya")).toBe(true);
+  });
+});
+
+describe("persistence — fikir #117: cleanupStaleSessions() freeformEncounters'ı da temizliyor", () => {
+  it("stale bir session'ın ilerlemiş freeform karşılaşma state'i temizlik sonrası SIFIRLANMIŞ olur", async () => {
+    const sessionId = "stale-freeform-session";
+    resetFreeformEncounter(sessionId);
+
+    // Session'ı bir karşılaşma ilerletip DB'ye kaydet (gerçek bir "aktif oyuncu" gibi).
+    saveActiveCharacterId(sessionId, null);
+    advanceFreeformEncounter(sessionId);
+    expect(getFreeformEncounter(sessionId).encounterIndex).toBe(1);
+
+    // Session'ı 31 gün önce güncellenmiş gibi geriye tarihle (stale eşiği: 30 gün).
+    const thirtyOneDaysAgo = Date.now() - 31 * 24 * 60 * 60 * 1000;
+    db.prepare("UPDATE sessions SET updated_at = ? WHERE session_id = ?").run(thirtyOneDaysAgo, sessionId);
+
+    const cleanedCount = await cleanupStaleSessions(30 * 24 * 60 * 60 * 1000);
+    expect(cleanedCount).toBe(1);
+
+    // freeformEncounters Map'inden silinmiş olmalı - bir sonraki getFreeformEncounter()
+    // çağrısı SIFIRDAN (encounterIndex 0) bir state üretmeli, ilerlemiş hâli DEĞİL.
+    expect(getFreeformEncounter(sessionId).encounterIndex).toBe(0);
+  });
+
+  it("stale OLMAYAN bir session'ın freeform state'i temizlikten etkilenmez", async () => {
+    const sessionId = "fresh-freeform-session";
+    resetFreeformEncounter(sessionId);
+    saveActiveCharacterId(sessionId, null); // updated_at = şimdi (taze)
+    advanceFreeformEncounter(sessionId);
+    expect(getFreeformEncounter(sessionId).encounterIndex).toBe(1);
+
+    await cleanupStaleSessions(30 * 24 * 60 * 60 * 1000);
+
+    expect(getFreeformEncounter(sessionId).encounterIndex).toBe(1); // değişmedi
   });
 });
